@@ -15,6 +15,11 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   const waitResult = async (ms) => { const t = Date.now(); while (Date.now() - t < ms) { if (await page.locator('.modal').count()) return true; await sleep(500); } return false; };
 
   await page.evaluate(() => window.__MRAPP.startLocal({ kind: 'level', mode: 'race', diff: 0, level: 1, ais: [] })); await sleep(3500);
+  // 滾動方向：球往右（+x）移動時，球頂端應向前（+x）轉，像真實的球一樣
+  await page.evaluate(() => { const g = window.__MRAPP.getGame(); g.input.keys.add('d'); }); await sleep(500);
+  const top = await page.evaluate(() => { const b = window.__MRAPP.getGame().scene.balls.get('me'); const q = b.mesh.quaternion; const moved = b.p.x - 0.5; return { moved, topX: 2 * (q.x * q.y - q.w * q.z) }; });
+  await page.evaluate(() => window.__MRAPP.getGame().input.keys.clear());
+  assert(top.moved > 0.02, '球有往右移動'); assert(top.topX > 0, '往右滾時球頂端向右轉（' + top.topX.toFixed(3) + '）'); ok('滾動方向正確：往前滾時球頂端向前轉');
   await drive(); assert(await waitResult(120000), '第1關應能完成'); ok('第1關完成，出現結算');
   const st = await page.evaluate(() => window.__MRAPP.store.levelStars(0)); assert(st[0] > 0, '星數已存'); ok('星數已存 ' + st[0]);
   assert.strictEqual(await page.evaluate(() => window.__MRAPP.store.unlockedLevel(0)), 2); ok('第2關解鎖');

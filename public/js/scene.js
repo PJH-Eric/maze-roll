@@ -2,9 +2,9 @@
 import * as THREE from '../vendor/three.module.min.js';
 
 export const BALL_COLORS = ['#d94a3d', '#3d7bd9', '#3fae5a', '#f0b323', '#9b59d0', '#f07b2b', '#e86aa6', '#dcdcdc'];
-export const BALL_NAMES = ['紅', '藍', '綠', '黃', '紫', '橘', '粉', '白'];
+export const BALL_NAMES = ['紅', '藍', '綠', '黃', '紫', '橘', '粉', '白']; // 顯示時再 T()
 export const SHAPES = ['●', '■', '▲', '◆', '★', '✚', '⬟', '⬢'];
-const R = 0.2, T = 0.12, WALL_H = 0.5;
+const R = (typeof window !== 'undefined' && window.MR && window.MR.PHYS.R) || 0.36, T = 0.12, WALL_H = 0.8;
 const CAM_DIST = [6.4, 8.6, 12];
 const THEMES = (typeof window !== 'undefined' && window.MR && window.MR.DIFF_THEME) || [];
 
@@ -34,7 +34,7 @@ function ballTex(color) {
     g.fillStyle = 'rgba(0,0,0,0.28)'; for (let i = 0; i < 4; i++) { g.beginPath(); g.arc(w * (i + 0.5) / 4, h * 0.2, 11, 0, 7); g.fill(); g.beginPath(); g.arc(w * (i + 0.5) / 4, h * 0.8, 11, 0, 7); g.fill(); }
   });
 }
-export const BALL_TYPES = [{ id: 'glass', name: '玻璃珠' }, { id: 'wood', name: '木球' }, { id: 'steel', name: '鐵球' }, { id: 'rainbow', name: '彩虹球' }];
+export const BALL_TYPES = [{ id: 'glass', name: '玻璃珠' }, { id: 'wood', name: '木球' }, { id: 'steel', name: '鐵球' }, { id: 'rainbow', name: '彩虹球' }]; // 顯示時再 T()
 const TRAIL_N = 14;
 /** 依球種建立材質：玻璃（預設）、木球（木紋＋玩家色環）、鐵球（金屬）、彩虹球（漸層）。 */
 function ballMat(type, color) {
@@ -62,7 +62,7 @@ function labelTex(name, idx, me, shapes) {
   });
 }
 function starShape() {
-  const s = new THREE.Shape(); const o = 0.27, i = 0.12;
+  const s = new THREE.Shape(); const o = 0.38, i = 0.17;
   for (let k = 0; k < 10; k++) { const a = Math.PI / 2 + (k * Math.PI) / 5, rr = k % 2 ? i : o; const x = Math.cos(a) * rr, y = Math.sin(a) * rr; k ? s.lineTo(x, y) : s.moveTo(x, y); }
   s.closePath(); return s;
 }
@@ -132,7 +132,7 @@ export class Scene3D {
     const mt = new THREE.Matrix4(), sc = new THREE.Vector3(), q = new THREE.Quaternion();
     walls.forEach((w, i) => { mt.compose(new THREE.Vector3(w[0], WALL_H / 2, w[1]), q, sc.set(w[2], 1, w[3])); wm.setMatrixAt(i, mt); });
     wm.instanceMatrix.needsUpdate = true; root.add(wm);
-    if (th.trim) { // 超難：牆頂金邊
+    if (th.trim) { // 神話：牆頂金邊
       const tm = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 0.05, 1), new THREE.MeshStandardMaterial({ color: th.trim, metalness: 0.6, roughness: 0.3, emissive: 0x4a3600 }), walls.length);
       walls.forEach((w, i) => { mt.compose(new THREE.Vector3(w[0], WALL_H + 0.02, w[1]), q, sc.set(w[2] + 0.02, 1, w[3] + 0.02)); tm.setMatrixAt(i, mt); });
       tm.instanceMatrix.needsUpdate = true; root.add(tm);
@@ -140,8 +140,8 @@ export class Scene3D {
     // 終點（競速）
     if (world.mode === 'race') {
       const g = new THREE.Group(); const gc = { x: (m.goal % W) + 0.5, y: ((m.goal / W) | 0) + 0.5 }; g.position.set(gc.x, 0, gc.y);
-      const hole = new THREE.Mesh(new THREE.CircleGeometry(0.3, 28), new THREE.MeshBasicMaterial({ color: 0x1a0d06 })); hole.rotation.x = -Math.PI / 2; hole.position.y = 0.012; g.add(hole);
-      const ring = new THREE.Mesh(new THREE.TorusGeometry(0.34, 0.05, 10, 32), new THREE.MeshStandardMaterial({ color: 0xffc928, metalness: 0.6, roughness: 0.3, emissive: 0x6a4700 })); ring.rotation.x = Math.PI / 2; ring.position.y = 0.04; g.add(ring);
+      const hole = new THREE.Mesh(new THREE.CircleGeometry(0.46, 28), new THREE.MeshBasicMaterial({ color: 0x1a0d06 })); hole.rotation.x = -Math.PI / 2; hole.position.y = 0.012; g.add(hole);
+      const ring = new THREE.Mesh(new THREE.TorusGeometry(0.5, 0.06, 10, 32), new THREE.MeshStandardMaterial({ color: 0xffc928, metalness: 0.6, roughness: 0.3, emissive: 0x6a4700 })); ring.rotation.x = Math.PI / 2; ring.position.y = 0.04; g.add(ring);
       const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.018, 0.85, 8), new THREE.MeshStandardMaterial({ color: 0xf4ead2 })); pole.position.set(0.28, 0.42, -0.28); g.add(pole);
       const fg = new THREE.PlaneGeometry(0.42, 0.26); fg.translate(0.21, 0, 0); const flag = new THREE.Mesh(fg, new THREE.MeshStandardMaterial({ color: 0xd4473a, side: THREE.DoubleSide })); flag.position.set(0.29, 0.74, -0.28); g.add(flag);
       const beam = new THREE.Mesh(new THREE.CylinderGeometry(0.26, 0.26, 2.2, 20, 1, true), new THREE.MeshBasicMaterial({ color: 0xffd24a, transparent: true, opacity: 0.14, side: THREE.DoubleSide, depthWrite: false, blending: THREE.AdditiveBlending })); beam.position.y = 1.1; g.add(beam);
@@ -162,9 +162,9 @@ export class Scene3D {
     const mesh = new THREE.Mesh(this.ballGeo, ballMat(me ? this.ballType : 'glass', BALL_COLORS[idx % 8]));
     mesh.castShadow = true; g.add(mesh);
     const label = new THREE.Sprite(new THREE.SpriteMaterial({ map: labelTex(p.name, idx, me, this.shapes), depthTest: false, transparent: true }));
-    label.scale.set(1.15, 0.345, 1); label.position.y = 0.72; label.renderOrder = 20; g.add(label);
+    label.scale.set(1.15, 0.345, 1); label.position.y = 1.05; label.renderOrder = 20; g.add(label);
     let ring = null;
-    if (me) { ring = new THREE.Mesh(new THREE.RingGeometry(0.27, 0.36, 36), new THREE.MeshBasicMaterial({ color: 0xffd24a, transparent: true, opacity: 0.85, side: THREE.DoubleSide, depthWrite: false })); ring.rotation.x = -Math.PI / 2; ring.position.y = 0.02; g.add(ring); }
+    if (me) { ring = new THREE.Mesh(new THREE.RingGeometry(R * 1.2, R * 1.7, 36), new THREE.MeshBasicMaterial({ color: 0xffd24a, transparent: true, opacity: 0.85, side: THREE.DoubleSide, depthWrite: false })); ring.rotation.x = -Math.PI / 2; ring.position.y = 0.02; g.add(ring); }
     const trailMeshes = []; const tmat = new THREE.MeshBasicMaterial({ color: BALL_COLORS[idx % 8], transparent: true, opacity: 0.4, depthWrite: false });
     for (let k = 0; k < TRAIL_N; k++) { const tm = new THREE.Mesh(this.particleGeo, tmat); tm.visible = false; this.root.add(tm); trailMeshes.push(tm); }
     this.root.add(g);
@@ -214,7 +214,8 @@ export class Scene3D {
       const p = b.p, g = b.g;
       const dx = p.x - b.lx, dz = p.y - b.ly; b.lx = p.x; b.ly = p.y;
       const dist = Math.hypot(dx, dz);
-      if (dist > 1e-5 && dist < 0.6 && p.alive && !b.sink) { const ax = new THREE.Vector3(-dz, 0, dx).normalize(); b.mesh.rotateOnWorldAxis(ax, dist / R); }
+      // 滾動：頂端朝前進方向轉（接地點相對球心往後），轉角 = 位移 / 半徑，與真實的球一致
+      if (dist > 1e-5 && dist < 0.6 && p.alive && !b.sink) { const ax = new THREE.Vector3(dz, 0, -dx).normalize(); b.mesh.rotateOnWorldAxis(ax, dist / R); }
       let y = R, s = 1;
       if (!p.alive) { b.fallV += 9 * dt; b.fall += b.fallV * dt; y = R - b.fall; s = Math.max(0.2, 1 - b.fall * 0.15); if (b.fall > 9) b.hidden = true; }
       if (this.world.mode === 'race' && p.fin != null) { b.sink = Math.min(1, b.sink + dt * 2.2); y = R - b.sink * 0.3; s = 1 - b.sink * 0.45; if (b.sink >= 1) b.hidden = true; }
@@ -224,7 +225,7 @@ export class Scene3D {
         else if (b.hist.length && dist < 1e-4 && Math.random() < 0.08) b.hist.pop();
         b.trailMeshes.forEach((m, k) => { const h = b.hist[k]; m.visible = !!h; if (h) { m.position.set(h[0], 0.035, h[1]); m.scale.setScalar(3.4 * (1 - k / TRAIL_N) + 0.5); } });
       } else if (b.hist.length) { b.hist.length = 0; b.trailMeshes.forEach((m) => { m.visible = false; }); }
-      b.label.position.y = 0.72 + (p.idx % 3) * 0.2 + (R - y) * -0.2; b.label.visible = p.alive || b.fall < 1.5;
+      b.label.position.y = 1.05 + (p.idx % 3) * 0.2 + (R - y) * -0.2; b.label.visible = p.alive || b.fall < 1.5;
       if (b.ring) { b.ring.position.y = 0.02 - (y - R); b.ring.material.opacity = 0.55 + 0.3 * Math.sin(t * 5); b.ring.scale.setScalar(1 + 0.06 * Math.sin(t * 5)); }
     });
     // 星星、終點

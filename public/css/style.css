@@ -296,3 +296,14 @@ h3 { font-size: 1rem; margin: 10px 0 6px; letter-spacing: .08em; }
 .levelGrid[data-diff="4"] .lv:not(.locked) { background: linear-gradient(#4a3a28, #241914); color: #f4e2a8; border-color: #e0b23c; }
 .levelGrid[data-diff="3"] .lv:not(.locked) { background: linear-gradient(#cfa97d, #8f6a46); }
 .chip[disabled] small { opacity: .9; }
+/* 語言切換（核心來自箭頭解密 i18n.js；外觀改為木質樣式） */
+.language-controls { gap: 8px; }
+.chromeRight .lang-toggle { font: inherit; cursor: pointer; border-radius: 12px; border: 3px solid #1a0f08; color: var(--maple); background: linear-gradient(#5a3722, #3b2417); box-shadow: inset 0 2px 0 rgba(255,255,255,.25), 0 4px 0 #1a0f08, 0 7px 10px rgba(0,0,0,.4); width: 46px !important; min-width: 46px !important; height: 46px !important; min-height: 46px !important; flex-basis: 46px !important; }
+.chromeRight .lang-toggle:active { transform: translateY(3px); box-shadow: inset 0 2px 0 rgba(255,255,255,.2), 0 1px 0 #1a0f08; }
+.chromeRight .lang-toggle:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+.language-badge { color: var(--gold); }
+.language-menu { background: linear-gradient(#5a3722, #3b2417); color: var(--maple); border: 3px solid #1a0f08; border-radius: 12px; box-shadow: 0 8px 18px rgba(0,0,0,.5); }
+.language-menu .language-option { font-weight: 800; border-radius: 9px !important; }
+.language-menu .language-option:focus-visible { outline: 3px solid var(--gold) !important; outline-offset: -2px; }
+/* 窄螢幕：頂部計時列只留時間，避免被右上角按鈕遮住（時間含小數點後兩位較寬） */
+@media (max-width: 520px) { .hmode { display: none; } .htime { font-size: 1.2rem; min-width: 4em; } .hudTop { padding: 6px 12px; } }

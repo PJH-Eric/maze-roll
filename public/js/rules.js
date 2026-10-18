@@ -15,7 +15,7 @@
 
   const MODES = ['race', 'stars', 'collapse'];
   const MODE_NAMES = { race: '同圖競速', stars: '搶星星', collapse: '地板崩塌' };
-  const DIFFS = ['幼幼班', '簡單', '普通', '困難', '超難'];
+  const DIFFS = ['幼幼班', '簡單', '普通', '困難', '神話'];
   /** 五種難度的木質主題：地板／牆的木色與紋路色、桌面、背景、介面強調色。 */
   const DIFF_THEME = [
     { wood: '淺楓木', floor: '#f0d6a6', floorLine: 'rgba(130,80,30,A)', wall: '#d79f62', wallLine: 'rgba(90,48,16,A)', table: '#7a5436', bg: 0x6b4a2c, accent: '#e8a24a', trim: null },
@@ -36,8 +36,8 @@
   const LEVEL_SIZE = [[5, 9], [8, 14], [11, 19], [15, 25], [19, 31]];
   const LEVELS_PER_DIFF = 100;
 
-  const PHYS = { R: 0.2, T: 0.12, ACC: 9.5, FRI: 2.6, REST: 0.25 };
-  const STAR_R = 0.42, GOAL_R = 0.38;
+  const PHYS = { R: 0.36, T: 0.12, ACC: 9.5, FRI: 2.6, REST: 0.25 };
+  const STAR_R = 0.55, GOAL_R = 0.5;
   const STAR_TIME = 90, GRACE = 15, RACE_CAP = 600, COLLAPSE_CAP = 240;
   const COLLAPSE_FALL = 0.22, COLLAPSE_SUDDEN = 60, COLLAPSE_HEAD = 1.2;
   const MAX_PLAYERS = 8;
@@ -370,7 +370,7 @@
         const r = { id: p.id, place };
         if (this.mode === 'race') { if (p.fin != null) r.time = +p.fin.toFixed(2); else r.dnf = true; }
         else if (this.mode === 'stars') r.score = p.score;
-        else { r.alive = p.alive; r.time = +(p.alive ? this.t : p.out).toFixed(1); }
+        else { r.alive = p.alive; r.time = +(p.alive ? this.t : p.out).toFixed(2); }
         out.push(r);
       });
       return out;

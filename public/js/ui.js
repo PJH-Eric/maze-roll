@@ -1,6 +1,8 @@
 // 自訂 UI 元件：所有玩家可見的控制項（按鈕、開關、滑桿、選單、捲軸、彈窗、輸入）都在這裡封裝外觀與互動。
 // 底層保留語意標籤與 ARIA／鍵盤／焦點，但不顯示瀏覽器預設控制項或原生捲軸。
 
+import { T } from './t.js';
+
 export function h(tag, props, ...kids) {
   const el = document.createElement(tag);
   for (const k in props || {}) {
@@ -155,7 +157,7 @@ export function Select(o) {
 // ---------- 自訂捲動區（含自繪捲軸）----------
 export function ScrollArea(content, o) {
   o = o || {};
-  const view = h('div', { class: 'sa-view', tabindex: '0', role: 'region', 'aria-label': o.label || '可捲動內容' }, content);
+  const view = h('div', { class: 'sa-view', tabindex: '0', role: 'region', 'aria-label': o.label || T('可捲動內容') }, content);
   const vTrack = h('div', { class: 'sa-track v', 'aria-hidden': 'true' }, h('div', { class: 'sa-thumb' }));
   const hTrack = h('div', { class: 'sa-track hz', 'aria-hidden': 'true' }, h('div', { class: 'sa-thumb' }));
   const root = h('div', { class: 'sa' + (o.class ? ' ' + o.class : '') }, view, vTrack, o.horizontal ? hTrack : null);
@@ -198,7 +200,7 @@ export function ScrollArea(content, o) {
 
 // ---------- 輸入框 ----------
 export function TextInput(o) {
-  const inp = h('input', { type: 'text', class: 'field', maxlength: o.maxLength || 40, placeholder: o.placeholder || '', 'aria-label': o.label || o.placeholder || '輸入', autocomplete: 'off', spellcheck: 'false', enterkeyhint: o.enter || 'done' });
+  const inp = h('input', { type: 'text', class: 'field', maxlength: o.maxLength || 40, placeholder: o.placeholder || '', 'aria-label': o.label || o.placeholder || T('輸入'), autocomplete: 'off', spellcheck: 'false', enterkeyhint: o.enter || 'done' });
   inp.value = o.value || '';
   inp.addEventListener('input', () => o.onInput && o.onInput(inp.value));
   inp.addEventListener('keydown', (e) => { e.stopPropagation(); if (e.key === 'Enter') o.onEnter && o.onEnter(inp.value); });
@@ -211,7 +213,7 @@ export function Modal(o) {
   const root = document.getElementById('modalRoot');
   const prev = document.activeElement;
   const titleId = 'mt' + Math.random().toString(36).slice(2, 7);
-  const closeBtn = o.dismissible === false ? null : IconButton({ icon: 'close', ariaLabel: '關閉', class: 'modalX', onClick: () => api.close('x') });
+  const closeBtn = o.dismissible === false ? null : IconButton({ icon: 'close', ariaLabel: T('關閉'), class: 'modalX', onClick: () => api.close('x') });
   const body = ScrollArea(h('div', { class: 'modalBody' }, o.body), { class: 'modalScroll' });
   const card = h('div', { class: 'modal ' + (o.class || ''), role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': titleId },
     h('div', { class: 'modalHead' }, h('h2', { id: titleId, text: o.title || '' }), closeBtn),

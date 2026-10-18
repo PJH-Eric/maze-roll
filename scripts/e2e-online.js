@@ -52,7 +52,7 @@ const W = +process.argv[2] || 1180, H = +process.argv[3] || 820;
   await sleep(9000);
   const pos = await spec.evaluate(() => window.__MRAPP.getGame().world.players.map((p) => [p.name, +p.x.toFixed(2), +p.y.toFixed(2)]));
   console.log('  觀戰者看到的位置', JSON.stringify(pos));
-  assert(pos.some((p) => p[1] > 1.0 || p[2] > 1.0), '觀戰者看到球移動'); ok('觀戰者即時看到對手移動');
+  assert(pos.some((p) => Math.hypot(p[1] - 0.5, p[2] - 0.5) > 0.1), '觀戰者看到球移動'); ok('觀戰者即時看到對手移動');
   await host.screenshot({ path: '/tmp/shots/online_game_host.png' });
   await spec.screenshot({ path: '/tmp/shots/online_game_spec.png' });
 

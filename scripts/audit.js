@@ -7,12 +7,16 @@ const [W, H, PORT] = [+process.argv[2], +process.argv[3], +process.argv[4] || 33
 const dir = '/tmp/shots/audit'; fs.mkdirSync(dir, { recursive: true });
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const issues = [];
+// AUDIT_LANG=en：以英文介面巡檢，並檢查畫面上是否殘留中文
+const LANG = process.env.AUDIT_LANG === 'en' ? 'en' : 'zh';
+global.window = {}; require('../public/js/locales.js'); const EN = global.window.MR_EN;
+const tr = (t) => (LANG !== 'en' ? t : t instanceof RegExp ? /Bot 1 level/ : (EN[t] || t));
 (async () => {
   await new Promise((r) => server.listen(PORT, r));
   const browser = await chromium.launch({ args: ['--use-angle=swiftshader', '--use-gl=angle', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
   const ctx = await browser.newContext({ viewport: { width: W, height: H }, hasTouch: Math.min(W, H) < 800 }); const page = await ctx.newPage();
   const errs = []; page.on('console', (m) => { if (m.type() === 'error') errs.push(m.text()); }); page.on('pageerror', (e) => errs.push('pageerror ' + e.message));
-  await page.addInitScript(() => { window.__MR_PRESERVE = true; });
+  await page.addInitScript((l) => { window.__MR_PRESERVE = true; try { localStorage.setItem('game-island-lang', l === 'en' ? 'en' : 'zh-Hant'); } catch (e) {} }, LANG);
   const tag = `${W}x${H}`;
   const check = async (name) => {
     const r = await page.evaluate(() => {
@@ -33,21 +37,22 @@ const issues = [];
     if (r.clipped.length) issues.push(`${tag} ${name}: 被裁切 ${r.clipped.join('、')}`);
     if (r.small.length) issues.push(`${tag} ${name}: 觸控目標偏小 ${r.small.join('、')}`);
     if (r.overflow.length) issues.push(`${tag} ${name}: 文字溢出 ${r.overflow.join('、')}`);
-    await page.screenshot({ path: `${dir}/${name}_${tag}.png` });
+    if (LANG === 'en') { const zh = await page.evaluate(() => { const t = document.body.innerText + ' ' + [...document.querySelectorAll('[aria-label],[title],[placeholder]')].map((e) => (e.getAttribute('aria-label') || '') + ' ' + (e.title || '') + ' ' + (e.getAttribute('placeholder') || '')).join(' '); return [...new Set(t.match(/[\u4e00-\u9fff]+/g) || [])]; }); const bad = zh.filter((x) => !['測試暱稱'].includes(x)); if (bad.length) issues.push(`${tag} ${name}: 殘留中文 ${bad.join('、')}`); }
+    await page.screenshot({ path: `${dir}/${name}_${tag}${LANG === 'en' ? '_en' : ''}.png` });
   };
-  const click = async (t, exact) => { await page.getByRole('button', { name: t, exact: !!exact }).first().click(); await sleep(350); };
+  const click = async (t, exact) => { await page.getByRole('button', { name: tr(t), exact: !!exact }).first().click(); await sleep(350); };
   const home = async () => { await page.goto(`http://localhost:${PORT}/`); await sleep(500); };
   const startLocal = async (cfg) => { await page.evaluate((c) => window.__MRAPP.startLocal(c), cfg); await sleep(3500); };
 
   await home(); await check('home');
   await click('怎麼玩'); await check('how'); await page.keyboard.press('Escape'); await sleep(200);
   await click('設定'); await check('settings'); await page.keyboard.press('Escape'); await sleep(200);
-  await click('闖關模式'); await check('levels'); await page.evaluate(() => { for (let d = 0; d < 4; d++) for (let n = 1; n <= 10; n++) window.__MRAPP.store.setLevelStars(d, n, 3); }); await page.getByRole('button', { name: '返回' }).first().click({ force: true }).catch(() => {}); await sleep(300); await click('闖關模式'); await page.locator('.chip', { hasText: '超難' }).click(); await sleep(300); await check('levels-hard');
+  await click('闖關模式'); await check('levels'); await page.evaluate(() => { for (let d = 0; d < 4; d++) for (let n = 1; n <= 10; n++) window.__MRAPP.store.setLevelStars(d, n, 3); }); await page.getByRole('button', { name: tr('返回') }).first().click({ force: true }).catch(() => {}); await sleep(300); await click('闖關模式'); await page.locator('.chip', { hasText: tr('神話') }).click(); await sleep(300); await check('levels-hard');
   await home(); await click('自由練習'); await check('practice');
   await home(); await click('對電腦'); for (let i = 0; i < 6; i++) await click('增加一位電腦'); await check('vsai7');
-  await page.getByRole('button', { name: /電腦 1 難度/ }).click({force:true,timeout:8000}); await sleep(250); await check('vsai-select'); await page.keyboard.press('Escape');
+  await page.getByRole('button', { name: tr(/電腦 1 難度/) }).click({force:true,timeout:8000}); await sleep(250); await check('vsai-select'); await page.keyboard.press('Escape');
   await home(); await click('線上對戰'); await sleep(900); await check('online');
-  await page.locator('input.field').fill('測試暱稱'); await click('建立房間', true); await check('create-modal'); await page.locator('.modalActions .primary').click(); await sleep(900); await check('room');
+  await page.locator('input.field').fill(LANG === 'en' ? 'Tester' : '測試暱稱'); await click('建立房間', true); await check('create-modal'); await page.locator('.modalActions .primary').click(); await sleep(900); await check('room');
   await page.evaluate(() => window.__MRAPP.go('home')); await sleep(400);
   for (const [mode, ais] of [['race', [0, 1, 2, 3, 3, 3, 3]], ['stars', [1, 2]], ['collapse', [1, 2, 3]]]) {
     await startLocal({ kind: 'vsai', mode, diff: 1, ais }); await check(`game-${mode}`);
@@ -57,7 +62,7 @@ const issues = [];
     await page.evaluate(() => window.__MRAPP.getGame().fastForward()); await page.waitForSelector('.resultModal', { timeout: 40000 }); await sleep(400); await check(`result-${mode}`);
     await page.evaluate(() => window.__MRAPP.go('home')); await sleep(300);
   }
-  fs.writeFileSync(`${dir}/issues_${tag}.txt`, issues.join('\n') + '\n控制台錯誤：' + (errs.length ? errs.join(' | ') : '無') + '\n');
+  fs.writeFileSync(`${dir}/issues_${tag}${LANG === 'en' ? '_en' : ''}.txt`, issues.join('\n') + '\n控制台錯誤：' + (errs.length ? errs.join(' | ') : '無') + '\n');
   console.log(tag, '問題', issues.length, '控制台錯誤', errs.length); issues.forEach((i) => console.log('  -', i)); errs.slice(0, 5).forEach((e) => console.log('  err', e));
   await browser.close(); server.close(); process.exit(0);
 })().catch((e) => { console.error(tag(), e.message); process.exit(1); function tag() { return W + 'x' + H; } });
