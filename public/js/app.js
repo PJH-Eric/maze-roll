@@ -517,7 +517,7 @@ function gameScreen(p) {
     const tiles = [];
     if (meId && mine) {
       if (!isLevel) tiles.push({ k: T('名次'), v: mode === 'race' && mine.dnf ? '—' : mine.place + ' / ' + world.players.length });
-      const mainV = mode === 'race' ? (mine.dnf ? T('未完賽') : fmtShort(mine.time)) : mode === 'stars' ? mine.score + ' ★' : mine.alive ? T('最後倖存') : T('存活 {t} 秒', { t: mine.time.toFixed(2) });
+      const mainV = mode === 'race' ? (mine.dnf ? T('未完賽') : fmtShort(mine.time)) : mode === 'stars' ? mine.score + ' ★' : mine.alive ? T('最後倖存') : T('{t} 秒', { t: mine.time.toFixed(2) });
       tiles.push({ k: mode === 'race' ? T('用時') : mode === 'stars' ? T('星星數') : T('存活時間'), v: mainV, badge: newBest ? T('新紀錄') : '' });
       if (bestTxt) tiles.push({ k: isLevel ? T('本關最佳') : T('本機最佳'), v: bestTxt, span: !isLevel });
     }

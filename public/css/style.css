@@ -127,7 +127,7 @@ h3 { font-size: 1rem; margin: 10px 0 6px; letter-spacing: .08em; }
 #popRoot { z-index: 300; } #toastRoot { z-index: 400; }
 .scrim { position: fixed; inset: 0; pointer-events: auto; display: flex; align-items: center; justify-content: center; padding: calc(12px + var(--st)) calc(12px + var(--sr)) calc(12px + var(--sb)) calc(12px + var(--sl)); background: rgba(18,9,3,.68); animation: fade .15s; }
 .scrim.soft { background: rgba(18,9,3,.4); }
-.modal { width: min(560px, 100%); max-height: 100%; display: flex; flex-direction: column; gap: 8px; padding: 16px; color: var(--ink); position: relative; background: linear-gradient(rgba(255,255,255,.12), rgba(0,0,0,.05)), linear-gradient(#f3dcae, #e5c084); border: 4px solid #2a1a10; border-radius: 16px; box-shadow: inset 0 0 0 3px rgba(255,255,255,.35), 0 12px 0 rgba(0,0,0,.35), 0 18px 40px rgba(0,0,0,.5); animation: pop .18s; }
+.modal { width: min(35rem, 100%); max-height: 100%; display: flex; flex-direction: column; gap: 8px; padding: 16px; color: var(--ink); position: relative; background: linear-gradient(rgba(255,255,255,.12), rgba(0,0,0,.05)), linear-gradient(#f3dcae, #e5c084); border: 4px solid #2a1a10; border-radius: 16px; box-shadow: inset 0 0 0 3px rgba(255,255,255,.35), 0 12px 0 rgba(0,0,0,.35), 0 18px 40px rgba(0,0,0,.5); animation: pop .18s; }
 .modalHead { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
 .modalHead h2 { font-size: 1.3rem; letter-spacing: .1em; }
 .modalX { min-height: 38px; width: 38px; }
@@ -215,7 +215,7 @@ h3 { font-size: 1rem; margin: 10px 0 6px; letter-spacing: .08em; }
 
 /* ---- 遊戲畫面 ---- */
 .gameScreen { padding: 0; flex-direction: row; gap: 0; background: #1d130c; }
-.gameScreen .panelSide { flex: 0 0 clamp(210px, 22vw, 270px); padding-top: calc(10px + var(--st)); padding-bottom: calc(10px + var(--sb)); padding-left: calc(10px + var(--sl)); z-index: 20; display: none; }
+.gameScreen .panelSide { flex: 0 0 clamp(210px, 22vw, max(270px, 14rem)); padding-top: calc(10px + var(--st)); padding-bottom: calc(10px + var(--sb)); padding-left: calc(10px + var(--sl)); z-index: 20; display: none; }
 .gameScreen.sideOpen .panelSide { display: flex; }
 .sideTop { flex: 0 1 auto; max-height: 52%; min-height: 0; display: flex; flex-direction: column; gap: 6px; }
 .sideChat { flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; gap: 4px; }
@@ -248,7 +248,7 @@ h3 { font-size: 1rem; margin: 10px 0 6px; letter-spacing: .08em; }
 .miniZoom { position: absolute; right: -10px; bottom: -10px; width: 28px; height: 28px; display: grid; place-items: center; border-radius: 50%; background: linear-gradient(#f0705e, #c93a2b); color: #fff; border: 2px solid #5a1810; box-shadow: 0 2px 0 #5a1810; pointer-events: none; }
 .miniZoom .ico svg { width: 16px; height: 16px; }
 /* 放大的迷宮地圖（畫面中央） */
-.mapModal { width: min(680px, 100%); }
+.mapModal { width: min(42.5rem, 100%); }
 .mapBody { padding: 8px 0 4px; display: flex; flex-direction: column; align-items: center; gap: 10px; }
 .bigMap { width: 240px; max-width: calc(100% - 24px); aspect-ratio: 1; height: auto; border: 4px solid #2a1a10; border-radius: 14px; box-shadow: 0 0 0 4px #a8703d, 0 0 0 6px #2a1a10, 0 8px 0 6px rgba(0,0,0,.25); background: #e2b97c; }
 .mapLegend { display: flex; flex-wrap: wrap; gap: 6px 14px; justify-content: center; font-size: .9rem; }
@@ -491,14 +491,14 @@ body::before { content: ""; position: fixed; inset: 0; pointer-events: none; z-i
 
 /* ======== 手機文字與按鈕排版：盡量單行，必要時均衡換行 ======== */
 :root { --wrapfix: balance; }
-h1, h2, h3, .note, .hint, .sub, .empty, .lead { text-wrap: balance; overflow-wrap: anywhere; }
-p, .rtable .nm { text-wrap: pretty; }
+h1, h2, h3, .note, .hint, .sub, .empty, .lead { text-wrap-style: balance; overflow-wrap: anywhere; }
+p, .rtable .nm { text-wrap-style: pretty; }
 .btn { white-space: nowrap; }
-.btn.big .tx, .btn.big .tx small { white-space: normal; text-wrap: balance; }
+.btn.big .tx, .btn.big .tx small { white-space: normal; text-wrap-style: balance; }
 .topbar .title { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 .chip small, .lv b, .lv .stars { white-space: nowrap; }
 .modalActions, .panelActions { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 8px; }
-.modalActions .btn, .panelActions .btn { white-space: normal; text-wrap: balance; line-height: 1.15; min-width: 0; padding: .3em .5em; text-align: center; }
+.modalActions .btn, .panelActions .btn { white-space: normal; text-wrap-style: balance; line-height: 1.15; min-width: 0; padding: .3em .5em; text-align: center; }
 .panelActions .btn.big { grid-column: 1 / -1; }
 .panelActions:has(.btn.big) { grid-auto-flow: row; grid-auto-columns: auto; grid-template-columns: 1fr; }
 .rrow .nm, .srow .nm { min-width: 0; }
@@ -528,3 +528,24 @@ p, .rtable .nm { text-wrap: pretty; }
 @media (max-height: 520px) { .rs { width: 38px; height: 38px; } .resLevel { display: none; } }
 @media (prefers-reduced-motion: reduce) { .rs { animation: none; } }
 @media (max-height: 520px) { .resHero { padding-top: 8px; } .resBadge { margin-top: 0; } .resultModal .modalActions { padding-top: 6px; } }
+
+/* ======== 小螢幕房間聊天室：快捷語一行、輸入框永遠可見 ======== */
+@media (max-width: 760px) {
+  .roomChat .quick { flex-wrap: nowrap; overflow: hidden; }
+  .roomChat .quick .btn { flex: 0 1 auto; min-width: 0; padding: 0 .55em; }
+  .roomChat .chatIn { flex: none; }
+}
+@media (max-width: 380px) { .roomChat .quick .btn:nth-child(n+4) { display: none; } }
+@media (max-height: 640px) { .roomChat .chatScroll { flex: 1 1 40px; min-height: 40px; } .roomChat { max-height: 40dvh; } }
+/* 手機橫向（矮螢幕）：房間改左右並排，主面板與聊天室都有足夠高度 */
+@media (max-height: 520px) and (orientation: landscape) {
+  .roomBody { flex-direction: row-reverse !important; gap: 10px; align-items: stretch; }
+  .roomBody > .panel:not(.roomChat) { flex: 1 1 0; min-width: 0; }
+  .roomBody > .roomChat { flex: 0 0 min(38%, 320px); max-height: none !important; height: auto !important; }
+  .roomChat .chatScroll { flex: 1 1 60px; min-height: 60px; }
+  .roomChat .quick { flex-wrap: wrap; }
+  .roomChat .quick .btn:nth-child(n+4) { display: inline-flex; }
+}
+/* 超寬／高解析度桌機：整體放大，避免內容過小 */
+@media (min-width: 1600px) and (min-height: 900px) { html { font-size: 21px; } .body > .panel { width: min(100%, 960px); } .homeIn { max-width: 600px; } .respawnBtn { width: 78px; height: 78px; } }
+@media (min-width: 2200px) and (min-height: 1200px) { html { font-size: 25px; } .body > .panel { width: min(100%, 1120px); } .homeIn { max-width: 700px; } }
