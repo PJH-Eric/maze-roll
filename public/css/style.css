@@ -289,3 +289,10 @@ h3 { font-size: 1rem; margin: 10px 0 6px; letter-spacing: .08em; }
 @media (max-height: 520px) { .homeIn { padding-top: calc(54px + var(--st)); gap: 8px; } .logo svg { width: 110px; } .gameTitle { font-size: 1.8rem; } .btn.big { min-height: 54px; } }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; } }
 .panelActions .btn.big, .modalActions .btn.big { justify-content: center; text-align: center; }
+/* 難度主題色：闖關關卡格 */
+.levelGrid { --dtheme: #c0862e; }
+.levelGrid .lv.next { border-color: var(--dtheme); box-shadow: 0 0 0 3px var(--dtheme), 0 3px 0 #6b4326; }
+.levelGrid .lv.done b { color: var(--dtheme); filter: brightness(.7); }
+.levelGrid[data-diff="4"] .lv:not(.locked) { background: linear-gradient(#4a3a28, #241914); color: #f4e2a8; border-color: #e0b23c; }
+.levelGrid[data-diff="3"] .lv:not(.locked) { background: linear-gradient(#cfa97d, #8f6a46); }
+.chip[disabled] small { opacity: .9; }

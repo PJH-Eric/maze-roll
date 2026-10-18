@@ -25,6 +25,9 @@ export const store = {
   // 闖關：每個難度一個陣列，值為 0（未過）或 1～3 星
   levelStars(diff) { const a = load().levels[diff] || []; return a; },
   unlockedLevel(diff) { const a = load().levels[diff] || []; let n = 0; while (n < a.length && a[n] > 0) n++; return Math.min(100, n + 1); },
+  totalStars(diff) { return (load().levels[diff] || []).reduce((a, b) => a + b, 0); },
+  /** 第一個難度一開始就開放；其餘需在前一個難度累積足夠星星。 */
+  diffUnlocked(diff, need) { return diff <= 0 || this.totalStars(diff - 1) >= need; },
   setLevelStars(diff, n, stars) {
     const L = load().levels; const a = (L[diff] = (L[diff] || []).slice());
     while (a.length < n) a.push(0);

@@ -6,6 +6,7 @@ export const BALL_NAMES = ['紅', '藍', '綠', '黃', '紫', '橘', '粉', '白
 export const SHAPES = ['●', '■', '▲', '◆', '★', '✚', '⬟', '⬢'];
 const R = 0.2, T = 0.12, WALL_H = 0.5;
 const CAM_DIST = [6.4, 8.6, 12];
+const THEMES = (typeof window !== 'undefined' && window.MR && window.MR.DIFF_THEME) || [];
 
 function canvasTex(w, h, draw, repeat) {
   const c = document.createElement('canvas'); c.width = w; c.height = h; draw(c.getContext('2d'), w, h);
@@ -85,10 +86,11 @@ export class Scene3D {
     const m = world.maze, W = m.w, H = m.h, root = (this.root = new THREE.Group());
     this.scene.add(root); this.world = world; this.me = me; this.maze = m;
     const collapse = world.mode === 'collapse';
-    const bg = collapse ? 0x1d130c : 0x4a2c1a; this.scene.background = new THREE.Color(bg); this.scene.fog = new THREE.Fog(bg, 16, collapse ? 34 : 46);
-    const maple = new THREE.MeshStandardMaterial({ map: canvasTex(256, 256, grain('#e2b97c', 'rgba(110,60,20,A)', 46, 11), [Math.max(1, W / 3), Math.max(1, H / 3)]), roughness: 0.78 });
-    const walnut = new THREE.MeshStandardMaterial({ map: canvasTex(256, 256, grain('#8a5330', 'rgba(40,18,6,A)', 40, 7)), roughness: 0.62 });
-    const table = new THREE.MeshStandardMaterial({ map: canvasTex(256, 256, grain('#5a3722', 'rgba(20,8,2,A)', 50, 3), [40, 40]), roughness: 0.9 });
+    const th = THEMES[Math.max(0, Math.min(4, world.diff | 0))];
+    const bg = collapse ? 0x1d130c : th.bg; this.scene.background = new THREE.Color(bg); this.scene.fog = new THREE.Fog(bg, 16, collapse ? 34 : 46);
+    const maple = new THREE.MeshStandardMaterial({ map: canvasTex(256, 256, grain(th.floor, th.floorLine, 46, 11), [Math.max(1, W / 3), Math.max(1, H / 3)]), roughness: 0.78 });
+    const walnut = new THREE.MeshStandardMaterial({ map: canvasTex(256, 256, grain(th.wall, th.wallLine, 40, 7)), roughness: 0.62 });
+    const table = new THREE.MeshStandardMaterial({ map: canvasTex(256, 256, grain(th.table, 'rgba(20,8,2,A)', 50, 3), [40, 40]), roughness: 0.9 });
     // 桌面（崩塌模式放得很深當作深淵）
     const tbl = new THREE.Mesh(new THREE.PlaneGeometry(200, 200), table); tbl.rotation.x = -Math.PI / 2; tbl.position.set(W / 2, collapse ? -14 : -0.32, H / 2); tbl.receiveShadow = !collapse; root.add(tbl);
     if (!collapse) {
@@ -117,6 +119,11 @@ export class Scene3D {
     const mt = new THREE.Matrix4(), sc = new THREE.Vector3(), q = new THREE.Quaternion();
     walls.forEach((w, i) => { mt.compose(new THREE.Vector3(w[0], WALL_H / 2, w[1]), q, sc.set(w[2], 1, w[3])); wm.setMatrixAt(i, mt); });
     wm.instanceMatrix.needsUpdate = true; root.add(wm);
+    if (th.trim) { // 超難：牆頂金邊
+      const tm = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 0.05, 1), new THREE.MeshStandardMaterial({ color: th.trim, metalness: 0.6, roughness: 0.3, emissive: 0x4a3600 }), walls.length);
+      walls.forEach((w, i) => { mt.compose(new THREE.Vector3(w[0], WALL_H + 0.02, w[1]), q, sc.set(w[2] + 0.02, 1, w[3] + 0.02)); tm.setMatrixAt(i, mt); });
+      tm.instanceMatrix.needsUpdate = true; root.add(tm);
+    }
     // 終點（競速）
     if (world.mode === 'race') {
       const g = new THREE.Group(); const gc = { x: (m.goal % W) + 0.5, y: ((m.goal / W) | 0) + 0.5 }; g.position.set(gc.x, 0, gc.y);

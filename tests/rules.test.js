@@ -69,7 +69,7 @@ let n = 0; const ok = (m) => { n++; console.log('  ✓', m); };
   assert.strictEqual(MR.levelSize(0, 1), 5); assert.strictEqual(MR.levelSize(4, 100), 31); for (let d = 0; d < 5; d++) for (let l = 2; l <= 100; l++) assert(MR.levelSize(d, l) >= MR.levelSize(d, l - 1)); ok('五種難度的關卡大小隨關數遞增');
   assert.strictEqual(MR.levelSeed(2, 7), MR.levelSeed(2, 7)); assert.notStrictEqual(MR.levelSeed(2, 7), MR.levelSeed(2, 8)); ok('同一關永遠同一座迷宮');
   const m = MR.makeMaze(10, 10, 1, 0.05); const par = MR.levelPar(m); assert.strictEqual(MR.levelStars(par, m), 3); assert.strictEqual(MR.levelStars(par * 2, m), 2); assert.strictEqual(MR.levelStars(par * 5, m), 1); ok('評星門檻');
-  const seen = new Set(); for (let d = 0; d < 5; d++) for (let l = 1; l <= 100; l++) { const s = MR.levelSeed(d, l); seen.add(s); const mm = MR.makeMaze(MR.levelSize(d, l), MR.levelSize(d, l), s, MR.BRAID.race); assert(mm.pathLen >= 4); } assert.strictEqual(seen.size, 500); ok('500 關全部可生成、彼此不同、起訖可達');
+  const seen = new Set(); for (let d = 0; d < 5; d++) for (let l = 1; l <= 100; l++) { const s = MR.levelSeed(d, l); seen.add(s); const mm = MR.makeMaze(MR.levelSize(d, l), MR.levelSize(d, l), s, MR.braidFor('race', d)); assert(mm.pathLen >= 4); } assert.strictEqual(seen.size, 500); ok('500 關全部可生成、彼此不同、起訖可達');
 }
 // 電腦難度：可觀察差異
 {
@@ -81,5 +81,11 @@ let n = 0; const ok = (m) => { n++; console.log('  ✓', m); };
   for (let i = 1; i < 4; i++) assert(sc[i] > sc[i - 1], '搶星星 AI 分數遞增：' + sc.join(',')); ok('搶星星：四段 AI 得分嚴格遞增 ' + sc.map((x) => x.toFixed(1)).join(' < '));
   const sv = [0, 3].map((lv) => avg('collapse', 2, lv, [1, 2, 3, 4, 5, 6, 7, 8], (w) => w.players[0].out || w.t)); assert(sv[1] > sv[0], '崩塌：困難 AI 存活更久 ' + sv.join(',')); ok('地板崩塌：困難 AI 存活比幼幼班久 ' + sv.map((x) => x.toFixed(1) + 's').join(' vs '));
   const h = simulate('race', 3, 1234, [3], { limit: 400 }).players[0].fin; assert(h != null && h < 400); ok('困難 AI 能完成困難迷宮');
+}
+{ // 難度主題與環路比例
+  assert.strictEqual(MR.DIFF_THEME.length, 5); assert.strictEqual(new Set(MR.DIFF_THEME.map((t) => t.wall)).size, 5);
+  const b = [0, 1, 2, 3, 4].map((d) => MR.braidFor('race', d)); for (let i = 1; i < 5; i++) assert(b[i] < b[i - 1]);
+  const dead = (d) => { let t = 0; for (let l = 1; l <= 20; l++) { const sz = MR.levelSize(d, l * 5); const m = MR.makeMaze(sz, sz, MR.levelSeed(d, l * 5), MR.braidFor('race', d)); let c = 0; for (let k = 0; k < m.n; k++) { let o = 0; for (let q = 0; q < 4; q++) if (!(m.cells[k] & (1 << q))) o++; if (o === 1) c++; } t += c / m.n; } return t / 20; };
+  assert(dead(4) > dead(0) * 1.2); ok('五種難度主題各不相同、環路比例遞減、越難死路比例越高');
 }
 console.log('規則測試通過：' + n + ' 項');

@@ -16,6 +16,19 @@
   const MODES = ['race', 'stars', 'collapse'];
   const MODE_NAMES = { race: '同圖競速', stars: '搶星星', collapse: '地板崩塌' };
   const DIFFS = ['幼幼班', '簡單', '普通', '困難', '超難'];
+  /** 五種難度的木質主題：地板／牆的木色與紋路色、桌面、背景、介面強調色。 */
+  const DIFF_THEME = [
+    { wood: '淺楓木', floor: '#f0d6a6', floorLine: 'rgba(130,80,30,A)', wall: '#d79f62', wallLine: 'rgba(90,48,16,A)', table: '#7a5436', bg: 0x6b4a2c, accent: '#e8a24a', trim: null },
+    { wood: '櫻桃木', floor: '#e9b98e', floorLine: 'rgba(130,60,30,A)', wall: '#b4532f', wallLine: 'rgba(60,20,8,A)', table: '#5c3322', bg: 0x522a1b, accent: '#d9644a', trim: null },
+    { wood: '胡桃木', floor: '#e2b97c', floorLine: 'rgba(110,60,20,A)', wall: '#8a5330', wallLine: 'rgba(40,18,6,A)', table: '#5a3722', bg: 0x4a2c1a, accent: '#c0862e', trim: null },
+    { wood: '黑檀木', floor: '#b08e68', floorLine: 'rgba(60,34,16,A)', wall: '#3d2619', wallLine: 'rgba(10,4,2,A)', table: '#2b1d15', bg: 0x2e1d12, accent: '#6f93ad', trim: null },
+    { wood: '烏木金邊', floor: '#8a7456', floorLine: 'rgba(40,26,12,A)', wall: '#241914', wallLine: 'rgba(0,0,0,A)', table: '#1c1410', bg: 0x1b120c, accent: '#e0b23c', trim: 0xe0b23c },
+  ];
+  /** 競速迷宮的「環路」比例：越難越少（死路越多、越像真迷宮）。 */
+  const RACE_BRAID = [0.5, 0.3, 0.15, 0.05, 0];
+  const braidFor = (mode, diff) => (mode === 'race' ? RACE_BRAID[diff | 0] : BRAID[mode]);
+  /** 闖關：要在前一個難度累積這麼多顆星，才開放下一個難度。 */
+  const DIFF_UNLOCK_STARS = 30;
   const AI_NAMES = ['幼幼班', '簡單', '普通', '困難'];
   const SIZE = { race: [6, 10, 15, 21, 28], stars: [8, 11, 15, 19, 23], collapse: [6, 8, 10, 13, 16] };
   const BRAID = { race: 0.05, stars: 0.5, collapse: 0.55 };
@@ -194,7 +207,7 @@
     constructor(o) {
       this.mode = o.mode; this.diff = o.diff | 0; this.seed = o.seed >>> 0;
       this.size = o.size || SIZE[this.mode][this.diff];
-      this.maze = makeMaze(this.size, this.size, this.seed, o.braid != null ? o.braid : BRAID[this.mode]);
+      this.maze = makeMaze(this.size, this.size, this.seed, o.braid != null ? o.braid : braidFor(this.mode, this.diff));
       this.rand = rng(this.seed ^ 0x9e3779b9);
       this.t = 0; this.started = false; this.over = false; this.results = null;
       this.events = []; this.finished = 0; this.graceLeft = null; this.grace = o.grace != null ? o.grace : GRACE;
@@ -377,7 +390,7 @@
   }
 
   return {
-    N, E, S, W, DX, DY, OPP, DIRS, MODES, MODE_NAMES, DIFFS, AI_NAMES, SIZE, BRAID, CRUMBLE, LEVELS_PER_DIFF, PHYS,
+    N, E, S, W, DX, DY, OPP, DIRS, MODES, MODE_NAMES, DIFFS, DIFF_THEME, DIFF_UNLOCK_STARS, braidFor, AI_NAMES, SIZE, BRAID, CRUMBLE, LEVELS_PER_DIFF, PHYS,
     STAR_R, GOAL_R, STAR_TIME, GRACE, MAX_PLAYERS, COLLAPSE_SUDDEN, COLLAPSE_HEAD,
     rng, hashSeed, clamp, makeMaze, cellCenter, cellAt, stepBall, levelSize, levelSeed, levelPar, levelStars, World,
   };

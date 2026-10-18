@@ -117,12 +117,15 @@ function homeScreen() {
 
 // ---------- 畫面：闖關 ----------
 function levelsScreen(p) {
-  let diff = p.diff != null ? p.diff : Math.max(0, MR.DIFFS.findIndex((_, i) => store.unlockedLevel(i) <= 100 && store.levelStars(i).filter((x) => x > 0).length < 100));
+  const NEED = MR.DIFF_UNLOCK_STARS, dOpen = (i) => store.diffUnlocked(i, NEED);
+  let diff = p.diff != null && dOpen(p.diff) ? p.diff : Math.max(0, MR.DIFFS.findIndex((_, i) => dOpen(i) && store.levelStars(i).filter((x) => x > 0).length < 100));
   const grid = h('div', { class: 'levelGrid' }), prog = h('p', { class: 'note' });
   const sa = ScrollArea(h('div', { class: 'levelWrap' }, grid), { class: 'levelScroll', label: '關卡列表' });
   const draw = () => {
     const stars = store.levelStars(diff), un = store.unlockedLevel(diff), done = stars.filter((x) => x > 0).length, tot = stars.reduce((a, b) => a + b, 0);
-    prog.textContent = `已通過 ${done}/100 關・共 ${tot} 顆星・迷宮大小 ${MR.levelSize(diff, 1)}×${MR.levelSize(diff, 1)} ～ ${MR.levelSize(diff, 100)}×${MR.levelSize(diff, 100)}`;
+    grid.dataset.diff = String(diff); grid.style.setProperty('--dtheme', MR.DIFF_THEME[diff].accent);
+    const nx = diff < 4 ? (dOpen(diff + 1) ? `　${MR.DIFFS[diff + 1]}已開放` : `　再 ${NEED - tot} 顆星開放${MR.DIFFS[diff + 1]}`) : '';
+    prog.textContent = `${MR.DIFF_THEME[diff].wood}・已通過 ${done}/100 關・共 ${tot} 顆星${nx}・迷宮大小 ${MR.levelSize(diff, 1)}×${MR.levelSize(diff, 1)} ～ ${MR.levelSize(diff, 100)}×${MR.levelSize(diff, 100)}`;
     grid.replaceChildren();
     for (let n = 1; n <= 100; n++) {
       const locked = n > un, s = stars[n - 1] || 0;
@@ -133,7 +136,7 @@ function levelsScreen(p) {
       if (n === un) setTimeout(() => b.scrollIntoView({ block: 'center' }), 30);
     }
   };
-  const chips = Chips({ label: '難度', value: diff, options: MR.DIFFS.map((d, i) => ({ value: i, label: d })), onChange: (v) => { diff = v; draw(); sa.view.scrollTop = 0; } });
+  const chips = Chips({ label: '難度', value: diff, options: MR.DIFFS.map((d, i) => ({ value: i, label: d, disabled: !dOpen(i), sub: dOpen(i) ? MR.DIFF_THEME[i].wood : `需 ${NEED} 顆星` })), onChange: (v) => { diff = v; draw(); sa.view.scrollTop = 0; } });
   $screen.append(h('section', { class: 'screen levels' }, topbar('闖關模式', () => go('home')), h('div', { class: 'body' }, panel(chips, prog, sa))));
   draw();
 }
