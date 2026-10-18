@@ -64,6 +64,17 @@ let n = 0; const ok = (m) => { n++; console.log('  ✓', m); };
   const bc = y.byId.get('b'); let guard = 0; while (!y.over && guard++ < 60 * 200) { const t = y.t; bc.x = 0.5 + ((Math.floor(t * 3) % y.maze.w)); bc.y = 0.5 + (Math.floor(t / 4) % y.maze.h); y.update(1 / 60); }
   assert(y.over); ok('多人崩塌會在有限時間內決出勝負（含猝死機制）');
 }
+// 回到起點
+{
+  const mk = (mode) => { const w = new MR.World({ mode, diff: 1, seed: 77, players: [{ id: 'a', name: 'A' }, { id: 'b', name: 'B' }] }); w.start(); return w; };
+  const r = mk('race'); const s0 = [r.players[0].x, r.players[0].y]; r.players[0].x = 5.5; r.players[0].y = 5.5; r.players[0].vx = 3;
+  const ev = r.respawn('a'); assert(ev && Math.hypot(r.players[0].x - s0[0], r.players[0].y - s0[1]) < 1e-6 && r.players[0].vx === 0); ok('競速：回到起跑點並清除速度');
+  r.players[0].fin = 3; assert.strictEqual(r.respawn('a'), null); ok('競速：已抵達終點不能回起點');
+  const st = mk('stars'); const sp = MR.cellCenter(st.maze, st.players[1].spawn); st.players[1].x = 0.5; st.players[1].y = 0.5; st.respawn('b'); assert(Math.hypot(st.players[1].x - sp.x, st.players[1].y - sp.y) < 1e-6); ok('搶星星：回到自己的出生格');
+  const cl = mk('collapse'); const sp2 = cl.players[0].spawn; cl.tile[sp2] = 2; cl.respawn('a'); const cur = MR.cellAt(cl.maze, cl.players[0].x, cl.players[0].y); assert(cur !== sp2 && cl.tile[cur] === 0); ok('崩塌：出生格已碎時改回最近的完好地磚');
+  cl.players[1].alive = false; assert.strictEqual(cl.respawn('b'), null); ok('已淘汰不能回起點');
+  const ap = mk('race'); ap.players[0].x = 9; ap.applyEvent({ e: 'respawn', id: 'a', x: 1.5, y: 2.5 }); assert.strictEqual(ap.players[0].x, 1.5); ok('respawn 事件可同步套用');
+}
 // 闖關
 {
   assert.strictEqual(MR.levelSize(0, 1), 5); assert.strictEqual(MR.levelSize(4, 100), 31); for (let d = 0; d < 5; d++) for (let l = 2; l <= 100; l++) assert(MR.levelSize(d, l) >= MR.levelSize(d, l - 1)); ok('五種難度的關卡大小隨關數遞增');

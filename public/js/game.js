@@ -47,6 +47,16 @@ export class Game {
   _begin() { this.state = 'play'; this.world.start(); this.input && this.input.calibrate && this.input.calibrate(); setTimeout(() => { this.hooks.onCount && this.hooks.onCount(null); }, 600); }
   pause(on) { if (this.online || this.state === 'ended') return; this.paused = !!on; if (!on) this.last = 0; }
   setFollow(id) { this.follow = id; }
+  /** 自己的球回到起點（單機直接傳送；線上同時通知伺服器）。成功回傳 true。 */
+  respawn() {
+    if (this.state !== 'play' || this.paused || !this.meId) return false;
+    const now = performance.now(); if (now - (this.lastRespawn || -1e9) < 1000) return false;
+    const ev = this.world.respawn(this.meId); if (!ev) return false;
+    this.lastRespawn = now; this.posT = 0;
+    this.scene.onEvent(ev); audio.vibrate(25); audio.starOther();
+    if (this.online) this.o.online.net.send({ t: 'respawn' });
+    return true;
+  }
   fastForward() { if (!this.online) this.ff = true; }
   stop() {
     this.stopped = true; cancelAnimationFrame(this.raf); clearTimeout(this.cdT); clearTimeout(this.endTimer);

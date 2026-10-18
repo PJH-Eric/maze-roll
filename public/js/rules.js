@@ -263,6 +263,24 @@
       this.stars.push(star);
       return star;
     }
+    /** 回到起點（競速：起跑點；搶星星／崩塌：自己的出生格，崩塌時改選最近的完好地磚）。成功回傳新位置，否則 null。 */
+    respawn(id) {
+      const p = this.byId.get(id), m = this.maze;
+      if (!p || !p.alive || this.over || !this.started) return null;
+      if (this.mode === 'race' && p.fin != null) return null;
+      let c;
+      if (this.mode === 'race') {
+        const o = cellCenter(m, m.start), k = this.players.length, a = (p.idx / k) * Math.PI * 2;
+        c = { x: o.x + (k > 1 ? Math.cos(a) * 0.16 : 0), y: o.y + (k > 1 ? Math.sin(a) * 0.16 : 0) };
+      } else if (this.mode === 'collapse') {
+        const sp = cellCenter(m, p.spawn); let best = -1, bd = 1e9;
+        for (let i = 0; i < m.n; i++) { if (this.tile[i] !== 0) continue; const q = cellCenter(m, i), d = Math.hypot(q.x - sp.x, q.y - sp.y); if (d < bd) { bd = d; best = i; } }
+        if (best < 0) return null; c = cellCenter(m, best);
+      } else c = cellCenter(m, p.spawn);
+      p.x = c.x; p.y = c.y; p.vx = 0; p.vy = 0; p.over = 0;
+      const ev = { e: 'respawn', id, x: +c.x.toFixed(3), y: +c.y.toFixed(3) }; this.emit(ev);
+      return ev;
+    }
     get gd() { if (!this._gd) this._gd = this.maze.bfs(this.maze.goal); return this._gd; }
     start() { this.started = true; }
     emit(e) { this.events.push(e); return e; }
@@ -383,6 +401,7 @@
         const p = this.byId.get(e.id); if (p) { p.fin = e.t; p.place = e.place; }
       } else if (e.e === 'tile') { this.tile[e.c] = e.s; if (e.s === 1) this.timer[e.c] = this.crumble; }
       else if (e.e === 'out') { const p = this.byId.get(e.id); if (p) { p.alive = false; p.out = e.t; } }
+      else if (e.e === 'respawn') { const p = this.byId.get(e.id); if (p) { p.x = e.x; p.y = e.y; p.vx = 0; p.vy = 0; } }
       else if (e.e === 'end') { this.over = true; this.results = e.results; }
     }
   }

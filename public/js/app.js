@@ -373,7 +373,8 @@ function gameScreen(p) {
   const countEl = h('div', { class: 'countdown', 'aria-live': 'assertive' }), banner = h('div', { class: 'banner', hidden: true });
   const badge = h('span', { class: 'badge', hidden: true });
   const sideTab = h('button', { type: 'button', class: 'btn sideTab', 'aria-label': T('開關對局資訊'), 'aria-expanded': 'true' }, icon(online ? 'chat' : 'people'), badge);
-  const arena = h('div', { class: 'arena' }, canvas, hudTop, miniBtn, stickZone, countEl, banner, sideTab);
+  const respawnBtn = h('button', { type: 'button', class: 'btn respawnBtn', 'aria-label': T('回到起點（R）'), title: T('回到起點（R）') }, icon('undo'), h('span', { class: 'rl', text: T('回起點') }));
+  const arena = h('div', { class: 'arena' }, canvas, hudTop, miniBtn, respawnBtn, stickZone, countEl, banner, sideTab);
   const sumList = h('div', { class: 'sumList' });
   const lvTxt = cfg && cfg.kind === 'level' ? T('第 {level} 關', { level: cfg.level }) : '';
   const sumHead = h('div', { class: 'sumHead' }, h('b', { text: MODE_INFO[mode].name }), h('small', { text: `${T(MR.DIFFS[diff])}${lvTxt ? '・' + lvTxt : ''}・${size}×${size}` }));
@@ -464,12 +465,16 @@ function gameScreen(p) {
     mapM.scrim.addEventListener('click', (e) => { if (e.target === mapM.scrim || e.target.closest('.mapBody') && !e.target.closest('button')) mapM.close('tap'); });
   };
   miniBtn.addEventListener('click', openMap);
+  const doRespawn = () => { if (game.respawn()) { respawnBtn.disabled = true; respawnBtn.classList.add('cool'); setTimeout(() => { respawnBtn.disabled = false; respawnBtn.classList.remove('cool'); }, 1000); } };
+  respawnBtn.addEventListener('pointerdown', (e) => e.stopPropagation()); respawnBtn.addEventListener('click', doRespawn);
+  const rsVis = () => { const me = game.me(); respawnBtn.style.display = meId && me && me.alive && !(game.world.mode === 'race' && me.fin != null) && game.state === 'play' ? '' : 'none'; };
+  const rsT = setInterval(rsVis, 250); rsVis();
   const againLocal = () => { if (cfg) startLocal(cfg); };
   const backLocal = () => { if (!cfg) return go('home'); if (cfg.kind === 'level') go('levels', { diff: cfg.diff }); else go('setup', { kind: cfg.kind, mode: cfg.mode, diff: cfg.diff, ai: cfg.ais && cfg.ais.length ? cfg.ais : undefined }); };
 
   function showResults(info) {
     const { world, results, mine } = info, solo = world.players.length === 1;
-    let title, lines = [], extra = [], nextBtn = null;
+    let title, lines = [], extra = [], nextBtn = null, newBest = false, bestTxt = '';
     const mineP = meId ? world.byId.get(meId) : null;
     if (!meId) title = T('本局結束');
     else if (mode === 'race') title = mine && mine.dnf ? T('時間到，沒能抵達終點') : solo ? T('抵達終點！') : mine.place === 1 ? T('你第一個抵達！') : T('第 {place} 名', { place: mine.place });
@@ -487,8 +492,9 @@ function gameScreen(p) {
         if (mode === 'race' && !mine.dnf) { nb = store.recordBest(key, mine.time, true); val = fmtShort(mine.time); }
         else if (mode === 'stars') { nb = store.recordBest(key, mine.score, false); val = T('{n} 顆星星', { n: mine.score }); }
         else if (mode === 'collapse') { nb = store.recordBest(key, mine.time, false); val = T('存活 {t} 秒', { t: mine.time.toFixed(2) }); }
-        if (val) lines.push(h('p', { class: 'big', text: val }));
-        if (nb) lines.push(h('p', { class: 'newbest', text: T('新的本機紀錄！') }));
+        if (nb) newBest = true;
+        const bst = store.getBest(key);
+        if (bst != null) bestTxt = mode === 'race' ? fmtShort(bst) : mode === 'stars' ? T('{n} 顆星星', { n: bst }) : T('存活 {t} 秒', { t: (+bst).toFixed(2) });
       }
     }
     const shapes = store.get('shapes');
@@ -506,9 +512,17 @@ function gameScreen(p) {
       back = Button({ label: T('回到房間'), onClick: () => { net.send({ t: 'back' }); resultM.close(); go('room'); } });
     }
     home = Button({ label: T('回到首頁'), onClick: () => { resultM.close(); if (online) net.send({ t: 'leave' }); go('home'); } });
+    const tiles = [];
+    if (meId && mine) {
+      tiles.push({ k: T('名次'), v: mode === 'race' && mine.dnf ? '—' : mine.place + ' / ' + world.players.length });
+      const mainV = mode === 'race' ? (mine.dnf ? T('未完賽') : fmtShort(mine.time)) : mode === 'stars' ? mine.score + ' ★' : mine.alive ? T('最後倖存') : T('存活 {t} 秒', { t: mine.time.toFixed(2) });
+      tiles.push({ k: mode === 'race' ? T('用時') : mode === 'stars' ? T('星星數') : T('存活時間'), v: mainV, badge: newBest ? T('新紀錄') : '' });
+      if (bestTxt) tiles.push({ k: T('本機最佳'), v: bestTxt, span: true });
+    }
+    const tileEl = tiles.length ? h('dl', { class: 'resStats' }, tiles.map((t) => h('div', { class: 'resStat' + (t.span ? ' span' : '') }, h('dt', {}, h('span', { text: t.k }), t.badge ? h('b', { class: 'resBadgeTag', text: t.badge }) : null), h('dd', { text: t.v })))) : null;
     const won = !!meId && (mode === 'race' ? !!mine && !mine.dnf && (solo || mine.place === 1) : mode === 'stars' ? !!mine && (solo || mine.place === 1) : !!mine && (solo ? false : (mine.alive || mine.place === 1)));
     const hero = h('div', { class: 'resHero' }, h('div', { class: 'resBadge', 'aria-hidden': 'true' }, icon(mode === 'race' ? 'flag' : mode === 'stars' ? 'star' : 'crown')), lines.length ? h('div', { class: 'resLines' }, ...lines) : null);
-    resultM = Modal({ title, class: 'resultModal m-' + mode + (won ? ' win' : ' lose'), dismissible: false, transparent: true, body: h('div', { class: 'result' }, hero, table, nextBtn ? h('div', { class: 'nextRow' }, nextBtn) : null), actions: [again, back, home] });
+    resultM = Modal({ title, class: 'resultModal m-' + mode + (won ? ' win' : ' lose'), dismissible: false, transparent: true, body: h('div', { class: 'result' }, hero, tileEl, table, nextBtn ? h('div', { class: 'nextRow' }, nextBtn) : null), actions: [again, back, home] });
   }
 
   // 設定即時套用
@@ -530,11 +544,12 @@ function gameScreen(p) {
     else game.net(m);
   };
   if (online) session.subs.add(sub);
-  const key = (e) => { if (e.key === 'Escape' && !online && !modalOpen()) { e.preventDefault(); openPause(); } };
+  const key = (e) => { if ((e.key === 'r' || e.key === 'R') && !e.repeat && !modalOpen() && !(e.target && /input|textarea/i.test(e.target.tagName))) { doRespawn(); return; }
+    if (e.key === 'Escape' && !online && !modalOpen()) { e.preventDefault(); openPause(); } };
   const vis = () => { if (document.hidden && !online) openPause(); };
   addEventListener('keydown', key); document.addEventListener('visibilitychange', vis);
   return () => {
-    removeEventListener('keydown', key); document.removeEventListener('visibilitychange', vis); mq.removeEventListener('change', onMq); offStore();
+    clearInterval(rsT); removeEventListener('keydown', key); document.removeEventListener('visibilitychange', vis); mq.removeEventListener('change', onMq); offStore();
     session.subs.delete(sub); if (mapM) mapM.close('home'); if (resultM) resultM.close(); if (pauseM) pauseM.close('home');
     game.stop(); input.destroy(); if (activeGame === game) activeGame = null;
   };

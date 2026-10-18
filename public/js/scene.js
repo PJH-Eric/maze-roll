@@ -203,6 +203,9 @@ export class Scene3D {
       const mesh = this.stars.get(e.sid);
       if (mesh) { this._burst(mesh.position.x, 0.4, mesh.position.z, 0xffd24a, 14); this.root.remove(mesh); this.stars.delete(e.sid); }
       if (e.nid != null) this._addStar(e.nid, e.nc);
+    } else if (e.e === 'respawn') {
+      const b = this.balls.get(e.id);
+      if (b) { this._burst(b.p.x, 0.4, b.p.y, 0xffffff, 10); b.hist.length = 0; b.lx = e.x; b.ly = e.y; b.lastTx = e.x; b.lastTy = e.y; b.fall = 0; b.fallV = 0; this._burst(e.x, 0.4, e.y, 0xffd24a, 14); }
     } else if (e.e === 'tile') this._tile(e.c, e.s, false);
     else if (e.e === 'finish' && this.goal) this._burst(this.goal.g.position.x, 0.3, this.goal.g.position.z, 0xffd24a, 18);
   }

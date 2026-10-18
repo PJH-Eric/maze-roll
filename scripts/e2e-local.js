@@ -21,6 +21,14 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   const top = await page.evaluate(() => { const b = window.__MRAPP.getGame().scene.balls.get('me'); const q = b.mesh.quaternion; const moved = b.p.x - 0.5; return { moved, topX: 2 * (q.x * q.y - q.w * q.z) }; });
   await page.evaluate(() => window.__MRAPP.getGame().input.keys.clear());
   assert(top.moved > 0.02, '球有往右移動'); assert(top.topX > 0, '往右滾時球頂端向右轉（' + top.topX.toFixed(3) + '）'); ok('滾動方向正確：往前滾時球頂端向前轉');
+  { // 回到起點按鈕
+    const before = await page.evaluate(() => { const b = window.__MRAPP.getGame().world.byId.get('me'); return [b.x, b.y]; });
+    await page.evaluate(() => window.__MRAPP.getGame().input.keys.add('d')); await sleep(700); await page.evaluate(() => window.__MRAPP.getGame().input.keys.clear());
+    assert(await page.locator('.respawnBtn').isVisible(), '回起點按鈕可見');
+    await page.locator('.respawnBtn').click(); await sleep(250);
+    const after = await page.evaluate(() => { const b = window.__MRAPP.getGame().world.byId.get('me'); return [b.x, b.y, b.vx, b.vy]; });
+    assert(Math.hypot(after[0] - 0.5, after[1] - 0.5) < 0.2 && Math.abs(after[2]) < 1e-6, '球回到起點並停下：' + after.join(',')); ok('回到起點按鈕：球傳回起點、速度歸零');
+  }
   await drive(); assert(await waitResult(120000), '第1關應能完成'); ok('第1關完成，出現結算');
   const st = await page.evaluate(() => window.__MRAPP.store.levelStars(0)); assert(st[0] > 0, '星數已存'); ok('星數已存 ' + st[0]);
   assert.strictEqual(await page.evaluate(() => window.__MRAPP.store.unlockedLevel(0)), 2); ok('第2關解鎖');

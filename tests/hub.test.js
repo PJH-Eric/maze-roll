@@ -58,6 +58,16 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   const init = a.last('init'); assert.strictEqual(init.players.length, 2);
   await sleep(120); assert(a.last('go')); ok('倒數後 go');
 
+  // 回到起點：伺服器重設位置、廣播事件、1 秒冷卻
+  {
+    const st0 = MR.cellCenter(new MR.World({ mode: 'race', diff: init.diff, seed: init.seed, players: [] }).maze, 0);
+    b.send({ t: 'pos', x: 2.5, y: 2.5, vx: 1, vy: 1 }); await sleep(30);
+    const n0 = a.all('ev').length; b.send({ t: 'respawn' }); await sleep(60);
+    const evs = a.all('ev').slice(n0).flatMap((m) => m.ev).filter((e) => e.e === 'respawn' && e.id === b.mid);
+    assert.strictEqual(evs.length, 1, '收到一次 respawn 事件'); ok('回到起點：伺服器廣播 respawn');
+    b.send({ t: 'respawn' }); await sleep(60);
+    assert.strictEqual(a.all('ev').slice(n0).flatMap((m) => m.ev).filter((e) => e.e === 'respawn').length, 1); ok('回到起點：冷卻期內重複請求被忽略');
+  }
   // 競速：兩人把位置送到終點
   const w = new MR.World({ mode: 'race', diff: init.diff, seed: init.seed, players: [] });
   const g = MR.cellCenter(w.maze, w.maze.goal);
