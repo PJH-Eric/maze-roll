@@ -32,6 +32,7 @@ const P = {
   eye: '<path d="M2 12s3.600-6.500 10-6.500S22 12 22 12s-3.600 6.500-10 6.500S2 12 2 12z" fill="none" stroke="currentColor" stroke-width="2.200"/><circle cx="12" cy="12" r="3"/>',
   people: '<circle cx="9" cy="8" r="3.200"/><path d="M3 20c0-3.500 2.700-6 6-6s6 2.500 6 6z"/><circle cx="17" cy="9" r="2.600"/><path d="M16.500 14.200c2.900.2 4.800 2.300 4.800 5.300h-4.300"/>',
   close: '<path d="M6 6l12 12M18 6 6 18" fill="none" stroke="currentColor" stroke-width="2.800" stroke-linecap="round"/>',
+  zoom: '<circle cx="10.500" cy="10.500" r="6" fill="none" stroke="currentColor" stroke-width="2.400"/><path d="M15 15l5.500 5.500M8 10.500h5M10.500 8v5" fill="none" stroke="currentColor" stroke-width="2.200" stroke-linecap="round"/>',
   plus: '<path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>',
   minus: '<path d="M5 12h14" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>',
   lock: '<rect x="5" y="10.500" width="14" height="10" rx="2"/><path d="M8 10.500V8a4 4 0 0 1 8 0v2.500" fill="none" stroke="currentColor" stroke-width="2.200"/>',

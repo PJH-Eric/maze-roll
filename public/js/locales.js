@@ -1,5 +1,10 @@
 // 英文字典（以繁中原文為鍵）。新增介面文字時，請同步在這裡補英文；tests/i18n.test.js 會檢查缺漏。
 window.MR_EN = {
+ "點一下空白處或按 Esc 關閉": "Tap anywhere or press Esc to close",
+ "星星": "Stars",
+ "終點": "Goal",
+ "迷宮地圖": "Maze map",
+ "放大小地圖": "Enlarge minimap",
  "3D 木質迷宮・推著小球衝向終點": "3D wooden maze · roll the ball to the goal",
  "3D 迷宮遊戲畫面": "3D maze game view",
  "90 秒內撿最多星星；被撿走會在別處重生": "Grab the most stars in 90 s; a taken star respawns elsewhere",

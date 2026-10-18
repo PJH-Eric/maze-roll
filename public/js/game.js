@@ -175,8 +175,8 @@ export class Game {
     this.hooks.onHud({ mode: w.mode, t: w.t, left: total != null ? Math.max(0, total - w.t) : null, grace: this.graceLeft, rows: this.standings(), state: this.state, meState: this.meState, alive: w.players.filter((p) => p.alive).length, follow: this._followId() });
   }
   /** 小地圖：依難度木色繪製的迷你木盤；牆體靜態層只畫一次，其餘每次重畫。 */
-  _minimapStatic() {
-    const c = this.o.minimapEl, w = this.world, m = w.maze, th = (window.MR.DIFF_THEME || [])[Math.max(0, Math.min(4, w.diff | 0))] || { floor: '#e2b97c', wall: '#8a5330' };
+  _minimapStatic(c) {
+    const w = this.world, m = w.maze, th = (window.MR.DIFF_THEME || [])[Math.max(0, Math.min(4, w.diff | 0))] || { floor: '#e2b97c', wall: '#8a5330' };
     const S = c.width * 0.9 / Math.max(m.w, m.h), ox = (c.width - m.w * S) / 2, oy = (c.height - m.h * S) / 2;
     const off = document.createElement('canvas'); off.width = c.width; off.height = c.height; const g = off.getContext('2d');
     const bg = g.createLinearGradient(0, 0, 0, c.height); bg.addColorStop(0, th.floor); bg.addColorStop(1, th.floor);
@@ -192,12 +192,16 @@ export class Game {
     g.strokeStyle = 'rgba(0,0,0,.28)'; g.lineWidth = Math.max(2, S * 0.3); g.save(); g.translate(0.8, 1.2); g.stroke(walls); g.restore(); // 牆的陰影
     g.strokeStyle = th.wall; g.lineWidth = Math.max(1.6, S * 0.22); g.stroke(walls);
     g.strokeStyle = 'rgba(255,255,255,.22)'; g.lineWidth = Math.max(.8, S * 0.07); g.save(); g.translate(-0.3, -0.4); g.stroke(walls); g.restore(); // 高光
-    this._mm = { img: off, S, ox, oy };
+    return { img: off, S, ox, oy, w: m };
   }
   _minimap() {
-    const c = this.o.minimapEl, g = c.getContext('2d'), w = this.world, m = w.maze;
-    if (!this._mm || this._mm.w !== m) { this._minimapStatic(); this._mm.w = m; }
-    const { img, S, ox, oy } = this._mm;
+    this._drawMini(this.o.minimapEl);
+    if (this.bigMapEl) this._drawMini(this.bigMapEl);
+  }
+  _drawMini(c) {
+    const g = c.getContext('2d'), w = this.world, m = w.maze;
+    if (!c._mm || c._mm.w !== m) c._mm = this._minimapStatic(c);
+    const { img, S, ox, oy } = c._mm;
     g.clearRect(0, 0, c.width, c.height); g.drawImage(img, 0, 0);
     if (w.tile) {
       for (let i = 0; i < m.n; i++) {

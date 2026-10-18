@@ -241,7 +241,22 @@ h3 { font-size: 1rem; margin: 10px 0 6px; letter-spacing: .08em; }
 .hmode { font-size: .85rem; opacity: .85; } .htime { font-size: 1.35rem; min-width: 2.6em; text-align: center; font-variant-numeric: tabular-nums; color: var(--maple2); }
 .htime.warn { color: #ff7a66; animation: blink .6s infinite alternate; } @keyframes blink { to { opacity: .55; } }
 .hextra { font-size: .85rem; color: var(--gold); }
-.mini { position: absolute; z-index: 9; right: calc(12px + var(--sr)); top: calc(70px + var(--st)); width: clamp(96px, 17vmin, 150px); height: auto; aspect-ratio: 1; border: 3px solid #2a1a10; border-radius: 12px; opacity: .97; pointer-events: none; box-shadow: 0 0 0 3px #a8703d, 0 0 0 5px #2a1a10, 0 7px 0 5px rgba(0,0,0,.35), inset 0 0 8px rgba(0,0,0,.35); background: #e2b97c; }
+.miniBtn { position: absolute; z-index: 9; right: calc(12px + var(--sr)); top: calc(70px + var(--st)); width: clamp(104px, 18vmin, 160px); aspect-ratio: 1; padding: 0; margin: 0; font: inherit; color: inherit; cursor: zoom-in; border: 3px solid #2a1a10; border-radius: 12px; overflow: visible; pointer-events: auto; background: #e2b97c; box-shadow: 0 0 0 3px #a8703d, 0 0 0 5px #2a1a10, 0 7px 0 5px rgba(0,0,0,.35), inset 0 0 8px rgba(0,0,0,.35); transition: transform .1s, filter .15s; touch-action: manipulation; }
+.miniBtn .mini { display: block; width: 100%; height: 100%; border-radius: 8px; pointer-events: none; }
+.miniBtn:hover { filter: brightness(1.06); } .miniBtn:active { transform: scale(.97); }
+.miniBtn:focus-visible { outline: 3px solid var(--gold); outline-offset: 6px; }
+.miniZoom { position: absolute; right: -10px; bottom: -10px; width: 28px; height: 28px; display: grid; place-items: center; border-radius: 50%; background: linear-gradient(#f0705e, #c93a2b); color: #fff; border: 2px solid #5a1810; box-shadow: 0 2px 0 #5a1810; pointer-events: none; }
+.miniZoom .ico svg { width: 16px; height: 16px; }
+/* 放大的迷宮地圖（畫面中央） */
+.mapModal { width: min(680px, 100%); }
+.mapBody { padding: 8px 0 4px; display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.bigMap { width: 240px; max-width: calc(100% - 24px); aspect-ratio: 1; height: auto; border: 4px solid #2a1a10; border-radius: 14px; box-shadow: 0 0 0 4px #a8703d, 0 0 0 6px #2a1a10, 0 8px 0 6px rgba(0,0,0,.25); background: #e2b97c; }
+.mapLegend { display: flex; flex-wrap: wrap; gap: 6px 14px; justify-content: center; font-size: .9rem; }
+.lgItem { display: inline-flex; align-items: center; gap: 6px; }
+.lgItem .ico svg { width: 1.1em; height: 1.1em; color: #a8321f; }
+.lgDot { width: 14px; height: 14px; border-radius: 50%; border: 2px solid #2a1a10; display: inline-block; }
+.lgDot.me { box-shadow: 0 0 0 2px #fff, 0 0 0 3px #2a1a10; }
+@media (max-height: 520px) {  .mapModal .hint, .mapModal .mapLegend { display: none; } }
 .stickZone { position: absolute; z-index: 12; left: calc(20px + var(--sl)); bottom: calc(20px + var(--sb)); width: clamp(128px, 25vmin, 180px); aspect-ratio: 1; }
 .stick { position: relative; width: 100%; height: 100%; border-radius: 50%; touch-action: none; background: radial-gradient(circle, rgba(42,26,16,.28) 0 40%, rgba(42,26,16,.55) 100%); border: 4px solid rgba(251,240,218,.75); box-shadow: 0 6px 12px rgba(0,0,0,.4), inset 0 0 14px rgba(0,0,0,.4); }
 .stick.active { border-color: var(--gold); }
@@ -307,3 +322,51 @@ h3 { font-size: 1rem; margin: 10px 0 6px; letter-spacing: .08em; }
 .language-menu .language-option:focus-visible { outline: 3px solid var(--gold) !important; outline-offset: -2px; }
 /* 窄螢幕：頂部計時列只留時間，避免被右上角按鈕遮住（時間含小數點後兩位較寬） */
 @media (max-width: 520px) { .hmode { display: none; } .htime { font-size: 1.2rem; min-width: 4em; } .hudTop { padding: 6px 12px; } }
+
+/* ======== 介面美化層（v6）：只做視覺與手感，不改版面結構 ======== */
+html { font-size: clamp(15px, calc(13.2px + .42vw), 19px); }
+@media (max-width: 480px) { html { font-size: 16px; } }
+body::before { content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 0; background: radial-gradient(ellipse at 50% 35%, rgba(255,214,150,.10), transparent 60%), radial-gradient(ellipse at 50% 120%, rgba(0,0,0,.45), transparent 60%); }
+.topbar .title { background: linear-gradient(#fff3d2, #f0c36a); -webkit-background-clip: text; background-clip: text; color: transparent; text-shadow: none; filter: drop-shadow(0 2px 0 rgba(0,0,0,.5)); }
+/* 按鈕：高光與按壓回饋 */
+.btn { transition: transform .08s, box-shadow .08s, filter .15s; }
+.btn::after { content: ""; position: absolute; left: 8px; right: 8px; top: 3px; height: 38%; border-radius: 8px 8px 20px 20px; background: linear-gradient(rgba(255,255,255,.35), rgba(255,255,255,0)); pointer-events: none; }
+.btn.ghost::after, .btn[disabled]::after { display: none; }
+.btn:hover:not([disabled]) { transform: translateY(-1px); }
+.btn:active:not([disabled]) { transform: translateY(3px); }
+.btn.big { transition: transform .1s, box-shadow .1s, filter .15s; }
+@media (hover: none) { .btn:hover:not([disabled]) { transform: none; filter: none; } }
+/* 面板：內緣高光與細緻木紋 */
+.panel, .modal { background: linear-gradient(rgba(255,255,255,.14), rgba(0,0,0,.06)), repeating-linear-gradient(90deg, rgba(120,70,20,.035) 0 2px, transparent 2px 7px), linear-gradient(#f6e1b4, #e5c084); }
+.modal { border-radius: 18px; }
+.modal h2, .panel > h2 { letter-spacing: .1em; }
+/* 選項 chip / 開關 / 滑桿 */
+.chip { transition: transform .08s, box-shadow .08s, filter .15s; }
+.chip:hover:not([disabled]):not(.on) { filter: brightness(1.07); }
+.toggle { box-shadow: inset 0 3px 4px rgba(0,0,0,.35); } .toggle.on { background: linear-gradient(#58b86b, #3a8f4d); }
+.slider .thumb { box-shadow: 0 3px 0 rgba(0,0,0,.35), inset 0 2px 0 rgba(255,255,255,.5); transition: transform .1s; }
+.slider:active .thumb { transform: scale(1.12); }
+/* 關卡磚 */
+.lv { transition: transform .08s, box-shadow .08s, filter .15s; }
+.lv:hover:not(.locked) { filter: brightness(1.06); }
+.lv.next { animation: lvPulse 1.6s ease-in-out infinite; }
+@keyframes lvPulse { 50% { outline-offset: 3px; } }
+/* 結算與排行：前三名獎牌色 */
+.rrow { box-shadow: 0 2px 0 rgba(90,55,34,.18); }
+.rrow:nth-child(1) .rk { color: #fff; background: radial-gradient(circle at 35% 30%, #ffe27a, #d19a12); border-radius: 50%; width: 1.7em; height: 1.7em; line-height: 1.7em; text-shadow: 0 1px 0 rgba(0,0,0,.3); }
+.rrow:nth-child(2) .rk { color: #fff; background: radial-gradient(circle at 35% 30%, #eef0f2, #9aa3ab); border-radius: 50%; width: 1.7em; height: 1.7em; line-height: 1.7em; text-shadow: 0 1px 0 rgba(0,0,0,.3); }
+.rrow:nth-child(3) .rk { color: #fff; background: radial-gradient(circle at 35% 30%, #e9a46a, #a15f2c); border-radius: 50%; width: 1.7em; height: 1.7em; line-height: 1.7em; text-shadow: 0 1px 0 rgba(0,0,0,.3); }
+.rrow .val { font-variant-numeric: tabular-nums; }
+.empty { border: 2px dashed rgba(42,26,16,.3); border-radius: 12px; text-align: center; }
+/* 遊戲中 HUD：木牌 */
+.hudTop { background: linear-gradient(rgba(255,255,255,.1), rgba(0,0,0,.12)), #3b2417; border-color: #1a0f08; box-shadow: inset 0 2px 0 rgba(255,255,255,.2), 0 4px 0 #1a0f08, 0 8px 14px rgba(0,0,0,.4); }
+.htime { text-shadow: 0 2px 0 rgba(0,0,0,.5); }
+.srow { transition: background .15s; } .srow:hover { background: rgba(255,255,255,.2); }
+/* 小地圖按鈕 */
+.miniBtn:hover { filter: brightness(1.07); } .miniBtn:active { transform: scale(.97); }
+/* 寬螢幕：設定頁面板不過度拉長，內容置中 */
+@media (min-width: 900px) { .body > .panel { width: min(100%, 820px); padding: 22px 26px; } .btn.big { min-height: 72px; } }
+@media (prefers-reduced-motion: reduce) { .lv.next, .htime.warn { animation: none; } .btn, .chip, .lv { transition: none; } }
+/* 放大地圖：尺寸依視窗計算，不出現捲軸 */
+.mapModal .sa-view { overflow: hidden !important; }
+.mapModal .sa-bar, .mapModal .sa-track, .mapModal [class*="sa-bar"] { display: none !important; }

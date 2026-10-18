@@ -362,11 +362,13 @@ function gameScreen(p) {
   const hudMode = h('span', { class: 'hmode' }), hudTime = h('b', { class: 'htime', text: '0:00' }), hudExtra = h('span', { class: 'hextra' });
   const hudTop = h('div', { class: 'hudTop' }, hudMode, hudTime, hudExtra);
   const mini = h('canvas', { class: 'mini', width: 240, height: 240, 'aria-hidden': 'true' });
+  const miniBtn = h('button', { type: 'button', class: 'miniBtn', 'aria-label': T('放大小地圖'), title: T('放大小地圖') }, mini, h('span', { class: 'miniZoom', 'aria-hidden': 'true' }, icon('zoom')));
+  miniBtn.addEventListener('pointerdown', (e) => e.stopPropagation()); // 不要觸發搖桿
   const knob = h('div', { class: 'knob' }), stick = h('div', { class: 'stick', 'aria-label': T('虛擬搖桿') }, knob), stickZone = h('div', { class: 'stickZone' }, stick);
   const countEl = h('div', { class: 'countdown', 'aria-live': 'assertive' }), banner = h('div', { class: 'banner', hidden: true });
   const badge = h('span', { class: 'badge', hidden: true });
   const sideTab = h('button', { type: 'button', class: 'btn sideTab', 'aria-label': T('開關對局資訊'), 'aria-expanded': 'true' }, icon(online ? 'chat' : 'people'), badge);
-  const arena = h('div', { class: 'arena' }, canvas, hudTop, mini, stickZone, countEl, banner, sideTab);
+  const arena = h('div', { class: 'arena' }, canvas, hudTop, miniBtn, stickZone, countEl, banner, sideTab);
   const sumList = h('div', { class: 'sumList' });
   const lvTxt = cfg && cfg.kind === 'level' ? T('第 {level} 關', { level: cfg.level }) : '';
   const sumHead = h('div', { class: 'sumHead' }, h('b', { text: MODE_INFO[mode].name }), h('small', { text: `${T(MR.DIFFS[diff])}${lvTxt ? '・' + lvTxt : ''}・${size}×${size}` }));
@@ -382,7 +384,7 @@ function gameScreen(p) {
   const onMq = () => { sideOpen = !mq.matches; layout(); };
   mq.addEventListener('change', onMq);
   sideTab.addEventListener('click', () => { sideOpen = !sideOpen; layout(); });
-  const miniOn = () => { mini.style.display = store.get('minimap') ? '' : 'none'; };
+  const miniOn = () => { miniBtn.style.display = store.get('minimap') ? '' : 'none'; };
 
   let game, resultM = null, pauseM = null, last = null, finished = false;
   const showBanner = (text, btn) => { banner.hidden = false; rc(banner, h('b', { text }), btn); };
@@ -433,6 +435,30 @@ function gameScreen(p) {
       onClose: (w) => { pauseM = null; if (w !== 'restart' && w !== 'home' && activeGame === game) game.pause(false); },
     });
   }
+  // 小地圖放大：在畫面中央看整張迷宮（單機會先暫停，關閉後繼續）
+  let mapM = null;
+  const openMap = () => {
+    if (mapM || modalOpen() || game.state === 'ended') return;
+    const big = h('canvas', { class: 'bigMap', width: 720, height: 720, role: 'img', 'aria-label': T('迷宮地圖') });
+    const w = game.world, dots = w.players.map((p) => h('span', { class: 'lgItem' }, h('i', { class: 'lgDot' + (p.id === meId ? ' me' : ''), style: { background: BALL_COLORS[p.idx % 8] } }), h('span', { text: who(p.name, p.id === meId) })));
+    const legend = h('div', { class: 'mapLegend' }, ...dots, w.mode === 'race' ? h('span', { class: 'lgItem' }, icon('flag'), h('span', { text: T('終點') })) : null, w.stars ? h('span', { class: 'lgItem' }, icon('star'), h('span', { text: T('星星') })) : null);
+    const wasPlaying = !online && game.state === 'play' && !game.paused; if (wasPlaying) game.pause(true);
+    game.bigMapEl = big;
+    mapM = Modal({ title: T('迷宮地圖'), class: 'mapModal', body: h('div', { class: 'mapBody' }, big, legend, h('p', { class: 'hint', text: T('點一下空白處或按 Esc 關閉') })),
+      actions: [Button({ label: T('關閉'), variant: 'primary', onClick: () => mapM.close('ok') })],
+      onClose: () => { game.bigMapEl = null; mapM = null; window.dispatchEvent(new Event('mapclose')); try { document.querySelectorAll('.scrim').forEach((e) => e.dispatchEvent(new Event('mapclose'))); } catch (e) {} if (wasPlaying && activeGame === game && !pauseM) game.pause(false); } });
+    game._drawMini(big);
+    const fit = () => { // 依可用空間縮放地圖，確保不出現捲軸：先放到最大，有溢出就扣掉溢出量
+      const body = big.parentElement, view = body && (body.closest('.sa-view') || body.parentElement); if (!view) return;
+      let sz = Math.max(120, Math.min(540, body.clientWidth - 24)); big.style.width = sz + 'px';
+      for (let i = 0; i < 5; i++) { const over = view.scrollHeight - view.clientHeight; if (over <= 0 || sz <= 120) break; sz = Math.max(120, sz - over - 1); big.style.width = sz + 'px'; }
+    };
+    const onRs = () => fit(); window.addEventListener('resize', onRs); const prevClose = mapM.onClose;
+    requestAnimationFrame(() => { fit(); setTimeout(fit, 260); setTimeout(fit, 800); });
+    mapM.scrim.addEventListener('mapclose', () => window.removeEventListener('resize', onRs));
+    mapM.scrim.addEventListener('click', (e) => { if (e.target === mapM.scrim || e.target.closest('.mapBody') && !e.target.closest('button')) mapM.close('tap'); });
+  };
+  miniBtn.addEventListener('click', openMap);
   const againLocal = () => { if (cfg) startLocal(cfg); };
   const backLocal = () => { if (!cfg) return go('home'); if (cfg.kind === 'level') go('levels', { diff: cfg.diff }); else go('setup', { kind: cfg.kind, mode: cfg.mode, diff: cfg.diff, ai: cfg.ais && cfg.ais.length ? cfg.ais : undefined }); };
 
@@ -502,7 +528,7 @@ function gameScreen(p) {
   addEventListener('keydown', key); document.addEventListener('visibilitychange', vis);
   return () => {
     removeEventListener('keydown', key); document.removeEventListener('visibilitychange', vis); mq.removeEventListener('change', onMq); offStore();
-    session.subs.delete(sub); if (resultM) resultM.close(); if (pauseM) pauseM.close('home');
+    session.subs.delete(sub); if (mapM) mapM.close('home'); if (resultM) resultM.close(); if (pauseM) pauseM.close('home');
     game.stop(); input.destroy(); if (activeGame === game) activeGame = null;
   };
 }
