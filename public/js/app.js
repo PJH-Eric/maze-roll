@@ -347,7 +347,7 @@ function gameScreen(p) {
   const canvas = h('canvas', { class: 'cv', role: 'img', 'aria-label': '3D 迷宮遊戲畫面' });
   const hudMode = h('span', { class: 'hmode' }), hudTime = h('b', { class: 'htime', text: '0:00' }), hudExtra = h('span', { class: 'hextra' });
   const hudTop = h('div', { class: 'hudTop' }, hudMode, hudTime, hudExtra);
-  const mini = h('canvas', { class: 'mini', width: 180, height: 180, 'aria-hidden': 'true' });
+  const mini = h('canvas', { class: 'mini', width: 240, height: 240, 'aria-hidden': 'true' });
   const knob = h('div', { class: 'knob' }), stick = h('div', { class: 'stick', 'aria-label': '虛擬搖桿' }, knob), stickZone = h('div', { class: 'stickZone' }, stick);
   const countEl = h('div', { class: 'countdown', 'aria-live': 'assertive' }), banner = h('div', { class: 'banner', hidden: true });
   const badge = h('span', { class: 'badge', hidden: true });

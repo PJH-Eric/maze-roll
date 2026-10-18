@@ -42,7 +42,7 @@ const issues = [];
   await home(); await check('home');
   await click('怎麼玩'); await check('how'); await page.keyboard.press('Escape'); await sleep(200);
   await click('設定'); await check('settings'); await page.keyboard.press('Escape'); await sleep(200);
-  await click('闖關模式'); await check('levels'); await page.locator('.chip', { hasText: '超難' }).click(); await sleep(300); await check('levels-hard');
+  await click('闖關模式'); await check('levels'); await page.evaluate(() => { for (let d = 0; d < 4; d++) for (let n = 1; n <= 10; n++) window.__MRAPP.store.setLevelStars(d, n, 3); }); await page.getByRole('button', { name: '返回' }).first().click({ force: true }).catch(() => {}); await sleep(300); await click('闖關模式'); await page.locator('.chip', { hasText: '超難' }).click(); await sleep(300); await check('levels-hard');
   await home(); await click('自由練習'); await check('practice');
   await home(); await click('對電腦'); for (let i = 0; i < 6; i++) await click('增加一位電腦'); await check('vsai7');
   await page.getByRole('button', { name: /電腦 1 難度/ }).click({force:true,timeout:8000}); await sleep(250); await check('vsai-select'); await page.keyboard.press('Escape');
