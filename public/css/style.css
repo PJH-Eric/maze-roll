@@ -412,3 +412,59 @@ body::before { content: ""; position: fixed; inset: 0; pointer-events: none; z-i
 @media (max-width: 560px) { .roomBody { gap: 8px; } }
 @media (max-width: 760px) { .roomBody > .panel:not(.roomChat) { flex: 1 1 0; height: auto; } }
 @media (max-width: 760px) { .roomChat { height: auto !important; max-height: 36dvh; overflow: hidden; } .roomChat .chatScroll { flex: 1 1 56px; min-height: 56px; } .roomChat .chatBox { min-height: 0; } }
+
+/* ======== 結算畫面美化：依玩法換主題色、獎章、木牌數據 ======== */
+.resultModal { --ra: #d4473a; --ra2: #a8321f; overflow: hidden; }
+.resultModal.m-stars { --ra: #e8ab1a; --ra2: #b57a06; }
+.resultModal.m-collapse { --ra: #2f8f83; --ra2: #1d655c; }
+.resultModal::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 92px; background: linear-gradient(var(--ra), var(--ra2)); opacity: .96; border-bottom: 3px solid #2a1a10; }
+.resultModal.lose::before { background: linear-gradient(#8b7a66, #5f5143); }
+.resultModal .modalHead { position: relative; justify-content: center; text-align: center; min-height: 40px; padding-right: 0; }
+.resultModal .modalHead h2 { color: #fff; font-size: 1.35rem; letter-spacing: .1em; text-shadow: 0 2px 0 rgba(0,0,0,.35); width: 100%; }
+.resultModal .modalBody, .resultModal .result { position: relative; }
+.result { gap: 10px; }
+.resHero { display: flex; flex-direction: column; align-items: center; gap: 6px; margin-top: 18px; }
+.resBadge { width: 72px; height: 72px; border-radius: 50%; display: grid; place-items: center; color: #fff; background: radial-gradient(circle at 35% 28%, rgba(255,255,255,.55), transparent 45%), linear-gradient(var(--ra), var(--ra2)); border: 4px solid #2a1a10; box-shadow: 0 0 0 4px #fbe9b9, 0 0 0 7px #2a1a10, 0 8px 0 7px rgba(0,0,0,.22); margin-top: -4px; animation: badgePop .5s cubic-bezier(.2,1.5,.4,1) both; }
+.resBadge .ico svg { width: 2.2rem; height: 2.2rem; filter: drop-shadow(0 2px 0 rgba(0,0,0,.35)); }
+.resultModal.lose .resBadge { background: radial-gradient(circle at 35% 28%, rgba(255,255,255,.4), transparent 45%), linear-gradient(#9b8b78, #6b5d4e); }
+@keyframes badgePop { from { transform: scale(.3) rotate(-18deg); opacity: 0; } to { transform: none; opacity: 1; } }
+.resLines { display: flex; flex-direction: column; align-items: center; gap: 6px; width: 100%; margin-top: 8px; }
+.result .big { padding: 6px 22px; border-radius: 12px; background: linear-gradient(rgba(255,255,255,.08), rgba(0,0,0,.14)), #3b2417; color: #ffe08a; border: 3px solid #1a0f08; box-shadow: inset 0 2px 0 rgba(255,255,255,.18), 0 3px 0 rgba(0,0,0,.3); font-variant-numeric: tabular-nums; letter-spacing: .06em; text-shadow: 0 2px 0 rgba(0,0,0,.5); }
+.result .stars.big { background: none; border: 0; box-shadow: none; padding: 0; color: #e8a512; text-shadow: 0 2px 0 rgba(90,55,34,.35); font-size: 2.3rem; }
+.result .note { text-align: center; margin: 0; }
+.newbest { padding: 3px 14px; border-radius: 999px; background: var(--red); color: #fff; border: 2px solid #5a1810; font-size: .85rem; letter-spacing: .08em; box-shadow: 0 2px 0 #7a2018; animation: badgePop .5s .25s cubic-bezier(.2,1.5,.4,1) both; }
+.rtable { gap: 6px; }
+.rrow { padding: 8px 12px; background: rgba(255,255,255,.5); }
+.rrow:nth-child(1) { background: linear-gradient(90deg, rgba(255,226,122,.55), rgba(255,255,255,.5)); }
+.rrow.me { border-color: var(--ra); background-color: rgba(255,255,255,.7); }
+.rrow .dot { flex: none; width: 22px; height: 22px; border-radius: 50%; border: 2px solid #2a1a10; display: grid; place-items: center; font-size: .7rem; color: #fff; }
+.rrow .val { padding: 2px 8px; border-radius: 8px; background: rgba(42,26,16,.1); }
+.resultModal .modalActions { gap: 8px; padding-top: 4px; }
+.resultModal .modalActions .btn { min-height: 50px; font-size: .95rem; }
+@media (max-width: 560px) {
+  .resultModal { padding: 12px; }
+  .resultModal::before { height: 84px; }
+  .resBadge { width: 64px; height: 64px; }
+  .result .big { font-size: 1.35rem; }
+  .rrow { padding: 7px 10px; gap: 7px; font-size: .92rem; }
+  .resultModal .modalActions .btn { font-size: .86rem; letter-spacing: 0; }
+}
+@media (max-height: 520px) { .resultModal::before { height: 0; display: none; } .resultModal .modalHead h2 { color: var(--ink); text-shadow: none; } .resHero { flex-direction: row; justify-content: center; margin-top: 0; } .resBadge { width: 48px; height: 48px; box-shadow: 0 0 0 3px #fbe9b9, 0 0 0 5px #2a1a10; } .resBadge .ico svg { width: 1.5rem; height: 1.5rem; } .resLines { width: auto; margin-top: 0; } }
+@media (prefers-reduced-motion: reduce) { .resBadge, .newbest { animation: none; } }
+
+/* ======== 手機各畫面細修 ======== */
+@media (max-width: 560px) {
+  /* 選項：等寬三欄，不再參差換行 */
+  .chips { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+  .chip { justify-content: center; text-align: center; padding: 0 .4em; min-width: 0; }
+  .chip:has(small) { padding: 4px .3em; }
+  /* 首頁：內容在畫面中垂直置中，底部不再留大片空白 */
+  .homeIn { min-height: 100%; justify-content: center; padding-top: calc(60px + var(--st)); padding-bottom: calc(24px + var(--sb)); gap: 14px; }
+  .logo svg { width: min(52vw, 210px); }
+  .sub { font-size: .92rem; letter-spacing: .06em; }
+  /* 電腦對手列表：列距與選單對齊 */
+  .botRow, .aiRow { padding: 4px 0; }
+}
+@media (max-width: 560px) and (max-height: 520px) { .homeIn { justify-content: flex-start; } }
+@media (max-width: 560px) { .chip { font-size: .92rem; gap: .3em; line-height: 1.15; } .chip .ico svg { width: 1.05em; height: 1.05em; } .chip small { font-size: .66rem; } }
+@media (max-width: 440px) { .chip .ico { display: none; } }

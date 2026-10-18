@@ -506,7 +506,9 @@ function gameScreen(p) {
       back = Button({ label: T('回到房間'), onClick: () => { net.send({ t: 'back' }); resultM.close(); go('room'); } });
     }
     home = Button({ label: T('回到首頁'), onClick: () => { resultM.close(); if (online) net.send({ t: 'leave' }); go('home'); } });
-    resultM = Modal({ title, class: 'resultModal', dismissible: false, transparent: true, body: h('div', { class: 'result' }, ...lines, table, nextBtn ? h('div', { class: 'nextRow' }, nextBtn) : null), actions: [again, back, home] });
+    const won = !!meId && (mode === 'race' ? !!mine && !mine.dnf && (solo || mine.place === 1) : mode === 'stars' ? !!mine && (solo || mine.place === 1) : !!mine && (solo ? false : (mine.alive || mine.place === 1)));
+    const hero = h('div', { class: 'resHero' }, h('div', { class: 'resBadge', 'aria-hidden': 'true' }, icon(mode === 'race' ? 'flag' : mode === 'stars' ? 'star' : 'crown')), lines.length ? h('div', { class: 'resLines' }, ...lines) : null);
+    resultM = Modal({ title, class: 'resultModal m-' + mode + (won ? ' win' : ' lose'), dismissible: false, transparent: true, body: h('div', { class: 'result' }, hero, table, nextBtn ? h('div', { class: 'nextRow' }, nextBtn) : null), actions: [again, back, home] });
   }
 
   // 設定即時套用
