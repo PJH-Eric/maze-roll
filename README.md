@@ -1,0 +1,60 @@
+# 迷宮滾球（maze-roll）
+
+3D 木質迷宮滾球。推著小球在迷宮裡跑，三種玩法：**同圖競速**、**搶星星**、**地板崩塌**。
+單機（闖關／自由練習／對 1～7 位電腦）與線上最多 4 人對戰（另可 20 人觀戰、邀請連結、聊天室）。平板觸控優先，手機、桌機都能玩。
+
+## 本機啟動
+
+```bash
+npm ci
+npm start          # http://localhost:3090（Windows 可直接按 啟動遊戲.bat）
+```
+
+`node server.js` 同時提供靜態檔、`/health` 與 WebSocket（`/ws`）。本機開啟時前端自動連同源伺服器，不需要設定 `GAME_SERVER_URL`。
+
+## 測試
+
+```bash
+npm test           # 規則單元測試（30 項）＋房間／邀請／觀戰／關房測試（24 項）
+npm run verify     # 再加上真 WebSocket 的端對端檢查
+```
+
+另有需要瀏覽器的巡檢腳本（需要 Playwright）：`scripts/e2e-online.js`（線上全流程）、`scripts/audit.js`（全畫面 RWD 巡檢與截圖）、`scripts/shots.js`（單一畫面截圖）。
+
+## 專案結構
+
+| 路徑 | 說明 |
+| --- | --- |
+| `public/js/rules.js` | **共用規則核心**（瀏覽器與伺服器同一份）：迷宮生成、球物理、三種玩法判定與排名、闖關 |
+| `public/js/ai.js` | 電腦對手四段難度 |
+| `public/js/scene.js` | Three.js 場景（木紋迷宮、彈珠、星星、崩塌地磚、斜俯視跟隨鏡頭） |
+| `public/js/game.js` | 單機／線上共用的對局控制 |
+| `public/js/ui.js` | 自訂 UI 元件（按鈕、開關、滑桿、下拉、捲動區含自繪捲軸、彈窗、輸入） |
+| `public/js/app.js` | 各畫面與流程 |
+| `public/js/config.js` | **唯一的 server URL 入口** |
+| `lib/hub.js` | 房間、邀請、觀戰、聊天、對局中樞 |
+| `server.js` | HTTP + WebSocket（`ws`） |
+| `public/vendor/three.module.min.js` | Three.js（MIT，隨附授權檔），免建置、離線可用 |
+
+## 玩法規則摘要
+
+- **同圖競速**：同 seed 迷宮，先滾進終點洞的人贏；第一名抵達後再等 15 秒；單人抵達立即結算。
+- **搶星星**：90 秒；碰到星星 +1，被撿走後在別處補生；同分比較早拿到最後一顆者名次前。
+- **地板崩塌**：腳下地磚開局 1.2 秒後開始碎裂（碎裂延遲依難度 3.2～1.2 秒）；掉下去淘汰；60 秒後場地隨機猝死；最後存活者贏。
+- 球與球互相穿透、不碰撞（延遲再高也不卡手）。
+- 難度五段：幼幼班／簡單／普通／困難／超難（迷宮大小）；電腦四段：幼幼班／簡單／普通／困難。
+- 闖關：五種難度各 100 關，依序解鎖，依完成時間評 1～3 星；進度存在瀏覽器 localStorage。
+
+## 部署（預設：GitHub Pages 前端 ＋ Render 後端）
+
+1. **後端（Render）**：以 `render.yaml` 建立 Web Service（`region: singapore`，免費方案）。在 Render 服務設定環境變數 `GAME_ALLOWED_ORIGIN`＝前端網址（如 `https://<帳號>.github.io`）；健康檢查為 `/health`。
+2. **前端（GitHub Pages）**：repo Settings → Pages 選 GitHub Actions；到 Settings → Secrets and variables → Actions → **Variables** 新增 `GAME_SERVER_URL`＝Render 後端的 HTTPS 網址。推到 `main` 即部署（workflow 會先跑測試，再把網址注入 `public/js/config.js`）。
+3. 前端只需要 `GAME_SERVER_URL` 這一個參數；Render 的憑證與秘密不放進 Pages，也不進前端 bundle。
+
+> 免費層限制：Render 服務閒置會休眠，第一次連線要等幾十秒（遊戲會顯示「連線中」）；房間資料只存在記憶體，服務重啟就會清空——房間本來就是可清理的暫時狀態。Render 不能修改既有服務的 region，需要換節點時請建立新服務、再更新 `GAME_SERVER_URL`，確認 `/health` 與線上對局可用後才停用舊服務。
+
+## 已知限制與假設
+
+- 「裝置傾斜」操作需要真機的陀螺儀（iOS 會要求授權），自動化測試環境無法驗證，預設為虛擬搖桿。
+- 線上房不含電腦對手（電腦只在單機模式）。
+- 全部音樂與音效以 WebAudio 即時合成，無外部素材、無授權問題；若要換成正式素材，改 `public/js/audio.js` 即可。

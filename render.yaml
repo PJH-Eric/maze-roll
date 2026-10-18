@@ -1,0 +1,14 @@
+# Render Blueprint：Web Service 明確指定新加坡節點（免費方案可能休眠，第一次連線會冷啟動）
+# 注意：Render 不支援修改既有服務的 region；更新這個檔案不會搬遷已建立的服務。
+services:
+  - type: web
+    name: maze-roll-server
+    runtime: node
+    region: singapore
+    plan: free
+    buildCommand: npm ci
+    startCommand: node server.js
+    healthCheckPath: /health
+    envVars:
+      - key: GAME_ALLOWED_ORIGIN
+        sync: false   # 例如 https://<你的帳號>.github.io（可用逗號分隔多個）
