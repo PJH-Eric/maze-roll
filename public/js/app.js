@@ -133,14 +133,14 @@ function homeScreen() {
 
 // ---------- 畫面：闖關 ----------
 function levelsScreen(p) {
-  const NEED = MR.DIFF_UNLOCK_STARS, dOpen = (i) => store.diffUnlocked(i, NEED);
+  const dOpen = () => true; // 五種難度皆可直接選擇，不需星星門檻
   let diff = p.diff != null && dOpen(p.diff) ? p.diff : Math.max(0, MR.DIFFS.findIndex((_, i) => dOpen(i) && store.levelStars(i).filter((x) => x > 0).length < 100));
   const grid = h('div', { class: 'levelGrid' }), prog = h('p', { class: 'note' });
   const sa = ScrollArea(h('div', { class: 'levelWrap' }, grid), { class: 'levelScroll', label: T('關卡列表') });
   const draw = () => {
     const stars = store.levelStars(diff), un = store.unlockedLevel(diff), done = stars.filter((x) => x > 0).length, tot = stars.reduce((a, b) => a + b, 0);
     grid.dataset.diff = String(diff); grid.style.setProperty('--dtheme', MR.DIFF_THEME[diff].accent);
-    const nx = diff < 4 ? (dOpen(diff + 1) ? T('　{x1}已開放', { x1: T(MR.DIFFS[diff + 1]) }) : T('　再 {x1} 顆星開放{x2}', { x1: NEED - tot, x2: T(MR.DIFFS[diff + 1]) })) : '';
+    const nx = '';
     prog.textContent = T('{wood}・已通過 {done}/100 關・共 {tot} 顆星{nx}・迷宮大小 {x5}×{x6} ～ {x7}×{x8}', { wood: T(MR.DIFF_THEME[diff].wood), done, tot, nx, x5: MR.levelSize(diff, 1), x6: MR.levelSize(diff, 1), x7: MR.levelSize(diff, 100), x8: MR.levelSize(diff, 100) });
     grid.replaceChildren();
     for (let n = 1; n <= 100; n++) {
@@ -152,7 +152,7 @@ function levelsScreen(p) {
       if (n === un) setTimeout(() => b.scrollIntoView({ block: 'center' }), 30);
     }
   };
-  const chips = Chips({ label: T('難度'), value: diff, options: MR.DIFFS.map((d, i) => ({ value: i, label: T(d), disabled: !dOpen(i), sub: dOpen(i) ? T(MR.DIFF_THEME[i].wood) : T('需 {NEED} 顆星', { NEED }) })), onChange: (v) => { diff = v; draw(); sa.view.scrollTop = 0; } });
+  const chips = Chips({ label: T('難度'), value: diff, options: MR.DIFFS.map((d, i) => ({ value: i, label: T(d), disabled: !dOpen(i), sub: T(MR.DIFF_THEME[i].wood) })), onChange: (v) => { diff = v; draw(); sa.view.scrollTop = 0; } });
   $screen.append(h('section', { class: 'screen levels' }, topbar(T('闖關模式'), () => go('home')), h('div', { class: 'body' }, panel(chips, prog, sa))));
   draw();
 }

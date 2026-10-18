@@ -27,8 +27,6 @@
   /** 競速迷宮的「環路」比例：越難越少（死路越多、越像真迷宮）。 */
   const RACE_BRAID = [0.5, 0.3, 0.15, 0.05, 0];
   const braidFor = (mode, diff) => (mode === 'race' ? RACE_BRAID[diff | 0] : BRAID[mode]);
-  /** 闖關：要在前一個難度累積這麼多顆星，才開放下一個難度。 */
-  const DIFF_UNLOCK_STARS = 30;
   const AI_NAMES = ['幼幼班', '簡單', '普通', '困難'];
   const SIZE = { race: [6, 10, 15, 21, 28], stars: [8, 11, 15, 19, 23], collapse: [6, 8, 10, 13, 16] };
   const BRAID = { race: 0.05, stars: 0.5, collapse: 0.55 };
@@ -390,7 +388,7 @@
   }
 
   return {
-    N, E, S, W, DX, DY, OPP, DIRS, MODES, MODE_NAMES, DIFFS, DIFF_THEME, DIFF_UNLOCK_STARS, braidFor, AI_NAMES, SIZE, BRAID, CRUMBLE, LEVELS_PER_DIFF, PHYS,
+    N, E, S, W, DX, DY, OPP, DIRS, MODES, MODE_NAMES, DIFFS, DIFF_THEME, braidFor, AI_NAMES, SIZE, BRAID, CRUMBLE, LEVELS_PER_DIFF, PHYS,
     STAR_R, GOAL_R, STAR_TIME, GRACE, MAX_PLAYERS, COLLAPSE_SUDDEN, COLLAPSE_HEAD,
     rng, hashSeed, clamp, makeMaze, cellCenter, cellAt, stepBall, levelSize, levelSeed, levelPar, levelStars, World,
   };

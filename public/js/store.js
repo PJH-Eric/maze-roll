@@ -26,8 +26,8 @@ export const store = {
   levelStars(diff) { const a = load().levels[diff] || []; return a; },
   unlockedLevel(diff) { const a = load().levels[diff] || []; let n = 0; while (n < a.length && a[n] > 0) n++; return Math.min(100, n + 1); },
   totalStars(diff) { return (load().levels[diff] || []).reduce((a, b) => a + b, 0); },
-  /** 第一個難度一開始就開放；其餘需在前一個難度累積足夠星星。 */
-  diffUnlocked(diff, need) { return diff <= 0 || this.totalStars(diff - 1) >= need; },
+  /** 五種難度一開始就全部開放（關卡仍依序解鎖）。 */
+  diffUnlocked() { return true; },
   setLevelStars(diff, n, stars) {
     const L = load().levels; const a = (L[diff] = (L[diff] || []).slice());
     while (a.length < n) a.push(0);
