@@ -225,6 +225,7 @@ export class Scene3D {
         else if (b.hist.length && dist < 1e-4 && Math.random() < 0.08) b.hist.pop();
         b.trailMeshes.forEach((m, k) => { const h = b.hist[k]; m.visible = !!h; if (h) { m.position.set(h[0], 0.035, h[1]); m.scale.setScalar(3.4 * (1 - k / TRAIL_N) + 0.5); } });
       } else if (b.hist.length) { b.hist.length = 0; b.trailMeshes.forEach((m) => { m.visible = false; }); }
+      { const ls = (typeof innerWidth !== 'undefined' && innerWidth < 560) ? 0.76 : 1; b.label.scale.set(1.15 * ls, 0.345 * ls, 1); }
       b.label.position.y = 1.05 + (p.idx % 3) * 0.2 + (R - y) * -0.2; b.label.visible = p.alive || b.fall < 1.5;
       if (b.ring) { b.ring.position.y = 0.02 - (y - R); b.ring.material.opacity = 0.55 + 0.3 * Math.sin(t * 5); b.ring.scale.setScalar(1 + 0.06 * Math.sin(t * 5)); }
     });

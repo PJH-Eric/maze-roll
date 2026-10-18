@@ -328,7 +328,12 @@ function roomScreen() {
     }
     rc(specs, h('h3', {}, icon('eye'), T(' 觀戰 {length}/{maxSpecs}', { length: sp.length, maxSpecs: r.maxSpecs })), sp.length ? h('p', { class: 'note', text: sp.map((m) => m.name + (m.id === session.you ? T('（你）') : '')).join(T('、')) }) : h('p', { class: 'note', text: T('還沒有人觀戰') }));
     inviteEl.replaceChildren();
-    if (r.invite) inviteEl.append(h('h3', { text: T('邀請朋友') }), h('div', { class: 'row2' }, Button({ label: T('複製加入連結'), icon: 'copy', size: 'small', onClick: () => copyText(inviteLink('player')) }), Button({ label: T('複製觀戰連結'), icon: 'eye', size: 'small', onClick: () => copyText(inviteLink('spec')) }), isHost ? Button({ label: T('撤銷並重發'), size: 'small', onClick: () => net.send({ t: 'invite', act: 'revoke' }) }) : null));
+    if (r.invite) {
+      const row = (label, kind, ico) => h('div', { class: 'linkRow' }, h('div', { class: 'linkLbl' }, icon(ico), h('span', { text: label })),
+        h('div', { class: 'linkUrl', role: 'textbox', 'aria-readonly': 'true', 'aria-label': label, tabindex: '0', text: inviteLink(kind) }),
+        Button({ label: T('複製'), icon: 'copy', size: 'small', onClick: () => copyText(inviteLink(kind)) }));
+      inviteEl.append(h('h3', { text: T('邀請朋友') }), row(T('加入連結（玩家）'), 'player', 'link'), row(T('觀戰連結'), 'spec', 'eye'), isHost ? h('div', { class: 'row2' }, Button({ label: T('撤銷並重發'), size: 'small', onClick: () => net.send({ t: 'invite', act: 'revoke' }) })) : null);
+    }
     actions.replaceChildren();
     if (!isPlayer) actions.append(h('p', { class: 'note', text: session.fallback ? T('房間已滿或已開始，你目前是觀戰者。') : T('你是觀戰者：可以看全場並聊天。') }));
     else if (isHost) { const ok = players.length >= 2 && players.every((m) => m.id === r.host || m.ready); actions.append(Button({ label: ok ? T('開始遊戲') : players.length < 2 ? T('至少需要 2 位玩家') : T('等待大家準備'), variant: 'primary', size: 'big', disabled: !ok, onClick: () => net.send({ t: 'start' }) })); }
@@ -338,7 +343,7 @@ function roomScreen() {
   session.subs.add(sub); session.unread = 0;
   $screen.append(h('section', { class: 'screen room' }, topbar(T('房間'), () => { net.send({ t: 'leave' }); go('online'); }),
     h('div', { class: 'body roomBody' }, h('aside', { class: 'panelSide roomChat' }, h('h3', { text: T('聊天室') }), chat),
-      panel(ScrollArea(h('div', { class: 'roomMain' }, head, settings, h('h3', { text: T('玩家') }), seats, specs, inviteEl), { class: 'roomScroll' }), actions))));
+      panel(ScrollArea(h('div', { class: 'roomMain' }, head, inviteEl, settings, h('h3', { text: T('玩家') }), seats, specs), { class: 'roomScroll' }), actions))));
   draw();
   return () => session.subs.delete(sub);
 }

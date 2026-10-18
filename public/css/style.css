@@ -82,13 +82,13 @@ h3 { font-size: 1rem; margin: 10px 0 6px; letter-spacing: .08em; }
 
 /* ---- 自訂捲動區 ---- */
 .sa { position: relative; flex: 1 1 auto; min-height: 0; min-width: 0; display: flex; }
-.sa-view { flex: 1; min-width: 0; min-height: 0; overflow: auto; scrollbar-width: none; -ms-overflow-style: none; padding-right: 16px; overscroll-behavior: contain; }
+.sa-view { flex: 1; min-width: 0; min-height: 0; overflow: auto; scrollbar-width: none; -ms-overflow-style: none; padding-right: 14px; overscroll-behavior: contain; }
 .sa-view::-webkit-scrollbar { display: none; }
 .sa-track { position: absolute; border-radius: 8px; background: rgba(42,26,16,.28); }
 .sa-track.v { top: 2px; bottom: 2px; right: 1px; width: 11px; }
 .sa-track.hz { left: 2px; right: 14px; bottom: 1px; height: 11px; }
 .sa-thumb { width: 100%; height: 100%; background: linear-gradient(90deg, #a8693a, #6d4026); border: 2px solid #2a1a10; border-radius: 8px; touch-action: none; cursor: grab; }
-.sa:not(.scrollable) .sa-view { padding-right: 0; }
+/* 捲軸槽固定保留（避免有無捲軸造成換行抖動的版面迴圈）*/
 .panelSide .sa-track { background: rgba(255,255,255,.12); }
 
 /* ---- 晶片（單選）---- */
@@ -370,3 +370,45 @@ body::before { content: ""; position: fixed; inset: 0; pointer-events: none; z-i
 /* 放大地圖：尺寸依視窗計算，不出現捲軸 */
 .mapModal .sa-view { overflow: hidden !important; }
 .mapModal .sa-bar, .mapModal .sa-track, .mapModal [class*="sa-bar"] { display: none !important; }
+
+/* ======== 邀請連結：網址直接顯示在畫面上 ======== */
+.linkRow { display: grid; grid-template-columns: 1fr auto; grid-template-areas: "lbl lbl" "url btn"; gap: 4px 8px; align-items: center; padding: 8px 10px; border-radius: 12px; background: rgba(47,143,131,.14); border: 2px solid rgba(47,143,131,.55); }
+.linkLbl { grid-area: lbl; display: flex; align-items: center; gap: 6px; font-size: .82rem; font-weight: 800; color: #1f6b61; }
+.linkLbl .ico svg { width: 1.1em; height: 1.1em; }
+.linkUrl { grid-area: url; min-width: 0; padding: 6px 9px; border-radius: 9px; background: #fff8e6; border: 2px solid #2a1a10; color: var(--ink); font: 700 .78rem/1.35 ui-monospace, "SF Mono", Menlo, Consolas, monospace; letter-spacing: 0; word-break: break-all; user-select: all; -webkit-user-select: all; max-height: 3.9em; overflow: hidden; }
+.linkUrl:focus-visible { outline: 3px solid var(--gold); outline-offset: 1px; }
+.linkRow .btn { grid-area: btn; }
+.inviteEl, .roomMain > div:last-child { display: flex; flex-direction: column; gap: 8px; }
+
+/* ======== 手機介面美化（窄螢幕）======== */
+@media (max-width: 560px) {
+  .screen { gap: 8px; }
+  .topbar .title { font-size: 1.15rem; }
+  /* 設定／選項頁：面板依內容高度，不留大片空白 */
+  .body > .panel { padding: 14px 14px 16px; border-width: 3px; border-radius: 18px; }
+  .panel::before, .panel::after { opacity: .8; }
+  .btn { min-height: 48px; }
+  .btn.small { min-height: 44px; }
+  .btn.tiny { min-height: 34px; }
+  .chip { min-height: 46px; }
+  .chip.on { transform: translateY(1px); }
+  h3 { font-size: .95rem; margin: 12px 0 6px; padding-bottom: 4px; border-bottom: 2px solid rgba(42,26,16,.14); }
+  .lv { border-radius: 12px; }
+  .levelGrid { gap: 8px; }
+  /* 首頁：標誌與按鈕留白更舒適 */
+  .btn.big { min-height: 64px; border-radius: 14px; }
+  /* 遊戲中：玩家名牌縮小避免互相堆疊 */
+  .hudTop { gap: 8px; border-radius: 14px; }
+  /* 結算：按鈕固定三等分、字體不換行 */
+  .modal { padding: 14px; border-radius: 20px; }
+  .modal .actions .btn, .modal .panelActions .btn { padding: 0 .6em; font-size: .92rem; }
+  /* 房間：邀請連結區塊可見，聊天室縮短 */
+  .roomChat { height: min(26dvh, 190px); }
+  .linkRow { grid-template-columns: 1fr; grid-template-areas: "lbl" "url" "btn"; }
+  .linkRow .btn { justify-self: end; min-height: 40px; }
+}
+@media (max-width: 560px) and (orientation: portrait) { .roomBody > .panel { flex: 1 1 auto; min-height: 0; } }
+@media (max-width: 760px) { .roomBody { min-height: 0; } .roomBody > .panel { min-height: 0; } .roomBody > .roomChat, .roomBody > .panelSide { flex: 0 0 auto; } }
+@media (max-width: 560px) { .roomBody { gap: 8px; } }
+@media (max-width: 760px) { .roomBody > .panel:not(.roomChat) { flex: 1 1 0; height: auto; } }
+@media (max-width: 760px) { .roomChat { height: auto !important; max-height: 36dvh; overflow: hidden; } .roomChat .chatScroll { flex: 1 1 56px; min-height: 56px; } .roomChat .chatBox { min-height: 0; } }
