@@ -555,3 +555,7 @@ p, .rtable .nm { text-wrap-style: pretty; }
 .gameScreen.narrow.sideOpen .hudTop { left: calc((min(84vw, 330px) + 60px + 100% - 150px) / 2); }
 @media (max-width: 760px) { .gameScreen.narrow.sideOpen .hudTop { visibility: hidden; } }
 .nw { white-space: nowrap; }
+.lv .lvTime { font-size: .7rem; font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums; color: #6b4326; white-space: nowrap; }
+.lv.done .lvTime { color: #5a3722; }
+.lv.next .lvTime { opacity: .6; }
+@media (max-width: 440px) { .lv .lvTime { font-size: .62rem; } .lv b { font-size: 1.1rem; } }

@@ -146,8 +146,9 @@ function levelsScreen(p) {
     grid.replaceChildren();
     for (let n = 1; n <= 100; n++) {
       const locked = n > un, s = stars[n - 1] || 0;
+      const bt = !locked && store.getBest('lv-' + diff + '-' + n);
       const b = h('button', { type: 'button', class: 'lv' + (locked ? ' locked' : '') + (s ? ' done' : '') + (n === un ? ' next' : ''), disabled: locked || null, 'aria-label': T('第 {n} 關{x2}', { n, x2: locked ? T('（未解鎖）') : s ? T('，{s} 顆星', { s }) : '' }) },
-        h('b', { text: String(n) }), locked ? icon('lock') : h('span', { class: 'stars', text: '★'.repeat(s) + '☆'.repeat(3 - s) }));
+        h('b', { text: String(n) }), locked ? icon('lock') : h('span', { class: 'stars', text: '★'.repeat(s) + '☆'.repeat(3 - s) }), locked ? null : h('span', { class: 'lvTime', text: bt ? fmtShort(bt) : '--' }));
       if (!locked) b.addEventListener('click', () => startLocal({ kind: 'level', mode: 'race', diff, level: n, ais: [] }));
       grid.append(b);
       if (n === un) setTimeout(() => b.scrollIntoView({ block: 'center' }), 30);
