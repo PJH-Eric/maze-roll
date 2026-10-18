@@ -161,6 +161,8 @@ window.MR_EN = {
  "裝置傾斜": "Device tilt",
  "複製加入連結": "Copy join link",
  "複製": "Copy",
+ "第 {x1} 關": "Level {x1}",
+ "本關最佳": "Level best",
  "回起點": "Restart",
  "回到起點（R）": "Back to start (R)",
  "新紀錄": "New best",

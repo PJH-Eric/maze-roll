@@ -516,3 +516,15 @@ p, .rtable .nm { text-wrap: pretty; }
   .inviteCard .btn { align-self: stretch; }
 }
 @media (max-width: 380px) { html { font-size: 15px; } .modalActions .btn, .panelActions .btn { font-size: .82rem; } }
+
+/* ======== 闖關結算：關卡標籤、星星列 ======== */
+.resLevel { margin: 0; padding: 2px 12px; border-radius: 999px; background: rgba(42,26,16,.12); color: #5a3722; font-size: .82rem; font-weight: 800; letter-spacing: .08em; }
+.resStars { display: flex; gap: 6px; justify-content: center; margin: 2px 0 0; }
+.rs { width: 52px; height: 52px; display: grid; place-items: center; color: rgba(90,55,34,.22); animation: badgePop .55s cubic-bezier(.2,1.6,.4,1) both; }
+.rs .ico svg { width: 100%; height: 100%; }
+.rs:nth-child(2) { margin-top: -8px; }
+.rs.on { color: #f2b51a; filter: drop-shadow(0 3px 0 rgba(122,80,8,.45)); }
+.rs:not(.on) .ico svg { stroke: rgba(90,55,34,.35); stroke-width: 1.2; }
+@media (max-height: 520px) { .rs { width: 38px; height: 38px; } .resLevel { display: none; } }
+@media (prefers-reduced-motion: reduce) { .rs { animation: none; } }
+@media (max-height: 520px) { .resHero { padding-top: 8px; } .resBadge { margin-top: 0; } .resultModal .modalActions { padding-top: 6px; } }

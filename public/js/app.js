@@ -474,7 +474,7 @@ function gameScreen(p) {
 
   function showResults(info) {
     const { world, results, mine } = info, solo = world.players.length === 1;
-    let title, lines = [], extra = [], nextBtn = null, newBest = false, bestTxt = '';
+    let title, lines = [], extra = [], nextBtn = null, newBest = false, bestTxt = '', isLevel = false;
     const mineP = meId ? world.byId.get(meId) : null;
     if (!meId) title = T('本局結束');
     else if (mode === 'race') title = mine && mine.dnf ? T('時間到，沒能抵達終點') : solo ? T('抵達終點！') : mine.place === 1 ? T('你第一個抵達！') : T('第 {place} 名', { place: mine.place });
@@ -484,7 +484,9 @@ function gameScreen(p) {
     if (!online && mineP) {
       if (cfg && cfg.kind === 'level' && mode === 'race' && mine && !mine.dnf) {
         const st = MR.levelStars(mine.time, world.maze), saved = store.setLevelStars(cfg.diff, cfg.level, st);
-        lines.push(h('p', { class: 'stars big', text: '★'.repeat(st) + '☆'.repeat(3 - st) }), h('p', { class: 'note', text: T('完成時間 {x1}（3 星：{x2} 內，2 星：{x3} 內）', { x1: fmtShort(mine.time), x2: fmtShort(MR.levelPar(world.maze) * 1.35), x3: fmtShort(MR.levelPar(world.maze) * 2.2) }) }));
+        const lk = 'lv-' + cfg.diff + '-' + cfg.level; newBest = store.recordBest(lk, mine.time, true); bestTxt = fmtShort(store.getBest(lk)); isLevel = true;
+        lines.push(h('p', { class: 'resLevel', text: T(MR.DIFFS[cfg.diff]) + ' · ' + T('第 {x1} 關', { x1: cfg.level }) }),
+          h('div', { class: 'resStars', role: 'img', 'aria-label': st + ' / 3 ' + T('星星') }, [0, 1, 2].map((i) => h('span', { class: 'rs' + (i < st ? ' on' : ''), style: { animationDelay: (0.15 + i * 0.18) + 's' } }, icon('star')))));
         if (cfg.level < 100) nextBtn = Button({ label: T('下一關（第 {x1} 關）', { x1: cfg.level + 1 }), variant: 'primary', onClick: () => { resultM.close(); startLocal(Object.assign({}, cfg, { level: cfg.level + 1 })); } });
         else lines.push(h('p', { class: 'note', text: T('這個難度的 100 關全部通過了！') }));
       } else if (cfg && cfg.kind === 'practice' && mine) {
@@ -514,10 +516,10 @@ function gameScreen(p) {
     home = Button({ label: T('回到首頁'), onClick: () => { resultM.close(); if (online) net.send({ t: 'leave' }); go('home'); } });
     const tiles = [];
     if (meId && mine) {
-      tiles.push({ k: T('名次'), v: mode === 'race' && mine.dnf ? '—' : mine.place + ' / ' + world.players.length });
+      if (!isLevel) tiles.push({ k: T('名次'), v: mode === 'race' && mine.dnf ? '—' : mine.place + ' / ' + world.players.length });
       const mainV = mode === 'race' ? (mine.dnf ? T('未完賽') : fmtShort(mine.time)) : mode === 'stars' ? mine.score + ' ★' : mine.alive ? T('最後倖存') : T('存活 {t} 秒', { t: mine.time.toFixed(2) });
       tiles.push({ k: mode === 'race' ? T('用時') : mode === 'stars' ? T('星星數') : T('存活時間'), v: mainV, badge: newBest ? T('新紀錄') : '' });
-      if (bestTxt) tiles.push({ k: T('本機最佳'), v: bestTxt, span: true });
+      if (bestTxt) tiles.push({ k: isLevel ? T('本關最佳') : T('本機最佳'), v: bestTxt, span: !isLevel });
     }
     const tileEl = tiles.length ? h('dl', { class: 'resStats' }, tiles.map((t) => h('div', { class: 'resStat' + (t.span ? ' span' : '') }, h('dt', {}, h('span', { text: t.k }), t.badge ? h('b', { class: 'resBadgeTag', text: t.badge }) : null), h('dd', { text: t.v })))) : null;
     const won = !!meId && (mode === 'race' ? !!mine && !mine.dnf && (solo || mine.place === 1) : mode === 'stars' ? !!mine && (solo || mine.place === 1) : !!mine && (solo ? false : (mine.alive || mine.place === 1)));
