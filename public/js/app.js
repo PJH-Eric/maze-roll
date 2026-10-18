@@ -141,7 +141,8 @@ function levelsScreen(p) {
     const stars = store.levelStars(diff), un = store.unlockedLevel(diff), done = stars.filter((x) => x > 0).length, tot = stars.reduce((a, b) => a + b, 0);
     grid.dataset.diff = String(diff); grid.style.setProperty('--dtheme', MR.DIFF_THEME[diff].accent);
     const nx = '';
-    prog.textContent = T('{wood}・已通過 {done}/100 關・共 {tot} 顆星{nx}・迷宮大小 {x5}×{x6} ～ {x7}×{x8}', { wood: T(MR.DIFF_THEME[diff].wood), done, tot, nx, x5: MR.levelSize(diff, 1), x6: MR.levelSize(diff, 1), x7: MR.levelSize(diff, 100), x8: MR.levelSize(diff, 100) });
+    const progTxt = T('{wood}・已通過 {done}/100 關・共 {tot} 顆星{nx}・迷宮大小 {x5}×{x6} ～ {x7}×{x8}', { wood: T(MR.DIFF_THEME[diff].wood), done, tot, nx, x5: MR.levelSize(diff, 1), x6: MR.levelSize(diff, 1), x7: MR.levelSize(diff, 100), x8: MR.levelSize(diff, 100) });
+    prog.textContent = ''; progTxt.split(/[・·]\s*/).forEach((seg, k) => { if (k) prog.appendChild(document.createTextNode(' · ')); prog.appendChild(h('span', { class: 'nw', text: seg })); });
     grid.replaceChildren();
     for (let n = 1; n <= 100; n++) {
       const locked = n > un, s = stars[n - 1] || 0;

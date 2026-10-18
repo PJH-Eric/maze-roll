@@ -549,3 +549,9 @@ p, .rtable .nm { text-wrap-style: pretty; }
 /* 超寬／高解析度桌機：整體放大，避免內容過小 */
 @media (min-width: 1600px) and (min-height: 900px) { html { font-size: 21px; } .body > .panel { width: min(100%, 960px); } .homeIn { max-width: 600px; } .respawnBtn { width: 78px; height: 78px; } }
 @media (min-width: 2200px) and (min-height: 1200px) { html { font-size: 25px; } .body > .panel { width: min(100%, 1120px); } .homeIn { max-width: 700px; } }
+
+/* ---- v13 對齊修正：窄版抽屜開啟時，計時膠囊避開抽屜與開關鈕 ---- */
+.sideTop:only-child { max-height: 100%; }
+.gameScreen.narrow.sideOpen .hudTop { left: calc((min(84vw, 330px) + 60px + 100% - 150px) / 2); }
+@media (max-width: 760px) { .gameScreen.narrow.sideOpen .hudTop { visibility: hidden; } }
+.nw { white-space: nowrap; }
