@@ -2,7 +2,7 @@
 const KEY = 'maze-roll.v1';
 const DEFAULT = {
   bgm: true, sfx: true, bgmVol: 0.55, sfxVol: 0.8, vib: true, reduce: false,
-  ctrl: 'stick', cam: 1, minimap: true, shapes: false, name: '', side: true,
+  ctrl: 'stick', cam: 1, minimap: true, shapes: false, ball: 'glass', trail: true, name: '', side: true,
   levels: {}, best: {},
 };
 let mem = null;

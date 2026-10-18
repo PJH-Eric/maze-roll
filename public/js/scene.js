@@ -34,6 +34,19 @@ function ballTex(color) {
     g.fillStyle = 'rgba(0,0,0,0.28)'; for (let i = 0; i < 4; i++) { g.beginPath(); g.arc(w * (i + 0.5) / 4, h * 0.2, 11, 0, 7); g.fill(); g.beginPath(); g.arc(w * (i + 0.5) / 4, h * 0.8, 11, 0, 7); g.fill(); }
   });
 }
+export const BALL_TYPES = [{ id: 'glass', name: '玻璃珠' }, { id: 'wood', name: '木球' }, { id: 'steel', name: '鐵球' }, { id: 'rainbow', name: '彩虹球' }];
+const TRAIL_N = 14;
+/** 依球種建立材質：玻璃（預設）、木球（木紋＋玩家色環）、鐵球（金屬）、彩虹球（漸層）。 */
+function ballMat(type, color) {
+  if (type === 'wood') return new THREE.MeshStandardMaterial({ roughness: 0.55, metalness: 0.05, map: canvasTex(256, 128, (g, w, h) => {
+    grain('#c98f55', 'rgba(70,32,10,A)', 24, 5)(g, w, h); g.fillStyle = color; g.fillRect(0, h * 0.42, w, h * 0.16); g.fillStyle = 'rgba(255,255,255,.35)'; g.fillRect(0, h * 0.455, w, h * 0.03); }) });
+  if (type === 'steel') return new THREE.MeshStandardMaterial({ roughness: 0.22, metalness: 0.95, color: 0xd8dde3, map: canvasTex(256, 128, (g, w, h) => {
+    g.fillStyle = '#e4e8ec'; g.fillRect(0, 0, w, h); g.fillStyle = color; g.fillRect(0, h * 0.44, w, h * 0.12); g.fillStyle = 'rgba(0,0,0,.12)'; for (let i = 0; i < 6; i++) g.fillRect(0, i * h / 6, w, 2); }) });
+  if (type === 'rainbow') return new THREE.MeshStandardMaterial({ roughness: 0.2, metalness: 0.2, map: canvasTex(256, 128, (g, w, h) => {
+    const gr = g.createLinearGradient(0, 0, w, 0); ['#e8453c', '#f5a623', '#f8e04a', '#4cbf5a', '#3d8ee0', '#8e5bd0', '#e8453c'].forEach((c, i) => gr.addColorStop(i / 6, c)); g.fillStyle = gr; g.fillRect(0, 0, w, h);
+    g.fillStyle = 'rgba(255,255,255,.55)'; g.fillRect(0, h * 0.44, w, h * 0.12); }) });
+  return new THREE.MeshStandardMaterial({ map: ballTex(color), roughness: 0.18, metalness: 0.25 });
+}
 function labelTex(name, idx, me, shapes) {
   return canvasTex(320, 96, (g, w, h) => {
     g.fillStyle = 'rgba(30,18,10,0.82)'; const x = 4, y = 6, ww = w - 8, hh = h - 12, rr = 20;
@@ -57,7 +70,7 @@ function starShape() {
 export class Scene3D {
   constructor(canvas, opts) {
     opts = opts || {};
-    this.canvas = canvas; this.reduce = !!opts.reduce; this.camMode = 1; this.shapes = !!opts.shapes;
+    this.canvas = canvas; this.reduce = !!opts.reduce; this.camMode = 1; this.shapes = !!opts.shapes; this.ballType = opts.ballType || 'glass'; this.trail = opts.trail !== false;
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance', preserveDrawingBuffer: !!opts.preserve });
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
     this.renderer.shadowMap.enabled = true; this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -146,15 +159,24 @@ export class Scene3D {
   _addBall(p) {
     const idx = p.idx, me = p.id === this.me;
     const g = new THREE.Group();
-    const mesh = new THREE.Mesh(this.ballGeo, new THREE.MeshStandardMaterial({ map: ballTex(BALL_COLORS[idx % 8]), roughness: 0.18, metalness: 0.25 }));
+    const mesh = new THREE.Mesh(this.ballGeo, ballMat(me ? this.ballType : 'glass', BALL_COLORS[idx % 8]));
     mesh.castShadow = true; g.add(mesh);
     const label = new THREE.Sprite(new THREE.SpriteMaterial({ map: labelTex(p.name, idx, me, this.shapes), depthTest: false, transparent: true }));
     label.scale.set(1.15, 0.345, 1); label.position.y = 0.72; label.renderOrder = 20; g.add(label);
     let ring = null;
     if (me) { ring = new THREE.Mesh(new THREE.RingGeometry(0.27, 0.36, 36), new THREE.MeshBasicMaterial({ color: 0xffd24a, transparent: true, opacity: 0.85, side: THREE.DoubleSide, depthWrite: false })); ring.rotation.x = -Math.PI / 2; ring.position.y = 0.02; g.add(ring); }
+    const trailMeshes = []; const tmat = new THREE.MeshBasicMaterial({ color: BALL_COLORS[idx % 8], transparent: true, opacity: 0.4, depthWrite: false });
+    for (let k = 0; k < TRAIL_N; k++) { const tm = new THREE.Mesh(this.particleGeo, tmat); tm.visible = false; this.root.add(tm); trailMeshes.push(tm); }
     this.root.add(g);
-    this.balls.set(p.id, { g, mesh, label, ring, lx: p.x, ly: p.y, fall: 0, fallV: 0, sink: 0, hidden: false, p });
+    this.balls.set(p.id, { g, mesh, label, ring, trailMeshes, hist: [], lastTx: p.x, lastTy: p.y, lx: p.x, ly: p.y, fall: 0, fallV: 0, sink: 0, hidden: false, p });
   }
+  setBall(type) { // 換球種（只影響自己的球）
+    this.ballType = type; if (!this.root) return;
+    const b = this.balls.get(this.me); if (!b) return;
+    if (b.mesh.material.map) b.mesh.material.map.dispose(); b.mesh.material.dispose();
+    b.mesh.material = ballMat(type, BALL_COLORS[b.p.idx % 8]);
+  }
+  setTrail(on) { this.trail = on; if (!on && this.balls) this.balls.forEach((b) => { b.hist.length = 0; b.trailMeshes.forEach((m) => { m.visible = false; }); }); }
   setShapes(on) { // 色彩輔助：標籤改用形狀區分
     this.shapes = on; if (!this.root) return;
     this.balls.forEach((b) => { b.label.material.map.dispose(); b.label.material.map = labelTex(b.p.name, b.p.idx, b.p.id === this.me, on); b.label.material.needsUpdate = true; });
@@ -197,6 +219,11 @@ export class Scene3D {
       if (!p.alive) { b.fallV += 9 * dt; b.fall += b.fallV * dt; y = R - b.fall; s = Math.max(0.2, 1 - b.fall * 0.15); if (b.fall > 9) b.hidden = true; }
       if (this.world.mode === 'race' && p.fin != null) { b.sink = Math.min(1, b.sink + dt * 2.2); y = R - b.sink * 0.3; s = 1 - b.sink * 0.45; if (b.sink >= 1) b.hidden = true; }
       g.visible = !b.hidden; g.position.set(p.x, y, p.y); b.mesh.scale.setScalar(s);
+      if (this.trail && !this.reduce && p.alive && !b.hidden) {
+        if (Math.hypot(p.x - b.lastTx, p.y - b.lastTy) > 0.14) { b.hist.unshift([p.x, p.y]); b.lastTx = p.x; b.lastTy = p.y; if (b.hist.length > TRAIL_N) b.hist.pop(); }
+        else if (b.hist.length && dist < 1e-4 && Math.random() < 0.08) b.hist.pop();
+        b.trailMeshes.forEach((m, k) => { const h = b.hist[k]; m.visible = !!h; if (h) { m.position.set(h[0], 0.035, h[1]); m.scale.setScalar(3.4 * (1 - k / TRAIL_N) + 0.5); } });
+      } else if (b.hist.length) { b.hist.length = 0; b.trailMeshes.forEach((m) => { m.visible = false; }); }
       b.label.position.y = 0.72 + (p.idx % 3) * 0.2 + (R - y) * -0.2; b.label.visible = p.alive || b.fall < 1.5;
       if (b.ring) { b.ring.position.y = 0.02 - (y - R); b.ring.material.opacity = 0.55 + 0.3 * Math.sin(t * 5); b.ring.scale.setScalar(1 + 0.06 * Math.sin(t * 5)); }
     });

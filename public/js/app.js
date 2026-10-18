@@ -5,7 +5,7 @@ import { audio } from './audio.js';
 import { Input } from './input.js';
 import { Game } from './game.js';
 import { net, wsUrl } from './net.js';
-import { BALL_COLORS, SHAPES } from './scene.js';
+import { BALL_COLORS, SHAPES, BALL_TYPES } from './scene.js';
 
 const MR = window.MR;
 const $app = document.getElementById('app');
@@ -64,6 +64,8 @@ function openSettings() {
     vib: Toggle({ label: '震動回饋', value: S.get('vib'), onChange: (v) => S.set('vib', v) }),
     cam: Chips({ label: '鏡頭距離', value: S.get('cam'), options: [{ value: 0, label: '近' }, { value: 1, label: '中' }, { value: 2, label: '遠' }], onChange: (v) => S.set('cam', v) }),
     minimap: Toggle({ label: '小地圖', value: S.get('minimap'), onChange: (v) => S.set('minimap', v) }),
+    ball: Chips({ label: '球種', value: S.get('ball'), options: BALL_TYPES.map((b) => ({ value: b.id, label: b.name })), onChange: (v) => S.set('ball', v) }),
+    trail: Toggle({ label: '滾動軌跡', value: S.get('trail'), onChange: (v) => S.set('trail', v) }),
     shapes: Toggle({ label: '色彩輔助（用形狀區分玩家）', value: S.get('shapes'), onChange: (v) => S.set('shapes', v) }),
     reduce: Toggle({ label: '減少動態（關閉粒子、晃動與浮動）', value: S.get('reduce'), onChange: (v) => S.set('reduce', v) }),
   };
@@ -71,7 +73,7 @@ function openSettings() {
   const body = h('div', { class: 'settings' },
     sect('聲音', rows.bgm, rows.bgmVol, rows.sfx, rows.sfxVol),
     sect('操作', h('div', { class: 'rowStack' }, h('span', { class: 'rowLabel', text: '操作方式' }), rows.ctrl), rows.vib, h('p', { class: 'hint' }, '鍵盤：', Key('W'), Key('A'), Key('S'), Key('D'), ' 或方向鍵都能操作。')),
-    sect('畫面與輔助', h('div', { class: 'rowStack' }, h('span', { class: 'rowLabel', text: '鏡頭距離' }), rows.cam), rows.minimap, rows.shapes, rows.reduce));
+    sect('畫面與輔助', h('div', { class: 'rowStack' }, h('span', { class: 'rowLabel', text: '鏡頭距離' }), rows.cam), h('div', { class: 'rowStack' }, h('span', { class: 'rowLabel', text: '球種（自己的球）' }), rows.ball), rows.trail, rows.minimap, rows.shapes, rows.reduce));
   const g = activeGame && !activeGame.online && activeGame.state === 'play' && !activeGame.paused ? activeGame : null;
   if (g) g.pause(true);
   m = Modal({
@@ -467,6 +469,8 @@ function gameScreen(p) {
     if (k === 'ctrl' || k === '*') input.setScheme(store.get('ctrl'));
     if (k === 'cam' || k === '*') game.scene.setCam(store.get('cam'));
     if (k === 'shapes' || k === '*') game.scene.setShapes(store.get('shapes'));
+    if (k === 'ball' || k === '*') game.scene.setBall(store.get('ball'));
+    if (k === 'trail' || k === '*') game.scene.setTrail(store.get('trail'));
     if (k === 'reduce' || k === '*') game.scene.reduce = store.get('reduce');
     if (k === 'minimap' || k === '*') miniOn();
     if (last) hooks.onHud(last);

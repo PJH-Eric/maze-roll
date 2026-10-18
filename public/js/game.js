@@ -15,7 +15,7 @@ export class Game {
     this.world = new MR.World({ mode: o.mode, diff: o.diff, seed: o.seed, size: o.size, players: o.players.map((p) => ({ id: p.id, name: p.name, kind: p.kind })) });
     this.ctrl = new Map();
     if (!this.online) o.players.forEach((p) => { if (p.kind === 'ai') this.ctrl.set(p.id, MRAI.makeAI(this.world, this.world.byId.get(p.id), p.ai)); });
-    this.scene = new Scene3D(o.canvas, { reduce: store.get('reduce'), shapes: store.get('shapes'), preserve: !!window.__MR_PRESERVE });
+    this.scene = new Scene3D(o.canvas, { reduce: store.get('reduce'), shapes: store.get('shapes'), ballType: store.get('ball'), trail: store.get('trail'), preserve: !!window.__MR_PRESERVE });
     this.scene.setCam(store.get('cam'));
     this.state = 'count'; this.paused = false; this.acc = 0; this.last = 0; this.raf = 0; this.endTimer = null; this.ff = false;
     this.follow = null; this.hudT = 0; this.mapT = 0; this.posT = 0; this.rollT = 0; this.lastThud = 0; this.lastCrack = 0;
