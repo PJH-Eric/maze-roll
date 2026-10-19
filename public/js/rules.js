@@ -31,7 +31,7 @@
   const JUNCTION_DENSITY = [0, 0, 0, 0.16, 0.24];
   const braidFor = (mode, diff) => (mode === 'race' ? RACE_BRAID[diff | 0] : BRAID[mode]);
   const AI_NAMES = ['幼幼班', '簡單', '普通', '困難', '神話'];
-  const SIZE = { race: [6, 10, 15, 21, 28], stars: [8, 11, 15, 19, 23], collapse: [6, 8, 10, 13, 16], escape: [6, 9, 12, 16, 20] };
+  const SIZE = { race: [6, 10, 15, 21, 28], stars: [8, 11, 15, 19, 23], collapse: [8, 10, 12, 15, 18], escape: [6, 9, 12, 16, 20] };
   const BRAID = { race: 0.05, stars: 0.5, collapse: 0.55, escape: 0 }; // 逃出：完美迷宮（無環），每道門才一定擋得住路
   /** 逃出模式：各難度的門數、機關計時倍率（越難越短）、門的顏色。 */
   const ESCAPE_GATES = [2, 2, 3, 4, 5];
@@ -52,6 +52,15 @@
   const STAR_TIME = 90, GRACE = 10, ESCAPE_GRACE = 10, RACE_CAP = 600, ESCAPE_CAP = 900, COLLAPSE_CAP = 240;
   const COLLAPSE_FALL = 0.22, COLLAPSE_SUDDEN = 60, COLLAPSE_HEAD = 1.2;
   const MAX_PLAYERS = 8;
+
+  /** 崩塌地圖隨參賽人數擴大，讓多人有更多空間周旋。 */
+  function sizeFor(mode, diff, playerCount) {
+    const level = clamp(diff | 0, 0, SIZE[mode].length - 1);
+    const base = SIZE[mode][level];
+    if (mode !== 'collapse') return base;
+    const players = clamp(playerCount | 0, 1, MAX_PLAYERS);
+    return base + (players - 1) * 2;
+  }
 
   // ---------- 亂數 ----------
   function rng(seed) {
@@ -342,7 +351,7 @@
     /** o: {mode, diff, seed, size?, level?, grace?, players:[{id,name,kind,ai?}]} */
     constructor(o) {
       this.mode = o.mode; this.diff = o.diff | 0; this.seed = o.seed >>> 0;
-      this.size = o.size || SIZE[this.mode][this.diff];
+      this.size = o.size || sizeFor(this.mode, this.diff, o.players.length);
       this.maze = makeMaze(this.size, this.size, this.seed, o.braid != null ? o.braid : braidFor(this.mode, this.diff), JUNCTION_DENSITY[this.diff]);
       this.rand = rng(this.seed ^ 0x9e3779b9);
       this.t = 0; this.started = false; this.over = false; this.results = null;
@@ -610,6 +619,6 @@
   return {
     N, E, S, W, DX, DY, OPP, DIRS, MODES, MODE_NAMES, isRun, DOOR_COLORS, FOREVER, ESCAPE_GRACE, DIFFS, DIFF_THEME, braidFor, AI_NAMES, SIZE, BRAID, CRUMBLE, LEVELS_PER_DIFF, PHYS,
     STAR_R, GOAL_R, STAR_TIME, GRACE, MAX_PLAYERS, COLLAPSE_SUDDEN, COLLAPSE_HEAD,
-    rng, hashSeed, dailySeed, PORTAL_COLORS, clamp, makeMaze, cellCenter, cellAt, stepBall, levelSize, levelSeed, levelPar, levelStars, World,
+    rng, hashSeed, dailySeed, PORTAL_COLORS, clamp, makeMaze, cellCenter, cellAt, stepBall, levelSize, levelSeed, levelPar, levelStars, sizeFor, World,
   };
 });

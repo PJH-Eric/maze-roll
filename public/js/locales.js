@@ -54,6 +54,7 @@ window.MR_EN = {
  "你贏了！": "You win!",
  "你踩過的地磚會先晃動，再依難度於約 1.2～3.2 秒後碎裂。站在碎裂的地磚上也會掉落！60 秒後場地開始隨機崩塌。多人局最後存活者勝；單人挑戰以存活時間記錄。": "Tiles wobble when stepped on, then crumble after about 1.2–3.2 seconds depending on difficulty. You can fall if you stay on a crumbling tile. Random collapses begin after 60 seconds. In multiplayer, the last survivor wins; solo practice records survival time.",
  "公開房間": "Public rooms",
+ "目前 {n} 位玩家的地圖大小：{size}×{size}": "Map size for {n} online players: {size}×{size}",
  "再來一局": "Play again",
  "再來一局！": "Again!",
  "再來一局（請房主開始）": "Play again (host starts)",

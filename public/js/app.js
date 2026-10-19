@@ -211,12 +211,23 @@ function setupScreen(p) {
   };
   const diffChipsWrap = h('div');
   const drawDiffChips = () => {
-    const options = MR.DIFFS.map((d, i) => ({ value: i, label: T(d), sub: `${MR.SIZE[S.mode][i]}×${MR.SIZE[S.mode][i]}` }));
+    const playerCount = vsai ? S.count + 1 : 1;
+    const options = MR.DIFFS.map((d, i) => {
+      const size = MR.sizeFor(S.mode, i, playerCount);
+      return { value: i, label: T(d), sub: `${size}×${size}` };
+    });
     diffChipsWrap.replaceChildren(Chips({ label: T('迷宮難度'), value: S.diff, options, onChange: (v) => { S.diff = v; showBest(); } }));
   };
   const modeChips = Chips({ label: T('玩法'), value: S.mode, options: MR.MODES.map((m) => ({ value: m, label: MODE_INFO[m].name, icon: MODE_INFO[m].icon })), onChange: (v) => { S.mode = v; modeDesc.textContent = MODE_INFO[v].sub; drawDiffChips(); showBest(); } });
   drawDiffChips();
-  const stepper = vsai ? h('div', { class: 'stepper' }, IconButton({ icon: 'minus', ariaLabel: T('減少一位電腦'), onClick: () => { if (S.count > 1) { S.count--; drawComps(); } } }), countLbl, IconButton({ icon: 'plus', ariaLabel: T('增加一位電腦'), onClick: () => { if (S.count < 7) { S.count++; while (S.ai.length < S.count) S.ai.push(1); drawComps(); } } })) : null;
+  const stepper = vsai ? h('div', { class: 'stepper' },
+    IconButton({ icon: 'minus', ariaLabel: T('減少一位電腦'), onClick: () => {
+      if (S.count > 1) { S.count--; drawComps(); drawDiffChips(); }
+    } }),
+    countLbl,
+    IconButton({ icon: 'plus', ariaLabel: T('增加一位電腦'), onClick: () => {
+      if (S.count < 7) { S.count++; while (S.ai.length < S.count) S.ai.push(1); drawComps(); drawDiffChips(); }
+    } })) : null;
   const sections = [h('h3', { text: T('玩法') }), modeChips, modeDesc, h('h3', { text: T('迷宮難度') }), diffChipsWrap, vsai ? h('h3', { text: T('電腦對手') }) : best, vsai ? stepper : null, vsai ? compList : null];
   $screen.append(h('section', { class: 'screen setup' }, topbar(vsai ? T('對電腦') : T('自由練習'), () => go('home')),
     h('div', { class: 'body' }, panel(ScrollArea(h('div', { class: 'setupBody' }, ...sections), { class: 'setupScroll' }),
@@ -350,11 +361,13 @@ function roomScreen() {
     const r = session.room; if (!r) return;
     const isHost = r.host === session.you, me = r.members.find((m) => m.id === session.you), isPlayer = me && me.role === 'player';
     const players = r.members.filter((m) => m.role === 'player'), sp = r.members.filter((m) => m.role === 'spec');
+    const activePlayerCount = players.filter((p) => p.online).length;
     rc(head, h('div', {}, h('small', { text: T('房間代碼') }), h('b', { class: 'code', text: r.code })), Button({ label: T('離開房間'), size: 'small', onClick: () => { net.send({ t: 'leave' }); go('online'); } }));
     rc(settings,
       h('h3', { text: T('玩法') }), Chips({ label: T('玩法'), value: r.mode, options: MR.MODES.map((m) => ({ value: m, label: MODE_INFO[m].name, disabled: !isHost })), onChange: (v) => net.send({ t: 'set', mode: v }) }),
       h('p', { class: 'note', text: MODE_INFO[r.mode].sub }),
       h('h3', { text: T('迷宮難度') }), Chips({ label: T('難度'), value: r.diff, options: MR.DIFFS.map((d, i) => ({ value: i, label: T(d), disabled: !isHost })), onChange: (v) => net.send({ t: 'set', diff: v }) }),
+      h('p', { class: 'note', text: T('目前 {n} 位玩家的地圖大小：{size}×{size}', { n: activePlayerCount, size: MR.sizeFor(r.mode, r.diff, activePlayerCount) }) }),
       isHost ? null : h('p', { class: 'note', text: T('只有房主能更改設定。') }));
     seats.replaceChildren();
     for (let i = 0; i < r.max; i++) {
@@ -399,7 +412,7 @@ function gameScreen(p) {
     mode = init.mode; diff = init.diff; seed = init.seed; size = init.size;
     if (init.resume) snapshot = { snap: init.snap, stars: init.stars, tiles: init.tiles, state: init.state, tt: init.tt, graceLeft: init.graceLeft };
   } else { players = p.players; meId = p.meId; mode = p.mode; diff = p.diff; seed = p.seed; size = p.size; }
-  size = size || MR.SIZE[mode][diff];
+  size = size || MR.sizeFor(mode, diff, players.length);
   const run = MR.isRun(mode);
   const hideRemainingHint = diff === MR.DIFFS.length - 1;
   const who = (name, me) => (me && name !== T('你') ? name + T('（你）') : name);
