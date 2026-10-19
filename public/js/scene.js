@@ -163,7 +163,7 @@ export class Scene3D {
     this.doors = [];
     if (world.esc) this._buildEscape(world);
     // 星星
-    if (world.mode === 'stars') { this.starGeo = new THREE.ExtrudeGeometry(starShape(), { depth: 0.07, bevelEnabled: true, bevelThickness: 0.025, bevelSize: 0.02, bevelSegments: 2 }); this.starGeo.translate(0, 0, -0.035); this.starMat = new THREE.MeshStandardMaterial({ color: 0xffc928, metalness: 0.55, roughness: 0.25, emissive: 0x8a5a00, emissiveIntensity: 0.6 }); world.stars.forEach((s) => this._addStar(s.id, s.c)); }
+    if (world.mode === 'stars') { this.starGeo = new THREE.ExtrudeGeometry(starShape(), { depth: 0.07, bevelEnabled: true, bevelThickness: 0.025, bevelSize: 0.02, bevelSegments: 2 }); this.starGeo.translate(0, 0, -0.035); this.starMat = new THREE.MeshStandardMaterial({ color: 0xffc928, metalness: 0.5, roughness: 0.18, emissive: 0xa06a00, emissiveIntensity: 0.7 }); this.starCoreMat = new THREE.MeshStandardMaterial({ color: 0xfff1a8, metalness: 0.3, roughness: 0.2, emissive: 0xffd24a, emissiveIntensity: 0.9 }); this.starGlowMat = new THREE.MeshBasicMaterial({ color: 0xffd24a, transparent: true, opacity: 0.35, side: THREE.DoubleSide, depthWrite: false, blending: THREE.AdditiveBlending }); this.starSparkMat = new THREE.MeshBasicMaterial({ color: 0xfff6c8, transparent: true, opacity: 0.9, depthWrite: false, blending: THREE.AdditiveBlending }); this.starSparkGeo = new THREE.OctahedronGeometry(0.035); world.stars.forEach((s) => this._addStar(s.id, s.c)); }
     // 球
     this.players = world.players;
     this.ballGeo = this.ballGeo || new THREE.SphereGeometry(R, 28, 20);
@@ -286,7 +286,11 @@ export class Scene3D {
     });
   }
   _addStar(id, c) {
-    const m = this.maze, mesh = new THREE.Mesh(this.starGeo, this.starMat); mesh.castShadow = true;
+    const m = this.maze, mesh = new THREE.Group(), body = new THREE.Mesh(this.starGeo, this.starMat); body.castShadow = true; mesh.add(body);
+    const core = new THREE.Mesh(this.starGeo, this.starCoreMat); core.scale.set(0.58, 0.58, 1.55); mesh.add(core); // 中央較亮的星芯，微微凸出
+    const glow = new THREE.Mesh(new THREE.CircleGeometry(0.42, 28), this.starGlowMat); glow.rotation.x = -Math.PI / 2; glow.position.y = -0.43; mesh.add(glow); // 地面光暈
+    const sp = []; for (let k = 0; k < 4; k++) { const q = new THREE.Mesh(this.starSparkGeo, this.starSparkMat); mesh.add(q); sp.push(q); }
+    mesh.userData.glow = glow; mesh.userData.sp = sp;
     mesh.scale.setScalar(1.35); mesh.position.set((c % m.w) + 0.5, 0.46, ((c / m.w) | 0) + 0.5); mesh.userData.ph = (id * 1.7) % 6.28; this.root.add(mesh); this.stars.set(id, mesh);
     mesh.scale.setScalar(0.01); mesh.userData.grow = 0;
   }
@@ -373,8 +377,11 @@ export class Scene3D {
     if (this.ghosts) for (let i = this.ghosts.length - 1; i >= 0; i--) { const gh = this.ghosts[i]; gh.t += dt / 0.7; const k = Math.min(1, gh.t); gh.m.scale.setScalar(Math.max(0.01, 1 - k)); gh.m.position.y = R + k * 0.9; gh.m.material.opacity = 0.8 * (1 - k); if (k >= 1) { this.root.remove(gh.m); gh.m.material.dispose(); this.ghosts.splice(i, 1); } }
     // 星星、終點
     this.stars.forEach((m) => {
-      if (m.userData.grow < 1) { m.userData.grow = Math.min(1, m.userData.grow + dt * 3); m.scale.setScalar(Math.max(0.01, m.userData.grow * 1.35)); }
+      if (m.userData.grow < 1) { m.userData.grow = Math.min(1, m.userData.grow + dt * 2.2); const q = m.userData.grow - 1; m.scale.setScalar(Math.max(0.01, (1 + 2.2 * q * q * q + 1.2 * q * q) * 1.35)); }
       m.rotation.y = t * 2.2 + m.userData.ph; m.position.y = 0.46 + (this.reduce ? 0 : Math.sin(t * 3 + m.userData.ph) * 0.05);
+      const ph = m.userData.ph; m.rotation.z = this.reduce ? 0 : Math.sin(t * 2 + ph) * 0.08;
+      m.userData.glow.scale.setScalar(1 + 0.12 * Math.sin(t * 3 + ph)); m.userData.glow.position.y = -(m.position.y - 0.02) / m.scale.y;
+      if (!this.reduce) m.userData.sp.forEach((q, k) => { const a = t * 2.6 + k * 1.571 + ph, u = (t * 0.7 + k * 0.25) % 1; q.position.set(Math.cos(a) * 0.36, Math.sin(a * 0.7) * 0.28 + 0.05, Math.sin(a) * 0.12); q.scale.setScalar(Math.sin(u * Math.PI) * 1.2 + 0.1); q.rotation.y = t * 4; });
     });
     if (this.portals && this.portals.length) for (const o of this.portals) {
       o.swirl.rotation.z = -t * 3 + o.ph; o.swirl2.rotation.z = t * 2.1 + o.ph; o.ring.rotation.z = t * 0.8;
