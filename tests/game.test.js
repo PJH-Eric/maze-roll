@@ -17,18 +17,18 @@ global.window = { MR, MRAI: require('../public/js/ai.js') };
     game.world = world;
     game.meId = 'a';
     game.follow = null;
+    game.scene = { onEvent() {} };
+    game.hooks = {};
 
     if (world.run) {
-      world.byId.get('a').fin = 1;
       world.byId.get('c').fin = 2;
     } else {
-      world.byId.get('a').alive = false;
-      world.byId.get('a').out = 1;
       world.byId.get('c').alive = false;
       world.byId.get('c').out = 2;
     }
 
-    game._advanceFollow('a');
+    const event = world.run ? { e: 'finish', id: 'a', t: 1, place: 1 } : { e: 'out', id: 'a', t: 1 };
+    game._event(event, true);
     assert.strictEqual(game.follow, 'b', mode + '：預設追蹤者結束後切到仍在遊戲的玩家');
 
     game.setFollow('a');
