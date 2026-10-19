@@ -172,10 +172,8 @@ export class Game {
   }
   _followId() {
     const w = this.world, me = this.me();
-    if (this.follow && w.byId.get(this.follow) && w.byId.get(this.follow).alive !== undefined) {
-      const f = w.byId.get(this.follow), ball = this.scene.balls.get(f.id);
-      if (f.alive && !(w.run && f.fin != null && f !== me && ball && ball.hidden)) return this.follow;
-    }
+    const selected = this.follow && w.byId.get(this.follow);
+    if (selected) return selected.id;
     if (me && me.alive && (!w.run || me.fin == null || !this.scene.balls.get(me.id)?.hidden)) return me.id;
     const rows = this.standings().filter((r) => r.alive && !r.done);
     if (rows.length) return rows[0].id;

@@ -495,7 +495,17 @@ function gameScreen(p) {
           else val = '';
         } else if (mode === 'stars') val = r.score + ' ★';
         else val = r.alive ? T('存活') : T('淘汰');
-        return h('button', { type: 'button', class: 'srow' + (r.me ? ' me' : '') + (r.id === hd.follow ? ' fol' : '') + (r.alive ? '' : ' dead'), 'aria-label': T('第 {rank} 名 {name} {val}，點一下鏡頭跟隨', { rank: r.rank, name: r.name, val }), on: { click: () => game.setFollow(r.me ? null : r.id) } },
+        const done = r.done || !r.alive;
+        const selectView = () => {
+          game.setFollow(r.me && r.alive && !r.done ? null : r.id);
+          if (done || game.meState === 'out') banner.hidden = true;
+        };
+        return h('button', {
+          type: 'button',
+          class: 'srow' + (r.me ? ' me' : '') + (r.id === hd.follow ? ' fol' : '') + (r.alive ? '' : ' dead'),
+          'aria-label': T('第 {rank} 名 {name} {val}，點一下鏡頭跟隨', { rank: r.rank, name: r.name, val }),
+          on: { pointerdown: selectView, click: selectView },
+        },
           h('span', { class: 'rk', text: String(r.rank) }), h('span', { class: 'dot', style: { background: BALL_COLORS[r.idx % 8] }, text: shapes ? SHAPES[r.idx % 8] : '' }),
           h('span', { class: 'nm', text: who(r.name, r.me) }), h('span', { class: 'val', text: val }));
       }));
