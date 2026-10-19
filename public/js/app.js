@@ -401,6 +401,7 @@ function gameScreen(p) {
   } else { players = p.players; meId = p.meId; mode = p.mode; diff = p.diff; seed = p.seed; size = p.size; }
   size = size || MR.SIZE[mode][diff];
   const run = MR.isRun(mode);
+  const hideRemainingHint = diff === MR.DIFFS.length - 1;
   const who = (name, me) => (me && name !== T('你') ? name + T('（你）') : name);
 
   const input = new Input(); input.setScheme(store.get('ctrl'));
@@ -470,7 +471,13 @@ function gameScreen(p) {
       } else graceCountdown.classList.remove('tick');
       const shapes = store.get('shapes');
       sumList.replaceChildren(...hd.rows.map((r) => {
-        const val = run ? (r.done ? fmt(r.fin) : r.alive ? T('剩 {n} 格', { n: Math.round(r.rem) }) : '') : mode === 'stars' ? r.score + ' ★' : r.alive ? T('存活') : T('淘汰');
+        let val;
+        if (run) {
+          if (r.done) val = fmt(r.fin);
+          else if (r.alive && !hideRemainingHint) val = T('剩 {n} 格', { n: Math.round(r.rem) });
+          else val = '';
+        } else if (mode === 'stars') val = r.score + ' ★';
+        else val = r.alive ? T('存活') : T('淘汰');
         return h('button', { type: 'button', class: 'srow' + (r.me ? ' me' : '') + (r.id === hd.follow ? ' fol' : '') + (r.alive ? '' : ' dead'), 'aria-label': T('第 {rank} 名 {name} {val}，點一下鏡頭跟隨', { rank: r.rank, name: r.name, val }), on: { click: () => game.setFollow(r.me ? null : r.id) } },
           h('span', { class: 'rk', text: String(r.rank) }), h('span', { class: 'dot', style: { background: BALL_COLORS[r.idx % 8] }, text: shapes ? SHAPES[r.idx % 8] : '' }),
           h('span', { class: 'nm', text: who(r.name, r.me) }), h('span', { class: 'val', text: val }));
