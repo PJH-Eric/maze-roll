@@ -31,9 +31,10 @@ npm run verify     # 再加上真 WebSocket 的端對端檢查
 | `public/js/ai.js` | 電腦對手五段難度與個別行為偏好 |
 | `public/js/scene.js` | Three.js 場景（木紋迷宮、彈珠、星星、崩塌地磚、斜俯視跟隨鏡頭） |
 | `public/js/game.js` | 單機／線上共用的對局控制 |
+| `public/js/analytics.js` | GA4 頁面瀏覽追蹤（需設定 Measurement ID 才啟用） |
 | `public/js/ui.js` | 自訂 UI 元件（按鈕、開關、滑桿、下拉、捲動區含自繪捲軸、彈窗、輸入） |
 | `public/js/app.js` | 各畫面與流程 |
-| `public/js/config.js` | **唯一的 server URL 入口** |
+| `public/js/config.js` | **部署時注入的前端公開設定**（server URL、GA4 Measurement ID） |
 | `lib/hub.js` | 房間、邀請、觀戰、聊天、對局中樞 |
 | `server.js` | HTTP + WebSocket（`ws`） |
 | `public/vendor/three.module.min.js` | Three.js（MIT，隨附授權檔），免建置、離線可用 |
@@ -53,8 +54,8 @@ npm run verify     # 再加上真 WebSocket 的端對端檢查
 ## 部署（預設：GitHub Pages 前端 ＋ Render 後端）
 
 1. **後端（Render）**：以 `render.yaml` 建立 Web Service（`region: singapore`，免費方案）。在 Render 服務設定環境變數 `GAME_ALLOWED_ORIGIN`＝前端網址（如 `https://<帳號>.github.io`）；健康檢查為 `/health`。
-2. **前端（GitHub Pages）**：repo Settings → Pages 選 GitHub Actions；到 Settings → Secrets and variables → Actions → **Variables** 新增 `GAME_SERVER_URL`＝Render 後端的 HTTPS 網址。推到 `main` 即部署（workflow 會先跑測試，再把網址注入 `public/js/config.js`）。
-3. 前端只需要 `GAME_SERVER_URL` 這一個參數；Render 的憑證與秘密不放進 Pages，也不進前端 bundle。
+2. **前端（GitHub Pages）**：repo Settings → Pages 選 GitHub Actions；到 Settings → Secrets and variables → Actions → **Variables** 新增 `GAME_SERVER_URL`＝Render 後端 HTTPS 網址，以及 `GA4_MEASUREMENT_ID`＝GA4 Measurement ID（格式 `G-XXXXXXXXXX`）。推到 `main` 即部署（workflow 會先跑測試，再把兩個公開設定注入 `public/js/config.js`）。
+3. GA4 只追蹤遊戲畫面瀏覽，並以無 query/hash 的虛擬路徑區分畫面，不送出暱稱、房間邀請 token 等玩家資料。未設定有效 Measurement ID 時不載入 Google tag。
 
 > 免費層限制：Render 服務閒置會休眠，第一次連線要等幾十秒（遊戲會顯示「連線中」）；房間資料只存在記憶體，服務重啟就會清空——房間本來就是可清理的暫時狀態。Render 不能修改既有服務的 region，需要換節點時請建立新服務、再更新 `GAME_SERVER_URL`，確認 `/health` 與線上對局可用後才停用舊服務。
 

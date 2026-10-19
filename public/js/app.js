@@ -51,6 +51,7 @@ function go(name, params) {
   $screen.replaceChildren(); current = name; ctx = params || {};
   lobbyLink.style.display = name === 'home' ? '' : 'none';
   $app.dataset.screen = name;
+  window.MR_ANALYTICS?.pageView(name);
   const fn = SCREENS[name]; const r = fn(ctx);
   if (typeof r === 'function') cleanup = r;
   audio.bgm(store.get('bgm') && audio.ready());
