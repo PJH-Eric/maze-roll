@@ -258,6 +258,9 @@ h3 { font-size: 1rem; margin: 10px 0 6px; letter-spacing: .08em; }
 .lgDot.me { box-shadow: 0 0 0 2px #fff, 0 0 0 3px #2a1a10; }
 @media (max-height: 520px) {  .mapModal .hint, .mapModal .mapLegend { display: none; } }
 .stickZone { position: absolute; z-index: 12; left: calc(20px + var(--sl)); bottom: calc(20px + var(--sb)); width: clamp(128px, 25vmin, 180px); aspect-ratio: 1; }
+@media (hover: hover) and (pointer: fine) {
+  .stickZone { display: none; }
+}
 .stick { position: relative; width: 100%; height: 100%; border-radius: 50%; touch-action: none; background: radial-gradient(circle, rgba(42,26,16,.28) 0 40%, rgba(42,26,16,.55) 100%); border: 4px solid rgba(251,240,218,.75); box-shadow: 0 6px 12px rgba(0,0,0,.4), inset 0 0 14px rgba(0,0,0,.4); }
 .stick.active { border-color: var(--gold); }
 .knob { position: absolute; left: 50%; top: 50%; width: 46%; height: 46%; margin: -23% 0 0 -23%; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #f8e0ae, #c48a52); border: 3px solid #2a1a10; box-shadow: 0 5px 0 rgba(0,0,0,.4); pointer-events: none; }

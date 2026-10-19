@@ -12,6 +12,8 @@ npm start          # http://localhost:3090（Windows 可直接按 啟動遊戲.b
 
 `node server.js` 同時提供靜態檔、`/health` 與 WebSocket（`/ws`）。本機開啟時前端自動連同源伺服器，不需要設定 `GAME_SERVER_URL`。
 
+啟動視窗會列出本機與各網路介面的「同網路網址」。手機／平板連上相同 Wi-Fi 後，輸入對應 Wi-Fi 或乙太網路的網址即可開啟遊戲。
+
 ## 測試
 
 ```bash

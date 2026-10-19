@@ -1,5 +1,6 @@
 // 迷宮滾球：靜態檔 + /health + WebSocket（同一個 port，適合 Render Web Service）
 const http = require('http'), fs = require('fs'), path = require('path');
+const os = require('os');
 const { WebSocketServer } = require('ws');
 const { Hub } = require('./lib/hub.js');
 
@@ -43,6 +44,18 @@ wss.on('connection', (ws) => {
 setInterval(() => wss.clients.forEach((ws) => { if (!ws.isAlive) return ws.terminate(); ws.isAlive = false; ws.ping(); }), 25000).unref();
 
 if (require.main === module) {
-  server.listen(PORT, () => console.log('迷宮滾球已啟動：http://localhost:' + PORT));
+  server.listen(PORT, () => {
+    const port = server.address().port;
+    console.log('迷宮滾球已啟動');
+    console.log('本機網址：http://localhost:' + port);
+    const seen = new Set();
+    for (const [name, addresses] of Object.entries(os.networkInterfaces())) {
+      for (const address of addresses || []) {
+        if (address.internal || address.family !== 'IPv4' || seen.has(address.address)) continue;
+        seen.add(address.address);
+        console.log('同網路網址（' + name + '）：http://' + address.address + ':' + port);
+      }
+    }
+  });
 }
 module.exports = { server, hub };

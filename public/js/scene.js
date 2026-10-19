@@ -81,6 +81,7 @@ export class Scene3D {
     this.sun.shadow.mapSize.set(1024, 1024); const sc = this.sun.shadow.camera; sc.left = -10; sc.right = 10; sc.top = 10; sc.bottom = -10; sc.near = 1; sc.far = 40; this.sun.shadow.bias = -0.0006;
     this.scene.add(this.sun); this.scene.add(this.sun.target);
     this.focus = new THREE.Vector3(); this.focusReady = false; this.time = 0;
+    this.rollAxis = new THREE.Vector3();
     this.tex = {}; this.root = null; this.balls = new Map(); this.stars = new Map(); this.parts = [];
     this.shake = 0;
   }
@@ -218,15 +219,27 @@ export class Scene3D {
       const dx = p.x - b.lx, dz = p.y - b.ly; b.lx = p.x; b.ly = p.y;
       const dist = Math.hypot(dx, dz);
       // 滾動：頂端朝前進方向轉（接地點相對球心往後），轉角 = 位移 / 半徑，與真實的球一致
-      if (dist > 1e-5 && dist < 0.6 && p.alive && !b.sink) { const ax = new THREE.Vector3(dz, 0, -dx).normalize(); b.mesh.rotateOnWorldAxis(ax, dist / R); }
+      if (dist > 1e-5 && dist < 0.6 && p.alive && !b.sink) {
+        this.rollAxis.set(dz, 0, -dx).normalize();
+        b.mesh.rotateOnWorldAxis(this.rollAxis, dist / R);
+      }
       let y = R, s = 1;
       if (!p.alive) { b.fallV += 9 * dt; b.fall += b.fallV * dt; y = R - b.fall; s = Math.max(0.2, 1 - b.fall * 0.15); if (b.fall > 9) b.hidden = true; }
       if (this.world.mode === 'race' && p.fin != null) { b.sink = Math.min(1, b.sink + dt * 2.2); y = R - b.sink * 0.3; s = 1 - b.sink * 0.45; if (b.sink >= 1) b.hidden = true; }
       g.visible = !b.hidden; g.position.set(p.x, y, p.y); b.mesh.scale.setScalar(s);
       if (this.trail && !this.reduce && p.alive && !b.hidden) {
-        if (Math.hypot(p.x - b.lastTx, p.y - b.lastTy) > 0.14) { b.hist.unshift([p.x, p.y]); b.lastTx = p.x; b.lastTy = p.y; if (b.hist.length > TRAIL_N) b.hist.pop(); }
-        else if (b.hist.length && dist < 1e-4 && Math.random() < 0.08) b.hist.pop();
-        b.trailMeshes.forEach((m, k) => { const h = b.hist[k]; m.visible = !!h; if (h) { m.position.set(h[0], 0.035, h[1]); m.scale.setScalar(3.4 * (1 - k / TRAIL_N) + 0.5); } });
+        let trailChanged = false;
+        if (Math.hypot(p.x - b.lastTx, p.y - b.lastTy) > 0.14) {
+          b.hist.unshift([p.x, p.y]); b.lastTx = p.x; b.lastTy = p.y;
+          if (b.hist.length > TRAIL_N) b.hist.pop();
+          trailChanged = true;
+        } else if (b.hist.length && dist < 1e-4 && Math.random() < 0.08) {
+          b.hist.pop(); trailChanged = true;
+        }
+        if (trailChanged) b.trailMeshes.forEach((m, k) => {
+          const h = b.hist[k]; m.visible = !!h;
+          if (h) { m.position.set(h[0], 0.035, h[1]); m.scale.setScalar(3.4 * (1 - k / TRAIL_N) + 0.5); }
+        });
       } else if (b.hist.length) { b.hist.length = 0; b.trailMeshes.forEach((m) => { m.visible = false; }); }
       { const ls = (typeof innerWidth !== 'undefined' && innerWidth < 560) ? 0.76 : 1; b.label.scale.set(1.15 * ls, 0.345 * ls, 1); }
       b.label.position.y = 1.05 + (p.idx % 3) * 0.2 + (R - y) * -0.2; b.label.visible = p.alive || b.fall < 1.5;
@@ -269,7 +282,7 @@ export class Scene3D {
     if (fb) {
       const p = fb.p, tx = p.x + p.vx * 0.1, tz = p.y + p.vy * 0.1;
       if (!this.focusReady || quick) { this.focus.set(tx, 0, tz); this.focusReady = true; }
-      else { const k = 1 - Math.exp(-5.5 * dt); this.focus.x += (tx - this.focus.x) * k; this.focus.z += (tz - this.focus.z) * k; }
+      else { const k = 1 - Math.exp(-9.5 * dt); this.focus.x += (tx - this.focus.x) * k; this.focus.z += (tz - this.focus.z) * k; }
     }
     const asp = this.aspect || 1.6, pitch = (58 * Math.PI) / 180;
     let D = CAM_DIST[this.camMode] * (asp < 1 ? Math.min(1.6, 1 / Math.sqrt(asp) * 1.05) : 1);

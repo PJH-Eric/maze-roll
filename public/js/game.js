@@ -40,8 +40,8 @@ export class Game {
   // ---------- 流程 ----------
   startCountdown() { // 單機：3-2-1-GO
     let n = 3; this.state = 'count'; this._count(n);
-    const tick = () => { if (this.stopped) return; n--; if (n > 0) { this._count(n); this.cdT = setTimeout(tick, 800); } else { this._count(0); this._begin(); } };
-    this.cdT = setTimeout(tick, 800);
+    const tick = () => { if (this.stopped) return; n--; if (n > 0) { this._count(n); this.cdT = setTimeout(tick, 1000); } else { this._count(0); this._begin(); } };
+    this.cdT = setTimeout(tick, 1000);
   }
   _count(n) { this.countN = n; audio.beep(n === 0); this.hooks.onCount && this.hooks.onCount(n); }
   _begin() { this.state = 'play'; this.world.start(); this.input && this.input.calibrate && this.input.calibrate(); setTimeout(() => { this.hooks.onCount && this.hooks.onCount(null); }, 600); }
