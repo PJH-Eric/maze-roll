@@ -36,6 +36,7 @@ function ballTex(color) {
 }
 export const BALL_TYPES = [{ id: 'glass', name: '玻璃珠' }, { id: 'wood', name: '木球' }, { id: 'steel', name: '鐵球' }, { id: 'rainbow', name: '彩虹球' }]; // 顯示時再 T()
 const TRAIL_N = 14;
+const LABEL_HEIGHT = 0.345;
 /** 依球種建立材質：玻璃（預設）、木球（木紋＋玩家色環）、鐵球（金屬）、彩虹球（漸層）。 */
 function ballMat(type, color) {
   if (type === 'wood') return new THREE.MeshStandardMaterial({ roughness: 0.55, metalness: 0.05, map: canvasTex(256, 128, (g, w, h) => {
@@ -48,17 +49,28 @@ function ballMat(type, color) {
   return new THREE.MeshStandardMaterial({ map: ballTex(color), roughness: 0.18, metalness: 0.25 });
 }
 function labelTex(name, idx, me, shapes) {
-  return canvasTex(320, 96, (g, w, h) => {
+  const fam = '"Noto Sans TC","Microsoft JhengHei","PingFang TC",sans-serif';
+  const measure = document.createElement('canvas').getContext('2d');
+  const text = String(name || '');
+  let fs = 40;
+  measure.font = `bold ${fs}px ${fam}`;
+  while (measure.measureText(text).width > 214 && fs > 22) {
+    fs -= 2;
+    measure.font = `bold ${fs}px ${fam}`;
+  }
+  let displayName = text;
+  while (measure.measureText(displayName).width > 214 && displayName.length > 1) displayName = displayName.slice(0, -1);
+  const w = Math.ceil(82 + measure.measureText(displayName).width + 20);
+
+  return canvasTex(w, 96, (g, w, h) => {
     g.fillStyle = 'rgba(30,18,10,0.82)'; const x = 4, y = 6, ww = w - 8, hh = h - 12, rr = 20;
     g.beginPath(); g.moveTo(x + rr, y); g.arcTo(x + ww, y, x + ww, y + hh, rr); g.arcTo(x + ww, y + hh, x, y + hh, rr); g.arcTo(x, y + hh, x, y, rr); g.arcTo(x, y, x + ww, y, rr); g.closePath(); g.fill();
     g.lineWidth = me ? 5 : 3; g.strokeStyle = me ? '#ffd24a' : BALL_COLORS[idx % 8]; g.stroke();
     g.fillStyle = BALL_COLORS[idx % 8]; g.font = 'bold 44px sans-serif'; g.textBaseline = 'middle'; g.textAlign = 'center';
     g.fillText(shapes ? SHAPES[idx % 8] : '●', 46, h / 2 + 2);
     g.fillStyle = '#fff'; g.textAlign = 'left';
-    let fs = 40; const fam = '"Noto Sans TC","Microsoft JhengHei","PingFang TC",sans-serif';
-    g.font = `bold ${fs}px ${fam}`; while (g.measureText(name).width > 214 && fs > 22) { fs -= 2; g.font = `bold ${fs}px ${fam}`; }
-    let t = name; while (g.measureText(t).width > 214 && t.length > 1) t = t.slice(0, -1);
-    g.fillText(t, 82, h / 2 + 3);
+    g.font = `bold ${fs}px ${fam}`;
+    g.fillText(displayName, 82, h / 2 + 3);
   });
 }
 function starShape() {
@@ -162,14 +174,16 @@ export class Scene3D {
     const g = new THREE.Group();
     const mesh = new THREE.Mesh(this.ballGeo, ballMat(me ? this.ballType : 'glass', BALL_COLORS[idx % 8]));
     mesh.castShadow = true; g.add(mesh);
-    const label = new THREE.Sprite(new THREE.SpriteMaterial({ map: labelTex(p.name, idx, me, this.shapes), depthTest: false, transparent: true }));
-    label.scale.set(1.15, 0.345, 1); label.position.y = 1.05; label.renderOrder = 20; g.add(label);
+    const labelMap = labelTex(p.name, idx, me, this.shapes);
+    const labelAspect = labelMap.image.width / labelMap.image.height;
+    const label = new THREE.Sprite(new THREE.SpriteMaterial({ map: labelMap, depthTest: false, transparent: true }));
+    label.scale.set(LABEL_HEIGHT * labelAspect, LABEL_HEIGHT, 1); label.position.y = 1.05; label.renderOrder = 20; g.add(label);
     let ring = null;
     if (me) { ring = new THREE.Mesh(new THREE.RingGeometry(R * 1.2, R * 1.7, 36), new THREE.MeshBasicMaterial({ color: 0xffd24a, transparent: true, opacity: 0.85, side: THREE.DoubleSide, depthWrite: false })); ring.rotation.x = -Math.PI / 2; ring.position.y = 0.02; g.add(ring); }
     const trailMeshes = []; const tmat = new THREE.MeshBasicMaterial({ color: BALL_COLORS[idx % 8], transparent: true, opacity: 0.4, depthWrite: false });
     for (let k = 0; k < TRAIL_N; k++) { const tm = new THREE.Mesh(this.particleGeo, tmat); tm.visible = false; this.root.add(tm); trailMeshes.push(tm); }
     this.root.add(g);
-    this.balls.set(p.id, { g, mesh, label, ring, trailMeshes, hist: [], lastTx: p.x, lastTy: p.y, lx: p.x, ly: p.y, fall: 0, fallV: 0, sink: 0, hidden: false, p });
+    this.balls.set(p.id, { g, mesh, label, labelAspect, ring, trailMeshes, hist: [], lastTx: p.x, lastTy: p.y, lx: p.x, ly: p.y, fall: 0, fallV: 0, sink: 0, hidden: false, p });
   }
   setBall(type) { // 換球種（只影響自己的球）
     this.ballType = type; if (!this.root) return;
@@ -180,7 +194,13 @@ export class Scene3D {
   setTrail(on) { this.trail = on; if (!on && this.balls) this.balls.forEach((b) => { b.hist.length = 0; b.trailMeshes.forEach((m) => { m.visible = false; }); }); }
   setShapes(on) { // 色彩輔助：標籤改用形狀區分
     this.shapes = on; if (!this.root) return;
-    this.balls.forEach((b) => { b.label.material.map.dispose(); b.label.material.map = labelTex(b.p.name, b.p.idx, b.p.id === this.me, on); b.label.material.needsUpdate = true; });
+    this.balls.forEach((b) => {
+      b.label.material.map.dispose();
+      b.label.material.map = labelTex(b.p.name, b.p.idx, b.p.id === this.me, on);
+      b.labelAspect = b.label.material.map.image.width / b.label.material.map.image.height;
+      b.label.scale.x = b.label.scale.y * b.labelAspect;
+      b.label.material.needsUpdate = true;
+    });
   }
   _addStar(id, c) {
     const m = this.maze, mesh = new THREE.Mesh(this.starGeo, this.starMat); mesh.castShadow = true;
@@ -241,7 +261,8 @@ export class Scene3D {
           if (h) { m.position.set(h[0], 0.035, h[1]); m.scale.setScalar(3.4 * (1 - k / TRAIL_N) + 0.5); }
         });
       } else if (b.hist.length) { b.hist.length = 0; b.trailMeshes.forEach((m) => { m.visible = false; }); }
-      { const ls = (typeof innerWidth !== 'undefined' && innerWidth < 560) ? 0.76 : 1; b.label.scale.set(1.15 * ls, 0.345 * ls, 1); }
+      const ls = (typeof innerWidth !== 'undefined' && innerWidth < 560) ? 0.76 : 1;
+      b.label.scale.set(LABEL_HEIGHT * ls * b.labelAspect, LABEL_HEIGHT * ls, 1);
       b.label.position.y = 1.05 + (p.idx % 3) * 0.2 + (R - y) * -0.2; b.label.visible = p.alive || b.fall < 1.5;
       if (b.ring) { b.ring.position.y = 0.02 - (y - R); b.ring.material.opacity = 0.55 + 0.3 * Math.sin(t * 5); b.ring.scale.setScalar(1 + 0.06 * Math.sin(t * 5)); }
     });
