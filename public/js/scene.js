@@ -104,7 +104,7 @@ export class Scene3D {
   _clear() {
     if (!this.root) return;
     this.root.traverse((o) => { if (o.geometry) o.geometry.dispose(); if (o.material) { (Array.isArray(o.material) ? o.material : [o.material]).forEach((m) => { if (m.map) m.map.dispose(); m.dispose(); }); } });
-    this.scene.remove(this.root); this.root = null; this.balls.clear(); this.stars.clear(); this.parts = [];
+    this.scene.remove(this.root); this.root = null; this.balls.clear(); this.stars.clear(); this.parts = []; this.doors = [];
   }
   /** 依世界建立場景。me 為自己的玩家 id（可為 null：觀戰）。 */
   load(world, me) {
@@ -150,8 +150,8 @@ export class Scene3D {
       walls.forEach((w, i) => { mt.compose(new THREE.Vector3(w[0], WALL_H + 0.02, w[1]), q, sc.set(w[2] + 0.02, 1, w[3] + 0.02)); tm.setMatrixAt(i, mt); });
       tm.instanceMatrix.needsUpdate = true; root.add(tm);
     }
-    // 終點（競速）
-    if (world.mode === 'race') {
+    // 終點（競速／逃出）
+    if (world.run) {
       const g = new THREE.Group(); const gc = { x: (m.goal % W) + 0.5, y: ((m.goal / W) | 0) + 0.5 }; g.position.set(gc.x, 0, gc.y);
       const hole = new THREE.Mesh(new THREE.CircleGeometry(0.46, 28), new THREE.MeshBasicMaterial({ color: 0x1a0d06 })); hole.rotation.x = -Math.PI / 2; hole.position.y = 0.012; g.add(hole);
       const ring = new THREE.Mesh(new THREE.TorusGeometry(0.5, 0.06, 10, 32), new THREE.MeshStandardMaterial({ color: 0xffc928, metalness: 0.6, roughness: 0.3, emissive: 0x6a4700 })); ring.rotation.x = Math.PI / 2; ring.position.y = 0.04; g.add(ring);
@@ -160,6 +160,8 @@ export class Scene3D {
       const beam = new THREE.Mesh(new THREE.CylinderGeometry(0.26, 0.26, 2.2, 20, 1, true), new THREE.MeshBasicMaterial({ color: 0xffd24a, transparent: true, opacity: 0.14, side: THREE.DoubleSide, depthWrite: false, blending: THREE.AdditiveBlending })); beam.position.y = 1.1; g.add(beam);
       root.add(g); this.goal = { g, flag, beam, ring };
     } else this.goal = null;
+    this.doors = [];
+    if (world.esc) this._buildEscape(world);
     // 星星
     if (world.mode === 'stars') { this.starGeo = new THREE.ExtrudeGeometry(starShape(), { depth: 0.07, bevelEnabled: true, bevelThickness: 0.025, bevelSize: 0.02, bevelSegments: 2 }); this.starGeo.translate(0, 0, -0.035); this.starMat = new THREE.MeshStandardMaterial({ color: 0xffc928, metalness: 0.55, roughness: 0.25, emissive: 0x8a5a00, emissiveIntensity: 0.6 }); world.stars.forEach((s) => this._addStar(s.id, s.c)); }
     // 球
@@ -168,6 +170,35 @@ export class Scene3D {
     world.players.forEach((p) => this._addBall(p));
     this.focusReady = false; this.cacheViewer = null;
     this.particleGeo = new THREE.SphereGeometry(0.035, 6, 4);
+  }
+  /** 逃出模式：門（關著時擋路，開了就沉入地板）、鑰匙、踏板；顏色一組對一組，依「正在看的玩家」的狀態顯示。 */
+  _buildEscape(world) {
+    const root = this.root, gold = new THREE.MeshStandardMaterial({ color: 0xffd24a, metalness: 0.7, roughness: 0.3, emissive: 0x6a4700 });
+    for (const d of world.esc.doors) {
+      const col = new THREE.Color(d.color), horiz = d.d === 1 || d.d === 4, th = T * 1.3;
+      const mat = new THREE.MeshStandardMaterial({ color: col, roughness: 0.45, metalness: 0.15, emissive: col.clone().multiplyScalar(0.25) });
+      const door = new THREE.Mesh(new THREE.BoxGeometry(horiz ? 1 + T : th, WALL_H * 0.92, horiz ? th : 1 + T), mat); door.castShadow = true; door.position.set(d.cx, WALL_H * 0.46, d.cy);
+      const knob = new THREE.Mesh(new THREE.SphereGeometry(0.1, 14, 10), gold); knob.position.y = WALL_H * 0.05; door.add(knob);
+      const band = new THREE.Mesh(new THREE.BoxGeometry(horiz ? 1 + T + 0.02 : th + 0.02, 0.06, horiz ? th + 0.02 : 1 + T + 0.02), gold); band.position.y = WALL_H * 0.46; door.add(band);
+      root.add(door);
+      const ic = { x: (d.item % world.maze.w) + 0.5, y: ((d.item / world.maze.w) | 0) + 0.5 };
+      const o = { d, door, mat, a: 0, key: null, plate: null };
+      if (d.kind === 'key') {
+        const km = new THREE.MeshStandardMaterial({ color: col, metalness: 0.6, roughness: 0.3, emissive: col.clone().multiplyScalar(0.4) });
+        const g = new THREE.Group(), ring = new THREE.Mesh(new THREE.TorusGeometry(0.11, 0.035, 8, 20), km); ring.position.x = -0.17; g.add(ring);
+        const shaft = new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.06, 0.06), km); shaft.position.x = 0.07; g.add(shaft);
+        [0.14, 0.23].forEach((x, i) => { const tooth = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.1 + i * 0.03, 0.06), km); tooth.position.set(x, -0.07 - i * 0.015, 0); g.add(tooth); });
+        g.scale.setScalar(1.5); g.position.set(ic.x, 0.5, ic.y); g.traverse((q) => { q.castShadow = true; }); root.add(g);
+        const glow = new THREE.Mesh(new THREE.RingGeometry(0.2, 0.34, 28), new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.55, side: THREE.DoubleSide, depthWrite: false })); glow.rotation.x = -Math.PI / 2; glow.position.set(ic.x, 0.015, ic.y); root.add(glow);
+        o.key = g; o.glow = glow;
+      } else {
+        const g = new THREE.Group(); g.position.set(ic.x, 0, ic.y);
+        const base = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.43, 0.05, 28), new THREE.MeshStandardMaterial({ color: 0x3b2417, roughness: 0.7 })); base.position.y = 0.025; g.add(base);
+        const top = new THREE.Mesh(new THREE.CylinderGeometry(0.31, 0.31, 0.07, 28), new THREE.MeshStandardMaterial({ color: col, roughness: 0.4, emissive: col.clone().multiplyScalar(0.3) })); top.position.y = 0.075; top.castShadow = true; g.add(top);
+        root.add(g); o.plate = g; o.top = top;
+      }
+      this.doors.push(o);
+    }
   }
   _addBall(p) {
     const idx = p.idx, me = p.id === this.me;
@@ -228,7 +259,10 @@ export class Scene3D {
       const b = this.balls.get(e.id);
       if (b) { this._burst(b.p.x, 0.4, b.p.y, 0xffffff, 10); b.hist.length = 0; b.lx = e.x; b.ly = e.y; b.lastTx = e.x; b.lastTy = e.y; b.fall = 0; b.fallV = 0; this._burst(e.x, 0.4, e.y, 0xffd24a, 14); }
     } else if (e.e === 'tile') this._tile(e.c, e.s, false);
-    else if (e.e === 'finish' && this.goal) this._burst(this.goal.g.position.x, 0.3, this.goal.g.position.z, 0xffd24a, 18);
+    else if (e.e === 'key' || e.e === 'unlock' || e.e === 'plate') {
+      const o = this.doors && this.doors[e.d];
+      if (o && e.id === this.me) { const m = this.maze, d = o.d; if (e.e === 'unlock') this._burst(d.cx, 0.5, d.cy, new THREE.Color(d.color).getHex(), 20); else this._burst((d.item % m.w) + 0.5, 0.4, ((d.item / m.w) | 0) + 0.5, new THREE.Color(d.color).getHex(), 16); }
+    } else if (e.e === 'finish' && this.goal) this._burst(this.goal.g.position.x, 0.3, this.goal.g.position.z, 0xffd24a, 18);
   }
   /** 每幀：更新球、動畫與鏡頭。followId 為鏡頭跟隨的球。 */
   frame(dt, followId, quick) {
@@ -245,7 +279,7 @@ export class Scene3D {
       }
       let y = R, s = 1;
       if (!p.alive) { b.fallV += 9 * dt; b.fall += b.fallV * dt; y = R - b.fall; s = Math.max(0.2, 1 - b.fall * 0.15); if (b.fall > 9) b.hidden = true; }
-      if (this.world.mode === 'race' && p.fin != null) { b.sink = Math.min(1, b.sink + dt * 2.2); y = R - b.sink * 0.3; s = 1 - b.sink * 0.45; if (b.sink >= 1) b.hidden = true; }
+      if (this.world.run && p.fin != null) { b.sink = Math.min(1, b.sink + dt * 2.2); y = R - b.sink * 0.3; s = 1 - b.sink * 0.45; if (b.sink >= 1) b.hidden = true; }
       g.visible = !b.hidden; g.position.set(p.x, y, p.y); b.mesh.scale.setScalar(s);
       if (this.trail && !this.reduce && p.alive && !b.hidden) {
         let trailChanged = false;
@@ -271,6 +305,19 @@ export class Scene3D {
       if (m.userData.grow < 1) { m.userData.grow = Math.min(1, m.userData.grow + dt * 3); m.scale.setScalar(Math.max(0.01, m.userData.grow * 1.35)); }
       m.rotation.y = t * 2.2 + m.userData.ph; m.position.y = 0.46 + (this.reduce ? 0 : Math.sin(t * 3 + m.userData.ph) * 0.05);
     });
+    if (this.doors && this.doors.length) {
+      const vp = this.world.byId.get(followId) || this.world.byId.get(this.me);
+      for (const o of this.doors) {
+        const j = o.d.j, left = vp ? vp.open[j] : 0, isOpen = left > 0;
+        o.a += ((isOpen ? 1 : 0) - o.a) * Math.min(1, dt * 9);
+        const warn = isOpen && left < 1.6 && left < 1e8 && !this.reduce; // 計時門快關了：閃爍提醒
+        o.door.visible = o.a < 0.985; o.door.position.y = WALL_H * 0.46 - o.a * WALL_H * 0.95 + (warn && Math.sin(t * 24) > 0 ? 0.3 : 0);
+        const holds = !!vp && o.d.kind === 'key' && vp.keyHas[j] === 1 && !isOpen;
+        o.mat.emissiveIntensity = holds ? 1.2 + 0.9 * Math.sin(t * 7) : 1;
+        if (o.key) { o.key.visible = o.glow.visible = !vp || vp.keyHas[j] === 0; o.key.rotation.y = t * 2.2 + j; o.key.position.y = 0.5 + (this.reduce ? 0 : Math.sin(t * 3 + j) * 0.05); o.glow.material.opacity = 0.4 + 0.2 * Math.sin(t * 4 + j); }
+        if (o.plate) { o.top.position.y += ((isOpen ? 0.03 : 0.075) - o.top.position.y) * Math.min(1, dt * 14); o.top.material.emissiveIntensity = isOpen ? 0.2 : 1 + 0.5 * Math.sin(t * 4 + j); }
+      }
+    }
     if (this.goal) { this.goal.flag.rotation.y = Math.sin(t * 4) * 0.25; this.goal.beam.material.opacity = 0.11 + 0.05 * Math.sin(t * 3); this.goal.ring.rotation.z = t * 0.6; }
     // 崩塌地磚
     if (this.tileMesh && this.tileActive.size) {

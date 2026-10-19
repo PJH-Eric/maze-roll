@@ -13,8 +13,10 @@
   const OPP = { 1: 4, 2: 8, 4: 1, 8: 2 };
   const DIRS = [N, E, S, W];
 
-  const MODES = ['race', 'stars', 'collapse'];
-  const MODE_NAMES = { race: '同圖競速', stars: '搶星星', collapse: '地板崩塌' };
+  const MODES = ['race', 'stars', 'collapse', 'escape'];
+  const MODE_NAMES = { race: '同圖競速', stars: '搶星星', collapse: '地板崩塌', escape: '逃出模式' };
+  /** 競速與逃出共用「先抵達終點者勝」的流程。 */
+  const isRun = (mode) => mode === 'race' || mode === 'escape';
   const DIFFS = ['幼幼班', '簡單', '普通', '困難', '神話'];
   /** 五種難度的木質主題：地板／牆的木色與紋路色、桌面、背景、介面強調色。 */
   const DIFF_THEME = [
@@ -28,15 +30,20 @@
   const RACE_BRAID = [0.5, 0.3, 0.15, 0.05, 0];
   const braidFor = (mode, diff) => (mode === 'race' ? RACE_BRAID[diff | 0] : BRAID[mode]);
   const AI_NAMES = ['幼幼班', '簡單', '普通', '困難'];
-  const SIZE = { race: [6, 10, 15, 21, 28], stars: [8, 11, 15, 19, 23], collapse: [6, 8, 10, 13, 16] };
-  const BRAID = { race: 0.05, stars: 0.5, collapse: 0.55 };
+  const SIZE = { race: [6, 10, 15, 21, 28], stars: [8, 11, 15, 19, 23], collapse: [6, 8, 10, 13, 16], escape: [6, 9, 12, 16, 20] };
+  const BRAID = { race: 0.05, stars: 0.5, collapse: 0.55, escape: 0 }; // 逃出：完美迷宮（無環），每道門才一定擋得住路
+  /** 逃出模式：各難度的門數、機關計時倍率（越難越短）、門的顏色。 */
+  const ESCAPE_GATES = [2, 2, 3, 4, 5];
+  const ESCAPE_TIME = [1.4, 1.25, 1.1, 1, 0.9];
+  const DOOR_COLORS = ['#22b8c7', '#3d7bd9', '#4cbf5a', '#f2d230', '#c45ad6']; // 避開紅／橘／褐（跟木牆太像）
+  const KEY_R = 0.5, PLATE_R = 0.42, UNLOCK_R = 0.85, FOREVER = 1e9;
   const CRUMBLE = [3.2, 2.5, 2.0, 1.6, 1.2];
   const LEVEL_SIZE = [[5, 9], [8, 14], [11, 19], [15, 25], [19, 31]];
   const LEVELS_PER_DIFF = 100;
 
   const PHYS = { R: 0.36, T: 0.12, ACC: 9.5, FRI: 2.6, REST: 0.25 };
   const STAR_R = 0.55, GOAL_R = 0.5;
-  const STAR_TIME = 90, GRACE = 15, RACE_CAP = 600, COLLAPSE_CAP = 240;
+  const STAR_TIME = 90, GRACE = 15, ESCAPE_GRACE = 10, RACE_CAP = 600, ESCAPE_CAP = 900, COLLAPSE_CAP = 240;
   const COLLAPSE_FALL = 0.22, COLLAPSE_SUDDEN = 60, COLLAPSE_HEAD = 1.2;
   const MAX_PLAYERS = 8;
 
@@ -155,7 +162,7 @@
     if (vn < 0) { b.vx -= (1 + PHYS.REST) * vn * nx; b.vy -= (1 + PHYS.REST) * vn * ny; return -vn; }
     return 0;
   }
-  function collide(m, b) {
+  function collide(m, b, extra) {
     const cx = Math.floor(b.x), cy = Math.floor(b.y), h = PHYS.T / 2;
     let impact = 0;
     for (let yy = cy - 1; yy <= cy + 1; yy++) {
@@ -169,10 +176,11 @@
         if (yy === m.h - 1 && (c & S)) impact = Math.max(impact, resolveRect(b, xx - h, yy + 1 - h, xx + 1 + h, yy + 1 + h));
       }
     }
+    if (extra) for (let k = 0; k < extra.length; k++) { const r = extra[k]; impact = Math.max(impact, resolveRect(b, r[0], r[1], r[2], r[3])); }
     return impact;
   }
-  /** 推進一顆球；ix, iy 為 -1..1 的傾斜輸入；回傳撞牆速度（供音效）。 */
-  function stepBall(m, b, ix, iy, dt) {
+  /** 推進一顆球；ix, iy 為 -1..1 的傾斜輸入；extra 為額外的矩形障礙（關著的門）；回傳撞牆速度（供音效）。 */
+  function stepBall(m, b, ix, iy, dt, extra) {
     const mag = Math.hypot(ix, iy);
     if (mag > 1) { ix /= mag; iy /= mag; }
     const sub = 2, h = dt / sub, f = Math.exp(-PHYS.FRI * h);
@@ -181,7 +189,7 @@
       b.vx = (b.vx + ix * PHYS.ACC * h) * f;
       b.vy = (b.vy + iy * PHYS.ACC * h) * f;
       b.x += b.vx * h; b.y += b.vy * h;
-      impact = Math.max(impact, collide(m, b));
+      impact = Math.max(impact, collide(m, b, extra));
     }
     return impact;
   }
@@ -199,7 +207,60 @@
     return time <= par * 1.35 ? 3 : time <= par * 2.2 ? 2 : 1;
   }
 
-  // ---------- 世界（三種玩法共用）----------
+
+  // ---------- 逃出模式：門、鑰匙、踏板 ----------
+  /** 由迷宮與難度決定性地產生機關配置（客戶端與伺服器各算一份，結果一致）。
+      迷宮是完美迷宮（無環），所以起點到終點只有一條路；沿這條路依序放 N 道門，
+      每道門的鑰匙／踏板放在「該門之前、上一道門之後」的區域，保證有解且需要繞路。 */
+  function buildEscape(maze, diff, seed) {
+    const r = rng(seed ^ 0x3c6ef372), n = maze.n, w = maze.w;
+    const gd = maze.bfs(maze.goal), path = [maze.start];
+    while (path[path.length - 1] !== maze.goal) {
+      const cur = path[path.length - 1];
+      path.push(maze.neighbors(cur).find((nb) => gd[nb.i] === gd[cur] - 1).i);
+    }
+    const L = path.length - 1, df = clamp(diff | 0, 0, 4);
+    const G = Math.max(1, Math.min(ESCAPE_GATES[df], Math.floor(L / 4)));
+    const dirTo = (a, b) => { for (const nb of maze.neighbors(a)) if (nb.i === b) return nb.d; return 0; };
+    const sideOf = (from, na, nb) => { // 不跨過邊 (na,nb) 能走到的格子
+      const mark = new Uint8Array(n), q = [from]; mark[from] = 1;
+      for (let qi = 0; qi < q.length; qi++) {
+        const i = q[qi];
+        for (const x of maze.neighbors(i)) { if ((i === na && x.i === nb) || (i === nb && x.i === na) || mark[x.i]) continue; mark[x.i] = 1; q.push(x.i); }
+      }
+      return mark;
+    };
+    const depth = new Int16Array(n).fill(-1), dq = path.slice(); // 離主路（起點到終點的唯一路徑）的距離
+    dq.forEach((i) => { depth[i] = 0; });
+    for (let qi = 0; qi < dq.length; qi++) for (const x of maze.neighbors(dq[qi])) if (depth[x.i] < 0) { depth[x.i] = depth[dq[qi]] + 1; dq.push(x.i); }
+    const doors = [], used = new Set([maze.start, maze.goal]);
+    let prevFar = null;
+    for (let j = 0; j < G; j++) {
+      const idx = clamp(Math.round(L * (j + 1) / (G + 1)), 2 + 2 * j, L - 1 - 2 * (G - 1 - j));
+      const near = path[idx], far = path[idx + 1], d = dirTo(near, far), h = PHYS.T / 2;
+      const x = near % w, y = (near / w) | 0;
+      const rect = d === N ? [x - h, y - h, x + 1 + h, y + h] : d === S ? [x - h, y + 1 - h, x + 1 + h, y + 1 + h] : d === W ? [x - h, y - h, x + h, y + 1 + h] : [x + 1 - h, y - h, x + 1 + h, y + 1 + h];
+      const cx = d === E ? x + 1 : d === W ? x : x + 0.5, cy = d === S ? y + 1 : d === N ? y : y + 0.5;
+      const farSide = sideOf(far, near, far); // 門之後的區域（含終點）
+      const entry = j === 0 ? maze.start : path[doors[j - 1].idx + 1];
+      const dist = maze.bfs(entry), cand = [];
+      for (let i = 0; i < n; i++) {
+        if (farSide[i] || used.has(i) || i === near || (prevFar && !prevFar[i])) continue;
+        cand.push(i);
+      }
+      cand.sort((a, b) => depth[b] - depth[a] || dist[b] - dist[a] || a - b); // 優先放在離主路最深的支線盡頭（要繞路）
+      const item = cand.length ? cand[Math.min(cand.length - 1, (r() * Math.min(3, cand.length)) | 0)] : near;
+      used.add(item);
+      const kind = j % 2 === 0 ? 'key' : 'plate';
+      const di = maze.bfs(near)[item];
+      doors.push({ j, idx, kind, near, far, d, rect, cx, cy, item, color: DOOR_COLORS[j % DOOR_COLORS.length], farSide,
+        T: kind === 'plate' ? Math.max(7, (di / 1.6 + 4) * ESCAPE_TIME[df]) : 0 });
+      prevFar = farSide;
+    }
+    return { doors };
+  }
+
+  // ---------- 世界（四種玩法共用）----------
   class World {
     /** o: {mode, diff, seed, size?, level?, grace?, players:[{id,name,kind,ai?}]} */
     constructor(o) {
@@ -208,14 +269,20 @@
       this.maze = makeMaze(this.size, this.size, this.seed, o.braid != null ? o.braid : braidFor(this.mode, this.diff));
       this.rand = rng(this.seed ^ 0x9e3779b9);
       this.t = 0; this.started = false; this.over = false; this.results = null;
-      this.events = []; this.finished = 0; this.graceLeft = null; this.grace = o.grace != null ? o.grace : GRACE;
+      this.events = []; this.finished = 0; this.graceLeft = null; this.grace = o.grace != null ? o.grace : (o.mode === 'escape' ? ESCAPE_GRACE : GRACE);
+      this.run = isRun(this.mode);
       const m = this.maze;
       this.players = o.players.map((p, i) => ({
         id: p.id, name: p.name, kind: p.kind || 'human', ai: p.ai, idx: i,
         x: 0.5, y: 0.5, vx: 0, vy: 0, alive: true, score: 0, fin: null, out: null, last: 0, over: 0, place: 0,
       }));
+      if (this.mode === 'escape') {
+        this.esc = buildEscape(m, this.diff, this.seed);
+        const G = this.esc.doors.length;
+        for (const p of this.players) { p.keyHas = new Uint8Array(G); p.open = new Float32Array(G); } // keyHas: 0 沒拿／1 持有／2 已用；open: 門開著的剩餘秒數（FOREVER＝永久）
+      }
       this.byId = new Map(this.players.map((p) => [p.id, p]));
-      if (this.mode === 'race') {
+      if (this.run) {
         const c = cellCenter(m, m.start), k = this.players.length;
         this.players.forEach((p, i) => { const a = (i / k) * Math.PI * 2; p.x = c.x + (k > 1 ? Math.cos(a) * 0.16 : 0); p.y = c.y + (k > 1 ? Math.sin(a) * 0.16 : 0); });
         this._gd = null;
@@ -267,9 +334,9 @@
     respawn(id) {
       const p = this.byId.get(id), m = this.maze;
       if (!p || !p.alive || this.over || !this.started) return null;
-      if (this.mode === 'race' && p.fin != null) return null;
+      if (this.run && p.fin != null) return null;
       let c;
-      if (this.mode === 'race') {
+      if (this.run) {
         const o = cellCenter(m, m.start), k = this.players.length, a = (p.idx / k) * Math.PI * 2;
         c = { x: o.x + (k > 1 ? Math.cos(a) * 0.16 : 0), y: o.y + (k > 1 ? Math.sin(a) * 0.16 : 0) };
       } else if (this.mode === 'collapse') {
@@ -291,7 +358,8 @@
       if (this.over || !this.started) return [];
       const ev0 = this.events.length;
       this.t += dt;
-      if (this.mode === 'race') this._race(dt);
+      if (this.mode === 'escape') { this.doorTick(dt); this._escape(); this._race(dt); }
+      else if (this.mode === 'race') this._race(dt);
       else if (this.mode === 'stars') this._stars();
       else this._collapse(dt);
       return this.events.slice(ev0);
@@ -309,7 +377,45 @@
       if (this.graceLeft != null) this.graceLeft -= dt;
       const hs = this.humans();
       const allHumans = hs.length > 0 && hs.every((p) => p.fin != null);
-      if (allHumans || this.finished === this.players.length || (this.graceLeft != null && this.graceLeft <= 0) || this.t >= RACE_CAP) this._finish();
+      if (allHumans || this.finished === this.players.length || (this.graceLeft != null && this.graceLeft <= 0) || this.t >= (this.mode === 'escape' ? ESCAPE_CAP : RACE_CAP)) this._finish();
+    }
+    // ---------- 逃出：機關 ----------
+    /** 這位玩家目前關著的門的矩形（供球物理使用）；非逃出模式回傳 undefined。 */
+    blockers(p) {
+      if (!this.esc) return undefined;
+      const out = [], ds = this.esc.doors;
+      for (let j = 0; j < ds.length; j++) if (p.open[j] <= 0) out.push(ds[j].rect);
+      return out;
+    }
+    /** 推進一位玩家的球（含門的阻擋）；回傳撞牆速度。 */
+    stepPlayer(p, ix, iy, dt) { return stepBall(this.maze, p, ix, iy, dt, this.blockers(p)); }
+    /** 門計時（踏板開門只維持一段時間）。線上客戶端也要每步呼叫，才能與伺服器同步關門。 */
+    doorTick(dt) {
+      if (!this.esc) return;
+      for (const p of this.players) for (let j = 0; j < p.open.length; j++) if (p.open[j] > 0 && p.open[j] < FOREVER / 2) p.open[j] = Math.max(0, p.open[j] - dt);
+    }
+    /** 已經通過的門數（以所在區域判定，與門現在開不開無關）。 */
+    passed(p) {
+      if (!this.esc) return 0;
+      const c = cellAt(this.maze, p.x, p.y); let k = 0;
+      for (const d of this.esc.doors) if (d.farSide[c]) k++;
+      return k;
+    }
+    _escape() {
+      const m = this.maze;
+      for (const p of this.players) {
+        if (p.fin != null) continue;
+        const c = cellAt(m, p.x, p.y);
+        for (const d of this.esc.doors) {
+          const j = d.j, ic = cellCenter(m, d.item);
+          if (d.kind === 'key') {
+            if (p.keyHas[j] === 0 && Math.hypot(p.x - ic.x, p.y - ic.y) < KEY_R) { p.keyHas[j] = 1; this.emit({ e: 'key', id: p.id, d: j }); }
+            else if (p.keyHas[j] === 1 && (c === d.near || c === d.far) && Math.hypot(p.x - d.cx, p.y - d.cy) < UNLOCK_R) { p.keyHas[j] = 2; p.open[j] = FOREVER; this.emit({ e: 'unlock', id: p.id, d: j }); }
+          } else if (p.open[j] <= 0 && Math.hypot(p.x - ic.x, p.y - ic.y) < PLATE_R) {
+            p.open[j] = d.T; this.emit({ e: 'plate', id: p.id, d: j, T: +d.T.toFixed(2) });
+          }
+        }
+      }
     }
     _stars() {
       const m = this.maze;
@@ -371,8 +477,8 @@
     rank() {
       const ps = this.players.slice();
       let key; // 越小越前
-      if (this.mode === 'race') {
-        key = (p) => (p.fin != null ? [0, p.fin] : [1, this.gd[cellAt(this.maze, p.x, p.y)] + 0.01 * Math.hypot(p.x - cellCenter(this.maze, this.maze.goal).x, p.y - cellCenter(this.maze, this.maze.goal).y)]);
+      if (this.run) {
+        key = (p) => (p.fin != null ? [0, p.fin] : [1, this.gd[cellAt(this.maze, p.x, p.y)] - 1000 * this.passed(p) + 0.01 * Math.hypot(p.x - cellCenter(this.maze, this.maze.goal).x, p.y - cellCenter(this.maze, this.maze.goal).y)]);
       } else if (this.mode === 'stars') {
         key = (p) => [-p.score, p.last];
       } else {
@@ -381,10 +487,10 @@
       ps.sort((a, b) => { const ka = key(a), kb = key(b); return ka[0] - kb[0] || ka[1] - kb[1]; });
       const out = []; let place = 0, prev = null;
       ps.forEach((p, i) => {
-        const k = key(p), same = prev && Math.abs(k[0] - prev[0]) < 1e-9 && (this.mode === 'race' && p.fin == null ? false : Math.abs(k[1] - prev[1]) < 1e-9);
+        const k = key(p), same = prev && Math.abs(k[0] - prev[0]) < 1e-9 && (this.run && p.fin == null ? false : Math.abs(k[1] - prev[1]) < 1e-9);
         if (!same) place = i + 1; prev = k;
         const r = { id: p.id, place };
-        if (this.mode === 'race') { if (p.fin != null) r.time = +p.fin.toFixed(2); else r.dnf = true; }
+        if (this.run) { if (p.fin != null) r.time = +p.fin.toFixed(2); else r.dnf = true; }
         else if (this.mode === 'stars') r.score = p.score;
         else { r.alive = p.alive; r.time = +(p.alive ? this.t : p.out).toFixed(2); }
         out.push(r);
@@ -399,7 +505,10 @@
         if (e.nid != null) this.stars.push({ id: e.nid, c: e.nc });
       } else if (e.e === 'finish') {
         const p = this.byId.get(e.id); if (p) { p.fin = e.t; p.place = e.place; }
-      } else if (e.e === 'tile') { this.tile[e.c] = e.s; if (e.s === 1) this.timer[e.c] = this.crumble; }
+      } else if (e.e === 'key') { const p = this.byId.get(e.id); if (p && p.keyHas) p.keyHas[e.d] = 1; }
+      else if (e.e === 'unlock') { const p = this.byId.get(e.id); if (p && p.open) { p.keyHas[e.d] = 2; p.open[e.d] = FOREVER; } }
+      else if (e.e === 'plate') { const p = this.byId.get(e.id); if (p && p.open) p.open[e.d] = e.T; }
+      else if (e.e === 'tile') { this.tile[e.c] = e.s; if (e.s === 1) this.timer[e.c] = this.crumble; }
       else if (e.e === 'out') { const p = this.byId.get(e.id); if (p) { p.alive = false; p.out = e.t; } }
       else if (e.e === 'respawn') { const p = this.byId.get(e.id); if (p) { p.x = e.x; p.y = e.y; p.vx = 0; p.vy = 0; } }
       else if (e.e === 'end') { this.over = true; this.results = e.results; }
@@ -407,7 +516,7 @@
   }
 
   return {
-    N, E, S, W, DX, DY, OPP, DIRS, MODES, MODE_NAMES, DIFFS, DIFF_THEME, braidFor, AI_NAMES, SIZE, BRAID, CRUMBLE, LEVELS_PER_DIFF, PHYS,
+    N, E, S, W, DX, DY, OPP, DIRS, MODES, MODE_NAMES, isRun, DOOR_COLORS, FOREVER, ESCAPE_GRACE, DIFFS, DIFF_THEME, braidFor, AI_NAMES, SIZE, BRAID, CRUMBLE, LEVELS_PER_DIFF, PHYS,
     STAR_R, GOAL_R, STAR_TIME, GRACE, MAX_PLAYERS, COLLAPSE_SUDDEN, COLLAPSE_HEAD,
     rng, hashSeed, clamp, makeMaze, cellCenter, cellAt, stepBall, levelSize, levelSeed, levelPar, levelStars, World,
   };

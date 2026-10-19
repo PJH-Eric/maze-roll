@@ -423,6 +423,7 @@ body::before { content: ""; position: fixed; inset: 0; pointer-events: none; z-i
 .resultModal { --ra: #d4473a; --ra2: #a8321f; overflow: hidden; }
 .resultModal.m-stars { --ra: #e8ab1a; --ra2: #b57a06; }
 .resultModal.m-collapse { --ra: #2f8f83; --ra2: #1d655c; }
+.resultModal.m-escape { --ra: #7b5ac8; --ra2: #55389a; }
 .resultModal::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 92px; background: linear-gradient(var(--ra), var(--ra2)); opacity: .96; border-bottom: 3px solid #2a1a10; }
 .resultModal.lose::before { background: linear-gradient(#8b7a66, #5f5143); }
 .resultModal .modalHead { position: relative; justify-content: center; text-align: center; min-height: 40px; padding-right: 0; }

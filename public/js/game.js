@@ -32,7 +32,7 @@ export class Game {
   _size() { const el = this.o.canvas.parentElement, r = el.getBoundingClientRect(); if (r.width > 0 && r.height > 0) this.scene.resize(Math.round(r.width), Math.round(r.height)); }
   _applySnapshot(s) { // 斷線重連／中途加入：還原世界狀態
     const w = this.world;
-    s.snap.forEach(([id, x, y, alive, score, fin, out]) => { const p = w.byId.get(id); if (!p) return; p.x = x; p.y = y; p.alive = alive; p.score = score || 0; p.fin = fin; p.out = out; });
+    s.snap.forEach(([id, x, y, alive, score, fin, out, keys, open]) => { const p = w.byId.get(id); if (!p) return; p.x = x; p.y = y; p.alive = alive; p.score = score || 0; p.fin = fin; p.out = out; if (p.keyHas && keys) { p.keyHas.set(keys); p.open.set(open); } });
     if (s.stars) { w.stars = s.stars.map(([id, c]) => ({ id, c })); w.nextStar = 1e6; }
     if (s.tiles) { w.tile.set(s.tiles); for (let i = 0; i < s.tiles.length; i++) if (s.tiles[i] === 1) w.timer[i] = 1; }
     w.t = s.tt || 0; w.started = s.state === 'playing';
@@ -88,7 +88,9 @@ export class Game {
     this.scene.onEvent(e);
     const me = this.meId;
     if (e.e === 'star') { if (e.id === me) { audio.star(); audio.vibrate(30); } else audio.starOther(); }
-    else if (e.e === 'finish') {
+    else if (e.e === 'key' || e.e === 'unlock' || e.e === 'plate') {
+      if (e.id === me) { e.e === 'key' ? audio.star() : audio.finish(); audio.vibrate(40); this.hooks.onEscape && this.hooks.onEscape(e); }
+    } else if (e.e === 'finish') {
       if (e.id === me) { e.place === 1 ? audio.win() : audio.finish(); audio.vibrate(60); this.meState = 'finished'; this.hooks.onMe && this.hooks.onMe('finished', e); }
       else audio.finish();
     } else if (e.e === 'out') {
@@ -113,19 +115,19 @@ export class Game {
     const w = this.world, me = this.me();
     if (!this.online) {
       for (const p of w.players) {
-        if (!p.alive || (w.mode === 'race' && p.fin != null)) continue;
+        if (!p.alive || (w.run && p.fin != null)) continue;
         let ix = 0, iy = 0;
         if (p.id === this.meId) { [ix, iy] = this.input.vec(); } else { const c = this.ctrl.get(p.id); if (c) [ix, iy] = c.step(dt); }
-        const imp = MR.stepBall(w.maze, p, ix, iy, dt);
+        const imp = w.stepPlayer(p, ix, iy, dt);
         if (p.id === this.meId && imp > 0.9) { const now = performance.now(); if (now - this.lastThud > 90) { audio.thud(imp); this.lastThud = now; } }
       }
       const ev = w.update(dt);
       for (const e of ev) this._event(e, false);
     } else {
-      w.t += dt;
-      if (me && me.alive && !(w.mode === 'race' && me.fin != null)) {
+      w.t += dt; w.doorTick(dt);
+      if (me && me.alive && !(w.run && me.fin != null)) {
         const [ix, iy] = this.input.vec();
-        const imp = MR.stepBall(w.maze, me, ix, iy, dt);
+        const imp = w.stepPlayer(me, ix, iy, dt);
         if (imp > 0.9) { const now = performance.now(); if (now - this.lastThud > 90) { audio.thud(imp); this.lastThud = now; } }
         this.posT += dt;
         if (this.posT >= 0.05) { this.posT = 0; this.o.online.net.send({ t: 'pos', x: +me.x.toFixed(3), y: +me.y.toFixed(3), vx: +me.vx.toFixed(2), vy: +me.vy.toFixed(2) }); }
@@ -153,7 +155,7 @@ export class Game {
     }
     // 滾動聲
     const me = this.me();
-    audio.roll(me && me.alive && !(w.mode === 'race' && me.fin != null) && this.state === 'play' && !this.paused ? Math.hypot(me.vx, me.vy) : 0);
+    audio.roll(me && me.alive && !(w.run && me.fin != null) && this.state === 'play' && !this.paused ? Math.hypot(me.vx, me.vy) : 0);
     // 鏡頭跟隨
     this.scene.frame(dt, this._followId(), false);
     this.hudT += dt; if (this.hudT >= STEP) { this.hudT = 0; this._hud(); }
@@ -161,8 +163,8 @@ export class Game {
   }
   _followId() {
     const w = this.world, me = this.me();
-    if (this.follow && w.byId.get(this.follow) && w.byId.get(this.follow).alive !== undefined) { const f = w.byId.get(this.follow); if (f.alive && !(w.mode === 'race' && f.fin != null && f !== me)) return this.follow; }
-    if (me && me.alive && !(w.mode === 'race' && me.fin != null)) return me.id;
+    if (this.follow && w.byId.get(this.follow) && w.byId.get(this.follow).alive !== undefined) { const f = w.byId.get(this.follow); if (f.alive && !(w.run && f.fin != null && f !== me)) return this.follow; }
+    if (me && me.alive && !(w.run && me.fin != null)) return me.id;
     const rows = this.standings().filter((r) => r.alive && !r.done);
     if (rows.length) return rows[0].id;
     return me ? me.id : w.players[0].id;
@@ -170,11 +172,11 @@ export class Game {
   standings() {
     const w = this.world, m = w.maze, rows = w.players.map((p) => {
       const base = { id: p.id, name: p.name, idx: p.idx, me: p.id === this.meId, ai: p.kind === 'ai', alive: p.alive, score: p.score };
-      if (w.mode === 'race') { base.done = p.fin != null; base.fin = p.fin; base.rem = p.fin != null ? 0 : w.gd[MR.cellAt(m, p.x, p.y)] + 0.01 * Math.hypot(p.x - (m.goal % m.w + 0.5), p.y - ((m.goal / m.w | 0) + 0.5)); }
+      if (w.run) { base.done = p.fin != null; base.fin = p.fin; base.prog = w.passed(p); base.rem = p.fin != null ? 0 : w.gd[MR.cellAt(m, p.x, p.y)] + 0.01 * Math.hypot(p.x - (m.goal % m.w + 0.5), p.y - ((m.goal / m.w | 0) + 0.5)); }
       if (w.mode === 'collapse') base.out = p.out;
       return base;
     });
-    if (w.mode === 'race') rows.sort((a, b) => (a.done !== b.done ? (a.done ? -1 : 1) : a.done ? a.fin - b.fin : a.rem - b.rem));
+    if (w.run) rows.sort((a, b) => (a.done !== b.done ? (a.done ? -1 : 1) : a.done ? a.fin - b.fin : (b.prog - a.prog) || a.rem - b.rem));
     else if (w.mode === 'stars') rows.sort((a, b) => b.score - a.score);
     else rows.sort((a, b) => (a.alive !== b.alive ? (a.alive ? -1 : 1) : (b.out || 0) - (a.out || 0)));
     rows.forEach((r, i) => { r.rank = i + 1; });
@@ -221,11 +223,25 @@ export class Game {
       }
     }
     const tt = (typeof performance !== 'undefined' ? performance.now() : 0) / 1000;
-    if (w.mode === 'race') { // 終點小旗
+    if (w.run) { // 終點小旗
       const gx = ox + (m.goal % m.w + 0.5) * S, gy = oy + (((m.goal / m.w) | 0) + 0.5) * S, u = Math.max(S * 1.1, 8);
       g.fillStyle = 'rgba(255,210,74,.55)'; g.beginPath(); g.arc(gx, gy, u * (0.7 + 0.12 * Math.sin(tt * 4)), 0, 7); g.fill();
       g.strokeStyle = '#4a2c1a'; g.lineWidth = Math.max(1.2, u * .12); g.beginPath(); g.moveTo(gx - u * .15, gy + u * .45); g.lineTo(gx - u * .15, gy - u * .5); g.stroke();
       g.fillStyle = '#d4473a'; g.beginPath(); g.moveTo(gx - u * .15, gy - u * .5); g.lineTo(gx + u * .5, gy - u * .28); g.lineTo(gx - u * .15, gy - u * .05); g.closePath(); g.fill();
+    }
+    if (w.esc) { // 逃出：以「正在看的那位玩家」的視角畫門、鑰匙、踏板
+      const v = w.byId.get(this.meId) || w.byId.get(this._followId());
+      for (const d of w.esc.doors) {
+        const closed = !v || v.open[d.j] <= 0, ic = { x: ox + ((d.item % m.w) + 0.5) * S, y: oy + (((d.item / m.w) | 0) + 0.5) * S }, u = Math.max(3, S * 0.42);
+        g.strokeStyle = d.color; g.fillStyle = d.color; g.lineCap = 'round';
+        if (closed) { const bar = () => { g.beginPath(); if (d.d === 1 || d.d === 4) { g.moveTo(ox + (d.cx - 0.5) * S, oy + d.cy * S); g.lineTo(ox + (d.cx + 0.5) * S, oy + d.cy * S); } else { g.moveTo(ox + d.cx * S, oy + (d.cy - 0.5) * S); g.lineTo(ox + d.cx * S, oy + (d.cy + 0.5) * S); } g.stroke(); }; const sc = g.strokeStyle; g.strokeStyle = '#2a1a10'; g.lineWidth = Math.max(4, S * 0.46); bar(); g.strokeStyle = sc; g.lineWidth = Math.max(2.4, S * 0.3); bar(); }
+        if (d.kind === 'key') {
+          if (!v || v.keyHas[d.j] === 0) {
+            const key = () => { g.beginPath(); g.arc(ic.x - u * 0.35, ic.y, u * 0.42, 0, 7); g.stroke(); g.beginPath(); g.moveTo(ic.x + u * 0.07, ic.y); g.lineTo(ic.x + u * 0.85, ic.y); g.moveTo(ic.x + u * 0.55, ic.y); g.lineTo(ic.x + u * 0.55, ic.y + u * 0.35); g.stroke(); };
+            const sc = g.strokeStyle; g.strokeStyle = '#2a1a10'; g.lineWidth = Math.max(3, u * 0.55); key(); g.strokeStyle = sc; g.lineWidth = Math.max(1.4, u * 0.28); key();
+          }
+        } else { g.globalAlpha = closed ? 1 : 0.45; g.strokeStyle = '#3b2417'; g.lineWidth = 1; g.fillRect(ic.x - u * 0.6, ic.y - u * 0.6, u * 1.2, u * 1.2); g.strokeRect(ic.x - u * 0.6, ic.y - u * 0.6, u * 1.2, u * 1.2); g.globalAlpha = 1; }
+      }
     }
     if (w.stars) {
       for (const s of w.stars) {
@@ -236,7 +252,7 @@ export class Game {
       }
     }
     const cols = ['#d94a3d', '#3d7bd9', '#3fae5a', '#f0b323', '#9b59d0', '#f07b2b', '#e86aa6', '#dcdcdc'];
-    const live = w.players.filter((p) => p.alive && !(w.mode === 'race' && p.fin != null));
+    const live = w.players.filter((p) => p.alive && !(w.run && p.fin != null));
     live.sort((a, b) => (a.id === this.meId) - (b.id === this.meId)); // 自己畫在最上層
     for (const p of live) {
       const me = p.id === this.meId, x = ox + p.x * S, y = oy + p.y * S, r = Math.max(me ? 3.4 : 2.6, S * (me ? 0.4 : 0.3));

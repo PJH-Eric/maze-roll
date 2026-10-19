@@ -103,6 +103,18 @@
       return best;
     }
 
+    /** 逃出模式：依序處理每一道還沒通過的門——鑰匙門先去拿鑰匙再去門前；踏板門先去踩踏板，門開著就衝過去。回傳目標格，沒有就往終點。 */
+    function escapeTarget() {
+      const c = cellAt(maze, player.x, player.y);
+      for (const d of world.esc.doors) {
+        if (d.farSide[c]) continue;
+        if (player.open[d.j] > 0) return -1;
+        if (d.kind === 'key') return player.keyHas[d.j] === 1 ? d.near : d.item;
+        return d.item;
+      }
+      return -1;
+    }
+
     function collapseMove(dt) {
       const c = cellAt(maze, player.x, player.y);
       if (c !== st.cell) { st.prev = st.cell; st.cell = c; st.collapseNext = -1; }
@@ -133,7 +145,7 @@
       level, st,
       /** 每個固定時間步呼叫一次，回傳 [ix, iy]。 */
       step(dt) {
-        if (!player.alive || (world.mode === 'race' && player.fin != null)) return [0, 0];
+        if (!player.alive || (world.run && player.fin != null)) return [0, 0];
         const t = world.t;
         if (L.idle > 0) {
           if (st.idle > 0) { st.idle -= dt; return [0, 0]; }
@@ -141,6 +153,11 @@
         }
         let inp;
         if (world.mode === 'race') inp = moveAlong(raceField(), dt, t);
+        else if (world.mode === 'escape') {
+          const tg = escapeTarget();
+          if (tg !== st.escTarget) { st.escTarget = tg; st.cell = -1; st.commitLeft = 0; }
+          inp = moveAlong(tg < 0 ? raceField() : fieldOf(tg), dt, t);
+        }
         else if (world.mode === 'stars') {
           st.thinkT -= dt;
           if (st.thinkT <= 0 || !st.target || !world.stars.some((s) => s.id === st.target.id)) {

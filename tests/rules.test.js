@@ -75,6 +75,56 @@ let n = 0; const ok = (m) => { n++; console.log('  ✓', m); };
   cl.players[1].alive = false; assert.strictEqual(cl.respawn('b'), null); ok('已淘汰不能回起點');
   const ap = mk('race'); ap.players[0].x = 9; ap.applyEvent({ e: 'respawn', id: 'a', x: 1.5, y: 2.5 }); assert.strictEqual(ap.players[0].x, 1.5); ok('respawn 事件可同步套用');
 }
+// 逃出模式
+{
+  const mk = (diff, seed, ps) => { const w = new MR.World({ mode: 'escape', diff, seed, players: ps || [{ id: 'a', name: 'A' }, { id: 'b', name: 'B' }] }); w.start(); return w; };
+  const at = (p, c) => { const q = MR.cellCenter(p.w.maze, c); p.p.x = q.x; p.p.y = q.y; p.p.vx = p.p.vy = 0; };
+  // 配置：各難度、多個種子都「有解」——鑰匙／踏板在該門之前、上一道門之後，終點在最後一道門之後
+  for (let diff = 0; diff < 5; diff++) for (let seed = 1; seed <= 60; seed++) {
+    const w = mk(diff, seed), ds = w.esc.doors, m = w.maze; let prev = null; assert(ds.length >= 2 && ds.length <= 5);
+    ds.forEach((d) => { assert(!d.farSide[d.item] && !d.farSide[m.start] && d.farSide[m.goal] && (!prev || prev[d.item])); prev = d.farSide; });
+    assert.strictEqual(new Set(ds.map((d) => d.item)).size, ds.length);
+  }
+  ok('逃出：五種難度各 60 種子的門／鑰匙／踏板配置都有解、不重疊');
+  const a = mk(2, 5), b = mk(2, 5); assert.deepStrictEqual(a.esc.doors.map((d) => [d.near, d.far, d.item, d.kind]), b.esc.doors.map((d) => [d.near, d.far, d.item, d.kind])); ok('逃出：同 seed 的機關配置完全相同（伺服器與客戶端一致）');
+  // 關著的門擋得住球
+  const w = mk(1, 9, [{ id: 'a', name: 'A' }]), p = w.byId.get('a'), d0 = w.esc.doors[0]; assert.strictEqual(d0.kind, 'key');
+  const nearC = MR.cellCenter(w.maze, d0.near); p.x = nearC.x; p.y = nearC.y; p.keyHas[0] = 0;
+  const dir = { 1: [0, -1], 2: [1, 0], 4: [0, 1], 8: [-1, 0] }[d0.d];
+  for (let k = 0; k < 200; k++) w.stepPlayer(p, dir[0], dir[1], 1 / 60);
+  assert(w.passed(p) === 0 && MR.cellAt(w.maze, p.x, p.y) === d0.near); ok('逃出：關著的門擋住球');
+  // 鑰匙：撿到 → 持有；走到門前 → 永久開門
+  const ic = MR.cellCenter(w.maze, d0.item); p.x = ic.x; p.y = ic.y; let ev = w.update(0.01); assert(ev.some((e) => e.e === 'key') && p.keyHas[0] === 1); ok('逃出：碰到鑰匙就持有');
+  p.x = nearC.x; p.y = nearC.y; ev = w.update(0.01); assert(ev.some((e) => e.e === 'unlock') && p.open[0] > 1e8 && p.keyHas[0] === 2); ok('逃出：帶著鑰匙走到門前，門永久打開');
+  for (let k = 0; k < 200; k++) w.stepPlayer(p, dir[0], dir[1], 1 / 60); assert(w.passed(p) >= 1); ok('逃出：開門後球可以穿過去');
+  // 沒拿鑰匙在門前不會開門
+  const w2 = mk(1, 9, [{ id: 'a', name: 'A' }]), p2 = w2.byId.get('a'); p2.x = nearC.x; p2.y = nearC.y; w2.update(0.01); assert(p2.open[0] <= 0); ok('逃出：沒有鑰匙不會開門');
+  // 踏板：踩下 → 限時開門 → 時間到自動關上；再踩可重開
+  const w3 = mk(2, 5, [{ id: 'a', name: 'A' }]), p3 = w3.byId.get('a'), dp = w3.esc.doors[1]; assert.strictEqual(dp.kind, 'plate');
+  const pc = MR.cellCenter(w3.maze, dp.item); p3.x = pc.x; p3.y = pc.y; ev = w3.update(0.01); assert(ev.some((e) => e.e === 'plate' && e.d === 1) && p3.open[1] > 5);
+  const T = dp.T; for (let k = 0; k < (T - 0.5) * 100; k++) w3.update(0.01); assert(p3.open[1] > 0.3 && p3.open[1] < 0.7, '剩餘 ' + p3.open[1]);
+  p3.x = 0.5; p3.y = 0.5; for (let k = 0; k < 100; k++) w3.update(0.01); assert.strictEqual(p3.open[1], 0); ok('逃出：踏板開門只維持一段時間，時間到門自動關上');
+  p3.x = pc.x; p3.y = pc.y; ev = w3.update(0.01); assert(ev.some((e) => e.e === 'plate') && p3.open[1] > 5); ok('逃出：門關上後再踩踏板可重新開門');
+  // 每個人的狀態各自獨立
+  const w4 = mk(1, 9), A = w4.byId.get('a'), B = w4.byId.get('b'); at({ w: w4, p: A }, d0.item); w4.update(0.01); assert(A.keyHas[0] === 1 && B.keyHas[0] === 0); ok('逃出：鑰匙各自獨立，A 撿了 B 還在');
+  assert(w4.blockers(A).length === w4.esc.doors.length && w4.blockers(B).length === w4.esc.doors.length); A.open[0] = 1e9; assert(w4.blockers(A).length === w4.esc.doors.length - 1 && w4.blockers(B).length === w4.esc.doors.length); ok('逃出：A 開的門對 B 仍是關的');
+  // 事件同步（線上客戶端）
+  const cl = mk(1, 9); cl.applyEvent({ e: 'key', id: 'a', d: 0 }); cl.applyEvent({ e: 'unlock', id: 'b', d: 0 }); cl.applyEvent({ e: 'plate', id: 'a', d: 1, T: 8 });
+  assert(cl.byId.get('a').keyHas[0] === 1 && cl.byId.get('b').open[0] > 1e8 && cl.byId.get('a').open[1] === 8); cl.doorTick(3); assert(Math.abs(cl.byId.get('a').open[1] - 5) < 1e-4 && cl.byId.get('b').open[0] > 1e8); ok('逃出：key／unlock／plate 事件可同步，客戶端計時會倒數');
+  // 勝負：第一人到終點後倒數 10 秒；單人立即結算
+  const w5 = mk(0, 3), g = MR.cellCenter(w5.maze, w5.maze.goal); w5.byId.get('b').x = g.x; w5.byId.get('b').y = g.y; w5.update(0.1);
+  assert(w5.byId.get('b').place === 1 && w5.grace === 10 && w5.graceLeft <= 10 && w5.graceLeft > 9.8); for (let k = 0; k < 10 * 60 + 5; k++) w5.update(1 / 60);
+  assert(w5.over && w5.results[0].id === 'b' && w5.results[1].dnf); ok('逃出：第一個逃出後倒數 10 秒結算，沒逃出者為未完成');
+  const s1 = mk(0, 3, [{ id: 'a', name: 'A' }]); s1.byId.get('a').x = g.x; s1.byId.get('a').y = g.y; s1.update(0.1); assert(s1.over); ok('逃出：單人逃出立即結算');
+  // 未逃出者依「通過的門數、再依剩餘距離」排名
+  const w6 = mk(2, 5, [{ id: 'a', name: 'A' }, { id: 'b', name: 'B' }]); const dd = w6.esc.doors; const gd = w6.gd; let cNear = 0; for (let i = 0; i < w6.maze.n; i++) if (dd[0].farSide[i] && gd[i] > gd[cNear]) cNear = i;
+  at({ w: w6, p: w6.byId.get('a') }, cNear); at({ w: w6, p: w6.byId.get('b') }, w6.maze.start); assert.strictEqual(w6.rank()[0].id, 'a'); ok('逃出：未逃出者以通過的門數優先排名');
+  // 回起點：保留已拿的鑰匙與開過的門
+  const w7 = mk(1, 9, [{ id: 'a', name: 'A' }]); const p7 = w7.byId.get('a'); p7.keyHas[0] = 1; p7.x = 3.5; p7.y = 3.5; assert(w7.respawn('a')); assert(p7.keyHas[0] === 1 && Math.hypot(p7.x - 0.5, p7.y - 0.5) < 1e-6); ok('逃出：回到起點時保留鑰匙');
+  // 電腦：四段 AI 都能逃出簡單迷宮（含開門流程）
+  for (const lv of [1, 2, 3]) { const r = simulate('escape', 0, 11, [lv], { limit: 900 }); assert(r.players[0].fin != null, 'AI ' + lv + ' 沒逃出'); } ok('逃出：簡單迷宮電腦（簡單／普通／困難）都能完成開門並逃出');
+  const tms = [1, 2, 3].map((lv) => { let t = 0; for (const sd of [11, 22, 33, 44]) { const r = simulate('escape', 1, sd, [lv], { limit: 900 }).players[0]; t += r.fin != null ? r.fin : 900; } return t / 4; }); assert(tms[2] < tms[1] && tms[1] < tms[0], '逃出 AI 難度：' + tms.join(',')); ok('逃出：電腦難度越高逃得越快 ' + tms.map((x) => x.toFixed(0) + 's').join(' > '));
+}
 // 闖關
 {
   assert.strictEqual(MR.levelSize(0, 1), 5); assert.strictEqual(MR.levelSize(4, 100), 31); for (let d = 0; d < 5; d++) for (let l = 2; l <= 100; l++) assert(MR.levelSize(d, l) >= MR.levelSize(d, l - 1)); ok('五種難度的關卡大小隨關數遞增');

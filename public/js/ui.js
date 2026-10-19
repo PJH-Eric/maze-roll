@@ -37,6 +37,7 @@ const P = {
   minus: '<path d="M5 12h14" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>',
   lock: '<rect x="5" y="10.500" width="14" height="10" rx="2"/><path d="M8 10.500V8a4 4 0 0 1 8 0v2.500" fill="none" stroke="currentColor" stroke-width="2.200"/>',
   crown: '<path d="M3 8l4.500 4L12 5l4.500 7L21 8l-2 11H5z"/>',
+  key: '<circle cx="7.500" cy="12" r="4.200" fill="none" stroke="currentColor" stroke-width="2.400"/><path d="M11.700 12H21M17.500 12v4M21 12v3" fill="none" stroke="currentColor" stroke-width="2.400" stroke-linecap="round"/>',
   undo: '<path d="M5 12a7 7 0 1 0 2.200-5.100" fill="none" stroke="currentColor" stroke-width="2.400" stroke-linecap="round"/><path d="M4.500 4v4.500H9" fill="none" stroke="currentColor" stroke-width="2.400" stroke-linecap="round" stroke-linejoin="round"/><circle cx="12" cy="12" r="2.200" fill="currentColor"/>',
   link: '<path d="M10 14a4 4 0 0 0 5.600 0l3-3a4 4 0 0 0-5.600-5.600l-1 1M14 10a4 4 0 0 0-5.600 0l-3 3a4 4 0 0 0 5.600 5.600l1-1" fill="none" stroke="currentColor" stroke-width="2.200" stroke-linecap="round"/>',
 };

@@ -14,6 +14,7 @@ const MODE_INFO = {
   race: { get name() { return T('同圖競速'); }, get sub() { return T('同一座迷宮，先滾到終點旗的人贏'); }, icon: 'flag' },
   stars: { get name() { return T('搶星星'); }, get sub() { return T('90 秒內撿最多星星；被撿走會在別處重生'); }, icon: 'star' },
   collapse: { get name() { return T('地板崩塌'); }, get sub() { return T('踩過的磚會碎裂，掉下去就淘汰，最後留下的人贏'); }, icon: 'crown' },
+  escape: { get name() { return T('逃出模式'); }, get sub() { return T('拿鑰匙開門、踩踏板開機關，第一個逃出迷宮的人贏'); }, icon: 'key' },
 };
 const DIFF_SUB = ['極小・很慢', '小迷宮', '中迷宮', '大迷宮', '巨大迷宮']; // 顯示時再 T()
 // 時間一律顯示到小數點第二位（m:ss.cc）
@@ -106,6 +107,7 @@ function openHow() {
       sec(T('同圖競速'), h('p', { text: T('所有人用同一座迷宮、從同一個起點出發，先滾進終點旗洞的人贏。第一名到達後，其他人還有 15 秒可以衝線；球和球不會互相碰撞，可以穿過去。') })),
       sec(T('搶星星'), h('p', { text: T('迷宮裡散落著星星，碰到就得 1 分，星星被撿走後會在別處重新出現。90 秒內分數最高的人贏；同分時，比較早拿到最後一顆的人名次較前。') })),
       sec(T('地板崩塌'), h('p', { text: T('你踩過的地磚會先晃動，接著碎裂掉下去。一直停在原地也會掉！規劃好路線，不要把自己困在死路裡，最後還站著的人贏。拖太久時，場地會自己隨機碎裂。') })),
+      sec(T('逃出模式'), h('p', { text: T('迷宮裡有幾道彩色的門擋住去路。同色的鑰匙要繞去支線撿起來，帶著鑰匙走到門前門就會打開；踩踏板的門只會開一小段時間，要在關上前衝過去（快關上時門會閃爍）。每個人的鑰匙與門各自獨立，不會被別人搶走。第一個逃出的人贏，之後其他人還有 10 秒可以逃出。') })),
       sec(T('闖關模式'), h('p', { text: T('五種難度各 100 關，依序解鎖。依完成時間評 1～3 顆星。') })),
       sec(T('線上對戰'), h('p', { text: T('每房最多 4 位玩家、20 位觀戰者。房主可以複製邀請連結給朋友；朋友打開連結後確認暱稱就能加入。觀戰者可以看全場並聊天。') }))),
     actions: [Button({ label: T('知道了'), variant: 'primary', onClick: () => m.close('ok') })],
@@ -167,7 +169,7 @@ function setupScreen(p) {
   const showBest = () => {
     if (vsai) return;
     const v = store.getBest(S.mode + '-' + S.diff);
-    best.textContent = v == null ? T('還沒有紀錄，來挑戰看看！') : S.mode === 'race' ? T('本機最佳：{x1}', { x1: fmtShort(v) }) : S.mode === 'stars' ? T('本機最佳：{v} 顆星星', { v }) : T('本機最佳：存活 {x1} 秒', { x1: v.toFixed(2) });
+    best.textContent = v == null ? T('還沒有紀錄，來挑戰看看！') : MR.isRun(S.mode) ? T('本機最佳：{x1}', { x1: fmtShort(v) }) : S.mode === 'stars' ? T('本機最佳：{v} 顆星星', { v }) : T('本機最佳：存活 {x1} 秒', { x1: v.toFixed(2) });
   };
   const drawComps = () => {
     countLbl.textContent = T('{n} 位電腦', { n: S.count }); compList.replaceChildren();
@@ -237,7 +239,7 @@ function ChatBox() {
 }
 
 // ---------- 畫面：線上大廳 ----------
-const MODE_SHORT = { get race() { return T('競速'); }, get stars() { return T('搶星星'); }, get collapse() { return T('崩塌'); } };
+const MODE_SHORT = { get race() { return T('競速'); }, get stars() { return T('搶星星'); }, get collapse() { return T('崩塌'); }, get escape() { return T('逃出'); } };
 function onlineScreen(p) {
   let rooms = [], invite = p.invite || null, peek = null, joining = false;
   const status = h('div', { class: 'status' });
@@ -362,6 +364,7 @@ function gameScreen(p) {
     if (init.resume) snapshot = { snap: init.snap, stars: init.stars, tiles: init.tiles, state: init.state, tt: init.tt };
   } else { players = p.players; meId = p.meId; mode = p.mode; diff = p.diff; seed = p.seed; size = p.size; }
   size = size || MR.SIZE[mode][diff];
+  const run = MR.isRun(mode);
   const who = (name, me) => (me && name !== T('你') ? name + T('（你）') : name);
 
   const input = new Input(); input.setScheme(store.get('ctrl'));
@@ -399,7 +402,7 @@ function gameScreen(p) {
   const hooks = {
     onCount(n) { countEl.textContent = n == null ? '' : n === 0 ? T('出發！') : String(n); countEl.classList.toggle('go', n === 0); countEl.style.display = n == null ? 'none' : ''; },
     onMe(state, e) {
-      if (state === 'finished') showBanner(T('抵達終點！第 {place} 名', { place: e.place }), null);
+      if (state === 'finished') showBanner(mode === 'escape' ? T('逃出成功！第 {place} 名', { place: e.place }) : T('抵達終點！第 {place} 名', { place: e.place }), null);
       else if (state === 'out') showBanner(T('你掉下去了…'), !online && game.world.players.some((q) => q.alive) ? Button({ label: T('直接看結果'), size: 'small', onClick: () => { game.fastForward(); banner.hidden = true; } }) : h('small', { text: T('可以繼續觀戰') }));
     },
     onHud(hd) {
@@ -408,17 +411,25 @@ function gameScreen(p) {
       hudTime.textContent = hd.left != null ? fmt(hd.left) : fmt(hd.t);
       hudTime.classList.toggle('warn', hd.left != null && hd.left < 10);
       let ex = '';
-      if (mode === 'race' && hd.grace != null && hd.grace > 0) ex = T('衝線倒數 {x1} 秒', { x1: Math.ceil(hd.grace) });
+      if (run && hd.grace != null && hd.grace > 0) ex = mode === 'escape' ? T('逃出倒數 {x1} 秒', { x1: Math.ceil(hd.grace) }) : T('衝線倒數 {x1} 秒', { x1: Math.ceil(hd.grace) });
+      else if (mode === 'escape') {
+        const v = game.me() || w.byId.get(hd.follow); if (v) { const left = Math.min(...Array.from(v.open).filter((x) => x > 0 && x < 1e8)); ex = T('逃出進度 {a}/{b}', { a: w.passed(v), b: w.esc.doors.length }) + (isFinite(left) ? '・' + T('機關 {x1} 秒', { x1: Math.ceil(left) }) : ''); }
+      }
       else if (mode === 'collapse') ex = T('剩 {alive} 人', { alive: hd.alive });
       else if (mode === 'stars') { const me = game.me(); ex = me ? T('你 {score} ★', { score: me.score }) : ''; }
       hudExtra.textContent = ex;
       const shapes = store.get('shapes');
       sumList.replaceChildren(...hd.rows.map((r) => {
-        const val = mode === 'race' ? (r.done ? fmt(r.fin) : r.alive ? T('剩 {n} 格', { n: Math.round(r.rem) }) : '') : mode === 'stars' ? r.score + ' ★' : r.alive ? T('存活') : T('淘汰');
+        const val = run ? (r.done ? fmt(r.fin) : r.alive ? T('剩 {n} 格', { n: Math.round(r.rem) }) : '') : mode === 'stars' ? r.score + ' ★' : r.alive ? T('存活') : T('淘汰');
         return h('button', { type: 'button', class: 'srow' + (r.me ? ' me' : '') + (r.id === hd.follow ? ' fol' : '') + (r.alive ? '' : ' dead'), 'aria-label': T('第 {rank} 名 {name} {val}，點一下鏡頭跟隨', { rank: r.rank, name: r.name, val }), on: { click: () => game.setFollow(r.me ? null : r.id) } },
           h('span', { class: 'rk', text: String(r.rank) }), h('span', { class: 'dot', style: { background: BALL_COLORS[r.idx % 8] }, text: shapes ? SHAPES[r.idx % 8] : '' }),
           h('span', { class: 'nm', text: who(r.name, r.me) }), h('span', { class: 'val', text: val }));
       }));
+    },
+    onEscape(e) {
+      if (e.e === 'key') toast(T('拿到鑰匙了！走到同色的門前就能開門'), 2600);
+      else if (e.e === 'unlock') toast(T('門打開了！'), 1800);
+      else toast(T('機關啟動！{x1} 秒內衝過那道門', { x1: Math.round(e.T) }), 2600);
     },
     onEnd(info) { showResults(info); },
   };
@@ -428,6 +439,7 @@ function gameScreen(p) {
   if (!meId) { stickZone.style.display = 'none'; input.enabled = false; }
   hooks.onCount(null);
   game._hud();
+  if (mode === 'escape' && meId) toast(T('目標：拿鑰匙、踩踏板開門，逃到終點旗！'), 4200);
   if (online) { if (!snapshot || snapshot.state === 'count') { /* 等待伺服器倒數 */ } } else game.startCountdown();
   if (!online) {
     const pb = IconButton({ icon: 'pause', ariaLabel: T('暫停'), onClick: () => openPause() });
@@ -449,7 +461,7 @@ function gameScreen(p) {
     if (mapM || modalOpen() || game.state === 'ended') return;
     const big = h('canvas', { class: 'bigMap', width: 720, height: 720, role: 'img', 'aria-label': T('迷宮地圖') });
     const w = game.world, dots = w.players.map((p) => h('span', { class: 'lgItem' }, h('i', { class: 'lgDot' + (p.id === meId ? ' me' : ''), style: { background: BALL_COLORS[p.idx % 8] } }), h('span', { text: who(p.name, p.id === meId) })));
-    const legend = h('div', { class: 'mapLegend' }, ...dots, w.mode === 'race' ? h('span', { class: 'lgItem' }, icon('flag'), h('span', { text: T('終點') })) : null, w.stars ? h('span', { class: 'lgItem' }, icon('star'), h('span', { text: T('星星') })) : null);
+    const legend = h('div', { class: 'mapLegend' }, ...dots, w.run ? h('span', { class: 'lgItem' }, icon('flag'), h('span', { text: T('終點') })) : null, w.stars ? h('span', { class: 'lgItem' }, icon('star'), h('span', { text: T('星星') })) : null, w.esc ? h('span', { class: 'lgItem' }, icon('key'), h('span', { text: T('鑰匙・踏板・門（同色一組）') })) : null);
     const wasPlaying = !online && game.state === 'play' && !game.paused; if (wasPlaying) game.pause(true);
     game.bigMapEl = big;
     mapM = Modal({ title: T('迷宮地圖'), class: 'mapModal', body: h('div', { class: 'mapBody' }, big, legend, h('p', { class: 'hint', text: T('點一下空白處或按 Esc 關閉') })),
@@ -469,7 +481,7 @@ function gameScreen(p) {
   miniBtn.addEventListener('click', openMap);
   const doRespawn = () => { if (game.respawn()) { respawnBtn.disabled = true; respawnBtn.classList.add('cool'); setTimeout(() => { respawnBtn.disabled = false; respawnBtn.classList.remove('cool'); }, 1000); } };
   respawnBtn.addEventListener('pointerdown', (e) => e.stopPropagation()); respawnBtn.addEventListener('click', doRespawn);
-  const rsVis = () => { const me = game.me(); respawnBtn.style.display = meId && me && me.alive && !(game.world.mode === 'race' && me.fin != null) && game.state === 'play' ? '' : 'none'; };
+  const rsVis = () => { const me = game.me(); respawnBtn.style.display = meId && me && me.alive && !(game.world.run && me.fin != null) && game.state === 'play' ? '' : 'none'; };
   const rsT = setInterval(rsVis, 250); rsVis();
   const againLocal = () => { if (cfg) startLocal(cfg); };
   const backLocal = () => { if (!cfg) return go('home'); if (cfg.kind === 'level') go('levels', { diff: cfg.diff }); else go('setup', { kind: cfg.kind, mode: cfg.mode, diff: cfg.diff, ai: cfg.ais && cfg.ais.length ? cfg.ais : undefined }); };
@@ -479,12 +491,13 @@ function gameScreen(p) {
     let title, lines = [], extra = [], nextBtn = null, newBest = false, bestTxt = '', isLevel = false;
     const mineP = meId ? world.byId.get(meId) : null;
     if (!meId) title = T('本局結束');
-    else if (mode === 'race') title = mine && mine.dnf ? T('時間到，沒能抵達終點') : solo ? T('抵達終點！') : mine.place === 1 ? T('你第一個抵達！') : T('第 {place} 名', { place: mine.place });
+    else if (mode === 'escape') title = mine && mine.dnf ? T('時間到，沒能逃出迷宮') : solo ? T('成功逃出迷宮！') : mine.place === 1 ? T('你第一個逃出來了！') : T('第 {place} 名', { place: mine.place });
+    else if (run) title = mine && mine.dnf ? T('時間到，沒能抵達終點') : solo ? T('抵達終點！') : mine.place === 1 ? T('你第一個抵達！') : T('第 {place} 名', { place: mine.place });
     else if (mode === 'stars') title = solo ? T('時間到！') : mine.place === 1 ? T('你是星星王！') : T('第 {place} 名', { place: mine.place });
     else title = solo ? T('掉下去了…') : mine.alive ? T('你是最後的贏家！') : mine.place === 1 ? T('你贏了！') : T('第 {place} 名', { place: mine.place });
     // 紀錄與闖關進度（只有單機）
     if (!online && mineP) {
-      if (cfg && cfg.kind === 'level' && mode === 'race' && mine && !mine.dnf) {
+      if (cfg && cfg.kind === 'level' && run && mine && !mine.dnf) {
         const st = MR.levelStars(mine.time, world.maze), saved = store.setLevelStars(cfg.diff, cfg.level, st);
         const lk = 'lv-' + cfg.diff + '-' + cfg.level; newBest = store.recordBest(lk, mine.time, true); bestTxt = fmtShort(store.getBest(lk)); isLevel = true;
         lines.push(h('p', { class: 'resLevel', text: T(MR.DIFFS[cfg.diff]) + ' · ' + T('第 {x1} 關', { x1: cfg.level }) }),
@@ -493,17 +506,17 @@ function gameScreen(p) {
         else lines.push(h('p', { class: 'note', text: T('這個難度的 100 關全部通過了！') }));
       } else if (cfg && cfg.kind === 'practice' && mine) {
         const key = mode + '-' + diff; let nb = false, val = '';
-        if (mode === 'race' && !mine.dnf) { nb = store.recordBest(key, mine.time, true); val = fmtShort(mine.time); }
+        if (run && !mine.dnf) { nb = store.recordBest(key, mine.time, true); val = fmtShort(mine.time); }
         else if (mode === 'stars') { nb = store.recordBest(key, mine.score, false); val = T('{n} 顆星星', { n: mine.score }); }
         else if (mode === 'collapse') { nb = store.recordBest(key, mine.time, false); val = T('存活 {t} 秒', { t: mine.time.toFixed(2) }); }
         if (nb) newBest = true;
         const bst = store.getBest(key);
-        if (bst != null) bestTxt = mode === 'race' ? fmtShort(bst) : mode === 'stars' ? T('{n} 顆星星', { n: bst }) : T('存活 {t} 秒', { t: (+bst).toFixed(2) });
+        if (bst != null) bestTxt = run ? fmtShort(bst) : mode === 'stars' ? T('{n} 顆星星', { n: bst }) : T('存活 {t} 秒', { t: (+bst).toFixed(2) });
       }
     }
     const shapes = store.get('shapes');
     const table = h('div', { class: 'rtable' }, results.map((r) => {
-      const pl = world.byId.get(r.id); const v = mode === 'race' ? (r.dnf ? T('未完賽') : fmtShort(r.time)) : mode === 'stars' ? r.score + ' ★' : r.alive ? T('最後倖存') : T('存活 {t} 秒', { t: r.time.toFixed(2) });
+      const pl = world.byId.get(r.id); const v = run ? (r.dnf ? T('未完賽') : fmtShort(r.time)) : mode === 'stars' ? r.score + ' ★' : r.alive ? T('最後倖存') : T('存活 {t} 秒', { t: r.time.toFixed(2) });
       return h('div', { class: 'rrow' + (r.id === meId ? ' me' : '') }, h('span', { class: 'rk', text: String(r.place) }), h('span', { class: 'dot', style: { background: BALL_COLORS[pl.idx % 8] }, text: shapes ? SHAPES[pl.idx % 8] : '' }), h('span', { class: 'nm', text: who(pl.name, r.id === meId) }), h('span', { class: 'val', text: v }));
     }));
     let again, back, home;
@@ -518,14 +531,14 @@ function gameScreen(p) {
     home = Button({ label: T('回到首頁'), onClick: () => { resultM.close(); if (online) net.send({ t: 'leave' }); go('home'); } });
     const tiles = [];
     if (meId && mine) {
-      if (!isLevel) tiles.push({ k: T('名次'), v: mode === 'race' && mine.dnf ? '—' : mine.place + ' / ' + world.players.length });
-      const mainV = mode === 'race' ? (mine.dnf ? T('未完賽') : fmtShort(mine.time)) : mode === 'stars' ? mine.score + ' ★' : mine.alive ? T('最後倖存') : T('{t} 秒', { t: mine.time.toFixed(2) });
-      tiles.push({ k: mode === 'race' ? T('用時') : mode === 'stars' ? T('星星數') : T('存活時間'), v: mainV, badge: newBest ? T('新紀錄') : '' });
+      if (!isLevel) tiles.push({ k: T('名次'), v: run && mine.dnf ? '—' : mine.place + ' / ' + world.players.length });
+      const mainV = run ? (mine.dnf ? T('未完賽') : fmtShort(mine.time)) : mode === 'stars' ? mine.score + ' ★' : mine.alive ? T('最後倖存') : T('{t} 秒', { t: mine.time.toFixed(2) });
+      tiles.push({ k: run ? T('用時') : mode === 'stars' ? T('星星數') : T('存活時間'), v: mainV, badge: newBest ? T('新紀錄') : '' });
       if (bestTxt) tiles.push({ k: isLevel ? T('本關最佳') : T('本機最佳'), v: bestTxt, span: !isLevel });
     }
     const tileEl = tiles.length ? h('dl', { class: 'resStats' }, tiles.map((t) => h('div', { class: 'resStat' + (t.span ? ' span' : '') }, h('dt', {}, h('span', { text: t.k }), t.badge ? h('b', { class: 'resBadgeTag', text: t.badge }) : null), h('dd', { text: t.v })))) : null;
-    const won = !!meId && (mode === 'race' ? !!mine && !mine.dnf && (solo || mine.place === 1) : mode === 'stars' ? !!mine && (solo || mine.place === 1) : !!mine && (solo ? false : (mine.alive || mine.place === 1)));
-    const hero = h('div', { class: 'resHero' }, h('div', { class: 'resBadge', 'aria-hidden': 'true' }, icon(mode === 'race' ? 'flag' : mode === 'stars' ? 'star' : 'crown')), lines.length ? h('div', { class: 'resLines' }, ...lines) : null);
+    const won = !!meId && (run ? !!mine && !mine.dnf && (solo || mine.place === 1) : mode === 'stars' ? !!mine && (solo || mine.place === 1) : !!mine && (solo ? false : (mine.alive || mine.place === 1)));
+    const hero = h('div', { class: 'resHero' }, h('div', { class: 'resBadge', 'aria-hidden': 'true' }, icon(mode === 'escape' ? 'key' : run ? 'flag' : mode === 'stars' ? 'star' : 'crown')), lines.length ? h('div', { class: 'resLines' }, ...lines) : null);
     resultM = Modal({ title, class: 'resultModal m-' + mode + (won ? ' win' : ' lose'), dismissible: false, transparent: true, body: h('div', { class: 'result' }, hero, tileEl, table, nextBtn ? h('div', { class: 'nextRow' }, nextBtn) : null), actions: [again, back, home] });
   }
 

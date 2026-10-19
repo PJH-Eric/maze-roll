@@ -8,7 +8,7 @@ function simulate(mode, diff, seed, aiLevels, opts = {}) {
   w.start();
   const dt = 1 / 60; let steps = 0; const limit = (opts.limit || 400) * 60;
   while (!w.over && steps++ < limit) {
-    ais.forEach((ai, i) => { const p = w.players.find((q) => q.id === 'p' + i); if (!p.alive) return; if (w.mode === 'race' && p.fin != null) return; const [ix, iy] = ai.step(dt); MR.stepBall(w.maze, p, ix, iy, dt); });
+    ais.forEach((ai, i) => { const p = w.players.find((q) => q.id === 'p' + i); if (!p.alive) return; if (w.run && p.fin != null) return; const [ix, iy] = ai.step(dt); w.stepPlayer(p, ix, iy, dt); });
     if (opts.human && w.byId.get('h').alive) { /* 人類不動 */ }
     w.update(dt);
   }

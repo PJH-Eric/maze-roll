@@ -101,6 +101,21 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   sp.send({ t: 'join', code: code2, role: 'spec', name: '觀戰2' }); assert.strictEqual(sp.last('joined').role, 'spec');
   h.send({ t: 'leave' }); assert(!hub.rooms.has(code2)); assert(sp.last('closed')); ok('只剩觀戰者時房間關閉');
 
+  // 逃出模式（線上）：開局、伺服器判定拿鑰匙／開門事件、重連快照含機關狀態、第一人逃出後倒數 10 秒
+  {
+    const e1 = client(hub, 'E1'), e2 = client(hub, 'E2'); e1.send({ t: 'create', name: 'E1', mode: 'escape', diff: 1 }); const ec = e1.last('joined').code;
+    assert.strictEqual(hub.rooms.get(ec).mode, 'escape'); e2.send({ t: 'join', code: ec, name: 'E2' }); e2.send({ t: 'ready', v: true }); e1.send({ t: 'start' });
+    const init = e1.last('init'); assert(init && init.mode === 'escape' && init.size === MR.SIZE.escape[1]); await sleep(120);
+    const room = hub.rooms.get(ec), w = room.world; assert(room.state === 'playing' && w.esc && w.esc.doors.length >= 2);
+    const d0 = w.esc.doors[0], ic = MR.cellCenter(w.maze, d0.item); e1.send({ t: 'pos', x: ic.x, y: ic.y, vx: 0, vy: 0 }); await sleep(60);
+    const evs = e2.all('ev').flatMap((m) => m.ev); assert(evs.some((x) => x.e === 'key' && x.id === e1.mid && x.d === 0)); assert(w.byId.get(e2.mid).keyHas[0] === 0); ok('逃出（線上）：伺服器依回報位置判定拿鑰匙，並廣播給所有人、不影響別人');
+    hub.disconnect(e2.c); const e2b = hub.connect((o) => e2.log.push(o)); e2b.lobby = true; hub.handle(e2b, { t: 'hello', name: 'E2', mid: e2.mid });
+    const rs = e2.all('init').filter((m) => m.resume).pop(); const row = rs.snap.find((r) => r[0] === e1.mid); assert(rs && row[7][0] === 1 && row[8].length === w.esc.doors.length); ok('逃出（線上）：重連快照包含每人的鑰匙與門狀態');
+    const gc = MR.cellCenter(w.maze, w.maze.goal); hub.members.get(e1.mid).has = false; e1.send({ t: 'pos', x: gc.x, y: gc.y, vx: 0, vy: 0 }); await sleep(60);
+    const gr = e2.last('grace'); assert(gr && gr.left === 10); ok('逃出（線上）：第一人逃出後通知倒數 10 秒');
+    e2b.lobby = false; hub.disconnect(e2b); e1.send({ t: 'leave' }); e2.send({ t: 'leave' });
+  }
+
   // 聊天
   const x = client(hub, 'X'), y = client(hub, 'Y'); x.send({ t: 'create', name: 'X' }); const code3 = x.last('joined').code; y.send({ t: 'join', code: code3, name: 'Y' });
   x.send({ t: 'chat', text: '  <script>hi</script>  ' }); assert.strictEqual(y.last('chat').text, 'scripthi/script'); ok('聊天消毒');
