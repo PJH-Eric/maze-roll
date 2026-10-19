@@ -83,9 +83,19 @@ export class Game {
   }
 
   // ---------- 事件 ----------
+  _advanceFollow(id) {
+    const w = this.world, player = w.byId.get(id);
+    const watching = this.follow === id || (!this.follow && this.meId === id);
+    if (!watching || !player || !(w.run || w.mode === 'collapse')) return;
+    const ended = w.run ? player.fin != null : !player.alive;
+    if (!ended) return;
+    const next = this.standings().find((row) => row.id !== id && row.alive && !row.done);
+    if (next) this.follow = next.id;
+  }
   _event(e, fromNet) {
     const w = this.world;
     if (fromNet) w.applyEvent(e);
+    if (e.e === 'finish' || e.e === 'out') this._advanceFollow(e.id);
     this.scene.onEvent(e);
     const me = this.meId;
     if (e.e === 'star') { if (e.id === me) { audio.star(); audio.vibrate(30); } else audio.starOther(); }
