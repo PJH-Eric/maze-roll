@@ -479,7 +479,7 @@ function gameScreen(p) {
         const seconds = Math.ceil(hd.grace);
         if (graceValue.textContent !== String(seconds)) {
           graceValue.textContent = String(seconds);
-          audio.beep(seconds === 1);
+          audio.beep(seconds === 1, seconds <= 3);
           graceCountdown.setAttribute('aria-label', `${T('結算倒數')} ${seconds}`);
           graceCountdown.classList.remove('tick');
           void graceCountdown.offsetWidth;

@@ -52,7 +52,7 @@ export const audio = {
     else if (!on && bgmTimer) { clearInterval(bgmTimer); bgmTimer = null; }
   },
   click() { if (!sfxOn()) return; tone(660, ctx.currentTime, 0.08, 0.25, 'triangle'); },
-  beep(final) { if (!sfxOn()) return; tone(final ? 1046 : 523, ctx.currentTime, final ? 0.4 : 0.15, 0.4, 'square'); },
+  beep(final, high = final) { if (!sfxOn()) return; tone(high ? 1046 : 523, ctx.currentTime, final ? 0.4 : 0.15, 0.4, 'square'); },
   star() { if (!sfxOn()) return; const t = ctx.currentTime; [784, 988, 1319].forEach((f, i) => tone(f, t + i * 0.06, 0.2, 0.3, 'triangle')); },
   starOther() { if (!sfxOn()) return; tone(880, ctx.currentTime, 0.12, 0.12, 'triangle'); },
   thud(v) { if (!sfxOn()) return; const t = ctx.currentTime, s = ctx.createBufferSource(), f = ctx.createBiquadFilter(), g = ctx.createGain(); s.buffer = noiseBuf; f.type = 'lowpass'; f.frequency.value = 380; g.gain.setValueAtTime(Math.min(0.5, 0.08 * v), t); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.09); s.connect(f); f.connect(g); g.connect(sfxGain); s.start(t); s.stop(t + 0.12); },
