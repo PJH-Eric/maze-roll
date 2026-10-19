@@ -224,7 +224,7 @@ h3 { font-size: 1rem; margin: 10px 0 6px; letter-spacing: .08em; }
 .gameScreen:not(.sideOpen) .sumHead { padding-left: 4px; }
 .sumScroll { flex: 0 1 auto; min-height: 0; }
 .sumList { display: flex; flex-direction: column; gap: 4px; }
-.srow { font: inherit; display: flex; align-items: center; gap: 8px; width: 100%; text-align: left; cursor: pointer; padding: 5px 8px; min-height: 36px; color: var(--cream); background: rgba(255,255,255,.07); border: 2px solid transparent; border-radius: 9px; }
+.srow { font: inherit; display: flex; align-items: center; gap: 6px; width: 100%; text-align: left; cursor: pointer; padding: 5px 8px; min-height: 36px; color: var(--cream); background: rgba(255,255,255,.07); border: 2px solid transparent; border-radius: 9px; }
 .srow.me { border-color: var(--gold); background: rgba(255,210,74,.12); }
 .srow.fol { background: rgba(255,255,255,.18); }
 .srow.dead { opacity: .5; }
