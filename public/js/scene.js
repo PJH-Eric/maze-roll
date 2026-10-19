@@ -207,7 +207,11 @@ export class Scene3D {
       const disc = new THREE.Mesh(new THREE.CircleGeometry(0.31, 28), new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.4, side: THREE.DoubleSide, depthWrite: false, blending: THREE.AdditiveBlending })); disc.rotation.x = -Math.PI / 2; disc.position.y = 0.03; g.add(disc);
       const swirl = new THREE.Mesh(new THREE.RingGeometry(0.1, 0.24, 5, 1, 0, Math.PI * 1.4), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.6, side: THREE.DoubleSide, depthWrite: false })); swirl.rotation.x = -Math.PI / 2; swirl.position.y = 0.045; g.add(swirl);
       const beam = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.3, 1.1, 20, 1, true), new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.16, side: THREE.DoubleSide, depthWrite: false, blending: THREE.AdditiveBlending })); beam.position.y = 0.55; g.add(beam);
-      root.add(g); this.portals.push({ g, ring, disc, swirl, beam, ph: c % 7 });
+      const swirl2 = new THREE.Mesh(new THREE.RingGeometry(0.17, 0.29, 5, 1, 0, Math.PI * 1.1), new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.55, side: THREE.DoubleSide, depthWrite: false, blending: THREE.AdditiveBlending })); swirl2.rotation.x = -Math.PI / 2; swirl2.position.y = 0.055; g.add(swirl2);
+      const flash = new THREE.Mesh(new THREE.RingGeometry(0.3, 0.38, 36), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0, side: THREE.DoubleSide, depthWrite: false, blending: THREE.AdditiveBlending })); flash.rotation.x = -Math.PI / 2; flash.position.y = 0.06; g.add(flash);
+      const smat = new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.8, depthWrite: false, blending: THREE.AdditiveBlending }), sparks = [];
+      for (let k = 0; k < 6; k++) { const sp = new THREE.Mesh(this.portalSparkGeo || (this.portalSparkGeo = new THREE.SphereGeometry(0.03, 6, 4)), smat); g.add(sp); sparks.push(sp); }
+      root.add(g); this.portals.push({ g, ring, disc, swirl, swirl2, beam, flash, sparks, smat, cell: c, ph: c % 7, fl: 1 });
     }
   }
   _addBall(p) {
@@ -224,7 +228,7 @@ export class Scene3D {
     const trailMeshes = []; const tmat = new THREE.MeshBasicMaterial({ color: BALL_COLORS[idx % 8], transparent: true, opacity: 0.4, depthWrite: false });
     for (let k = 0; k < TRAIL_N; k++) { const tm = new THREE.Mesh(this.particleGeo, tmat); tm.visible = false; this.root.add(tm); trailMeshes.push(tm); }
     this.root.add(g);
-    this.balls.set(p.id, { g, mesh, label, labelAspect, ring, trailMeshes, hist: [], lastTx: p.x, lastTy: p.y, lx: p.x, ly: p.y, fall: 0, fallV: 0, sink: 0, hidden: false, p });
+    this.balls.set(p.id, { g, mesh, label, labelAspect, ring, trailMeshes, hist: [], lastTx: p.x, lastTy: p.y, lx: p.x, ly: p.y, fall: 0, fallV: 0, sink: 0, pop: 1, hidden: false, p });
   }
   setBall(type) { // 換球種（只影響自己的球）
     this.ballType = type; if (!this.root) return;
@@ -260,6 +264,10 @@ export class Scene3D {
     if (!this.tileMesh) return;
     this.tileState[i] = s; this.tileT[i] = instant ? 9 : 0; this.tileActive.add(i);
   }
+  _flashPortal(x, z) {
+    if (!this.portals) return;
+    for (const o of this.portals) if (Math.hypot(o.g.position.x - x, o.g.position.z - z) < 0.6) o.fl = 0;
+  }
   onEvent(e) {
     if (e.e === 'star') {
       const mesh = this.stars.get(e.sid);
@@ -271,7 +279,11 @@ export class Scene3D {
     } else if (e.e === 'tile') this._tile(e.c, e.s, false);
     else if (e.e === 'warp') {
       const b = this.balls.get(e.id);
-      if (b) { this._burst(b.p.x, 0.4, b.p.y, 0xffffff, 12); b.hist.length = 0; b.lx = e.x; b.ly = e.y; b.lastTx = e.x; b.lastTy = e.y; this._burst(e.x, 0.4, e.y, 0x9ad8ff, 16); }
+      if (b) {
+        this._flashPortal(b.p.x, b.p.y); this._flashPortal(e.x, e.y);
+        this._burst(b.p.x, 0.4, b.p.y, 0xffffff, 12); b.hist.length = 0; b.lx = e.x; b.ly = e.y; b.lastTx = e.x; b.lastTy = e.y; this._burst(e.x, 0.4, e.y, 0x9ad8ff, 16);
+        b.pop = 0; if (e.id === this.camFollow) this.glide = 1.1;
+      }
     } else if (e.e === 'key' || e.e === 'unlock' || e.e === 'plate') {
       const o = this.doors && this.doors[e.d];
       if (o && e.id === this.me) { const m = this.maze, d = o.d; if (e.e === 'unlock') this._burst(d.cx, 0.5, d.cy, new THREE.Color(d.color).getHex(), 20); else this._burst((d.item % m.w) + 0.5, 0.4, ((d.item / m.w) | 0) + 0.5, new THREE.Color(d.color).getHex(), 16); }
@@ -293,6 +305,7 @@ export class Scene3D {
       let y = R, s = 1;
       if (!p.alive) { b.fallV += 9 * dt; b.fall += b.fallV * dt; y = R - b.fall; s = Math.max(0.2, 1 - b.fall * 0.15); if (b.fall > 9) b.hidden = true; }
       if (this.world.run && p.fin != null) { b.sink = Math.min(1, b.sink + dt * 2.2); y = R - b.sink * 0.3; s = 1 - b.sink * 0.45; if (b.sink >= 1) b.hidden = true; }
+      if (b.pop < 1) { b.pop = Math.min(1, b.pop + dt * 3); const q = b.pop - 1; s *= Math.max(0.05, 1 + 2.2 * q * q * q + 1.2 * q * q); }
       g.visible = !b.hidden; g.position.set(p.x, y, p.y); b.mesh.scale.setScalar(s);
       if (this.trail && !this.reduce && p.alive && !b.hidden) {
         let trailChanged = false;
@@ -318,7 +331,13 @@ export class Scene3D {
       if (m.userData.grow < 1) { m.userData.grow = Math.min(1, m.userData.grow + dt * 3); m.scale.setScalar(Math.max(0.01, m.userData.grow * 1.35)); }
       m.rotation.y = t * 2.2 + m.userData.ph; m.position.y = 0.46 + (this.reduce ? 0 : Math.sin(t * 3 + m.userData.ph) * 0.05);
     });
-    if (this.portals && this.portals.length) for (const o of this.portals) { o.swirl.rotation.z = -t * 3 + o.ph; o.ring.rotation.z = t * 0.8; o.disc.material.opacity = 0.32 + 0.12 * Math.sin(t * 4 + o.ph); o.beam.material.opacity = 0.12 + 0.05 * Math.sin(t * 3 + o.ph); }
+    if (this.portals && this.portals.length) for (const o of this.portals) {
+      o.swirl.rotation.z = -t * 3 + o.ph; o.swirl2.rotation.z = t * 2.1 + o.ph; o.ring.rotation.z = t * 0.8;
+      const br = 1 + 0.05 * Math.sin(t * 3 + o.ph); o.ring.scale.setScalar(br); o.disc.scale.setScalar(br);
+      o.disc.material.opacity = 0.32 + 0.12 * Math.sin(t * 4 + o.ph); o.beam.material.opacity = 0.12 + 0.05 * Math.sin(t * 3 + o.ph);
+      if (o.fl < 1) { o.fl = Math.min(1, o.fl + dt * 1.8); const e = 1 - (1 - o.fl) * (1 - o.fl); o.flash.scale.setScalar(0.6 + e * 2.2); o.flash.material.opacity = (1 - o.fl) * 0.9; o.disc.material.opacity += (1 - o.fl) * 0.4; o.ring.scale.setScalar(br + (1 - o.fl) * 0.25); }
+      if (!this.reduce) o.sparks.forEach((sp, k) => { const u = (t * 0.55 + k / o.sparks.length) % 1, a = t * 2.4 + k * 1.05 + o.ph; sp.position.set(Math.cos(a) * 0.3 * (1 - u * 0.6), 0.06 + u * 0.9, Math.sin(a) * 0.3 * (1 - u * 0.6)); sp.scale.setScalar(1 - u * 0.7); });
+    }
     if (this.doors && this.doors.length) {
       const vp = this.world.byId.get(followId) || this.world.byId.get(this.me);
       for (const o of this.doors) {
@@ -363,11 +382,17 @@ export class Scene3D {
     const fb = this.balls.get(followId) || this.balls.values().next().value;
     if (fb) {
       const p = fb.p, tx = p.x + p.vx * 0.1, tz = p.y + p.vy * 0.1;
-      if (!this.focusReady || quick) { this.focus.set(tx, 0, tz); this.focusReady = true; }
-      else { const k = 1 - Math.exp(-9.5 * dt); this.focus.x += (tx - this.focus.x) * k; this.focus.z += (tz - this.focus.z) * k; }
+      if (this.camFollow !== fb.p.id) { if (this.camFollow != null && this.focusReady) this.glide = 1.4; this.camFollow = fb.p.id; }
+      // 切換視角／傳送後：鏡頭用較慢的速率滑過去，再平順回到正常跟隨
+      this.glide = Math.max(0, (this.glide || 0) - dt);
+      const want = this.glide > 0 ? 3.2 : 9.5; this.camRate = this.camRate == null ? want : this.camRate + (want - this.camRate) * Math.min(1, dt * 4);
+      if (!this.focusReady || quick) { this.focus.set(tx, 0, tz); this.focusReady = true; this.camRate = 9.5; this.glide = 0; }
+      else { const k = 1 - Math.exp(-this.camRate * dt); this.focus.x += (tx - this.focus.x) * k; this.focus.z += (tz - this.focus.z) * k; }
     }
     const asp = this.aspect || 1.6, pitch = (58 * Math.PI) / 180;
-    let D = CAM_DIST[this.camMode] * (asp < 1 ? Math.min(1.6, 1 / Math.sqrt(asp) * 1.05) : 1);
+    const Dt = CAM_DIST[this.camMode] * (asp < 1 ? Math.min(1.6, 1 / Math.sqrt(asp) * 1.05) : 1);
+    this.camD = this.camD == null || quick ? Dt : this.camD + (Dt - this.camD) * (1 - Math.exp(-5 * dt));
+    const D = this.camD;
     this.camera.position.set(this.focus.x, 0.2 + D * Math.sin(pitch), this.focus.z + D * Math.cos(pitch));
     this.camera.lookAt(this.focus.x, 0.1, this.focus.z - 0.35);
     this.sun.position.set(this.focus.x + 4.5, 11, this.focus.z + 3); this.sun.target.position.set(this.focus.x, 0, this.focus.z);
