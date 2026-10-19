@@ -389,10 +389,9 @@ function gameScreen(p) {
   const hudMode = h('span', { class: 'hmode' }), hudTime = h('b', { class: 'htime', text: '0:00' }), hudExtra = h('span', { class: 'hextra' });
   const hudTop = h('div', { class: 'hudTop' }, hudMode, hudTime, hudExtra);
   const graceValue = h('b', { class: 'graceValue', text: '10' });
-  const graceCountdown = h('div', { class: 'graceCountdown', hidden: true, role: 'status', 'aria-live': 'polite' },
-    h('span', { class: 'graceLabel', text: T('結算倒數') }),
-    h('span', { class: 'graceDial' }, graceValue, h('small', { class: 'graceUnit', text: T('秒') })));
-  const hudStack = h('div', { class: 'hudStack' }, hudTop, graceCountdown);
+  const graceCountdown = h('div', { class: 'graceCountdown', hidden: true, role: 'status', 'aria-live': 'polite', 'aria-label': T('結算倒數') },
+    h('span', { class: 'graceDial' }, graceValue));
+  const hudStack = h('div', { class: 'hudStack' }, hudTop);
   const mini = h('canvas', { class: 'mini', width: 240, height: 240, 'aria-hidden': 'true' });
   const miniBtn = h('button', { type: 'button', class: 'miniBtn', 'aria-label': T('放大小地圖'), title: T('放大小地圖') }, mini, h('span', { class: 'miniZoom', 'aria-hidden': 'true' }, icon('zoom')));
   miniBtn.addEventListener('pointerdown', (e) => e.stopPropagation()); // 不要觸發搖桿
@@ -401,7 +400,7 @@ function gameScreen(p) {
   const badge = h('span', { class: 'badge', hidden: true });
   const sideTab = h('button', { type: 'button', class: 'btn sideTab', 'aria-label': T('開關對局資訊'), 'aria-expanded': 'true' }, icon(online ? 'chat' : 'people'), badge);
   const respawnBtn = h('button', { type: 'button', class: 'btn respawnBtn', 'aria-label': T('回到起點（R）'), title: T('回到起點（R）') }, icon('undo'), h('span', { class: 'rl', text: T('回起點') }));
-  const arena = h('div', { class: 'arena' }, canvas, hudStack, miniBtn, respawnBtn, stickZone, countEl, banner, sideTab);
+  const arena = h('div', { class: 'arena' }, canvas, hudStack, graceCountdown, miniBtn, respawnBtn, stickZone, countEl, banner, sideTab);
   const sumList = h('div', { class: 'sumList' });
   const lvTxt = cfg && cfg.kind === 'level' ? T('第 {level} 關', { level: cfg.level }) : cfg && cfg.kind === 'daily' ? T('每日挑戰') : '';
   const sumHead = h('div', { class: 'sumHead' }, h('b', { text: MODE_INFO[mode].name }), h('small', { text: `${T(MR.DIFFS[diff])}${lvTxt ? '・' + lvTxt : ''}・${size}×${size}` }));
@@ -449,6 +448,7 @@ function gameScreen(p) {
         const seconds = Math.ceil(hd.grace);
         if (graceValue.textContent !== String(seconds)) {
           graceValue.textContent = String(seconds);
+          graceCountdown.setAttribute('aria-label', `${T('結算倒數')} ${seconds}`);
           graceCountdown.classList.remove('tick');
           void graceCountdown.offsetWidth;
           graceCountdown.classList.add('tick');
