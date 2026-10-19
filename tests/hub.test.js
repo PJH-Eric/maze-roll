@@ -60,8 +60,11 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
   // 回到起點：伺服器重設位置、廣播事件、1 秒冷卻
   {
-    const st0 = MR.cellCenter(new MR.World({ mode: 'race', diff: init.diff, seed: init.seed, players: [] }).maze, 0);
-    b.send({ t: 'pos', x: 2.5, y: 2.5, vx: 1, vy: 1 }); await sleep(30);
+    const mz0 = new MR.World({ mode: 'race', diff: init.diff, seed: init.seed, players: [] }).maze, st0 = MR.cellCenter(mz0, 0), gl0 = MR.cellCenter(mz0, mz0.goal);
+    // 回報位置要離起點遠一點（才看得出被重設）、離起點不超過 3（不被當成瞬移），而且不能碰到終點（碰到就算抵達，不能再回起點）；種子是隨機的，所以從這張迷宮裡挑
+    let spot = null; for (let i = 1; i < mz0.n && !spot; i++) { const c = MR.cellCenter(mz0, i), ds = Math.hypot(c.x - st0.x, c.y - st0.y); if (ds > 1.2 && ds < 2.8 && Math.hypot(c.x - gl0.x, c.y - gl0.y) > MR.GOAL_R + 0.5) spot = c; }
+    assert(spot, '找得到不是終點的測試位置');
+    b.send({ t: 'pos', x: spot.x, y: spot.y, vx: 1, vy: 1 }); await sleep(30);
     const n0 = a.all('ev').length; b.send({ t: 'respawn' }); await sleep(60);
     const evs = a.all('ev').slice(n0).flatMap((m) => m.ev).filter((e) => e.e === 'respawn' && e.id === b.mid);
     assert.strictEqual(evs.length, 1, '收到一次 respawn 事件'); ok('回到起點：伺服器廣播 respawn');
