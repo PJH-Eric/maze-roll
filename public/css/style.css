@@ -285,7 +285,7 @@ h3 { font-size: 1rem; margin: 10px 0 6px; letter-spacing: .08em; }
 .gameScreen.narrow .panelSide { position: absolute; left: 0; top: 0; bottom: 0; width: min(84vw, 330px); display: flex; transform: translateX(-104%); transition: transform .22s ease; box-shadow: 8px 0 24px rgba(0,0,0,.5); }
 .gameScreen.narrow.sideOpen .panelSide { transform: none; }
 .gameScreen.narrow .sideTab { position: absolute; }
-.gameScreen.narrow.sideOpen .sideTab { left: min(84vw, 330px); margin-left: 8px; }
+.gameScreen.narrow.sideOpen .sideTab { left: calc(10px + var(--sl)); margin-left: 0; }
 .gameScreen.narrow .sumHead { padding-left: 4px; }
 .gameScreen.narrow .sumHead { padding-left: 52px; }
 
