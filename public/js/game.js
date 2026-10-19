@@ -3,7 +3,8 @@ import { Scene3D } from './scene.js';
 import { audio } from './audio.js';
 import { store } from './store.js';
 const MR = window.MR, MRAI = window.MRAI;
-const STEP = 1 / 60;
+const STEP = 0.01;
+const FAST_FORWARD_STEPS = 1000;
 
 export class Game {
   /**
@@ -138,7 +139,7 @@ export class Game {
     const dt = this.last ? Math.min(0.05, (ts - this.last) / 1000) : 0.016; this.last = ts;
     const w = this.world;
     if (this.state === 'play' && !this.paused) {
-      this.acc = this.ff ? 600 * STEP : this.acc + dt; let n = 0; const max = this.ff ? 600 : 8;
+      this.acc = this.ff ? FAST_FORWARD_STEPS * STEP : this.acc + dt; let n = 0; const max = this.ff ? FAST_FORWARD_STEPS : 8;
       while (this.acc >= STEP && n++ < max && this.state === 'play') { this._tick(STEP); this.acc -= STEP; if (this.ff && w.over) break; }
       if (this.ff || this.acc > 0.2) this.acc = 0;
     }
@@ -155,7 +156,7 @@ export class Game {
     audio.roll(me && me.alive && !(w.mode === 'race' && me.fin != null) && this.state === 'play' && !this.paused ? Math.hypot(me.vx, me.vy) : 0);
     // 鏡頭跟隨
     this.scene.frame(dt, this._followId(), false);
-    this.hudT += dt; if (this.hudT > 0.15) { this.hudT = 0; this._hud(); }
+    this.hudT += dt; if (this.hudT >= STEP) { this.hudT = 0; this._hud(); }
     this.mapT += dt; if (this.mapT > 0.09) { this.mapT = 0; this.o.minimapEl && this._minimap(); }
   }
   _followId() {
