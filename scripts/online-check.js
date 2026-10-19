@@ -4,6 +4,15 @@ const { server, hub } = require('../server.js');
 const MR = require('../public/js/rules.js');
 const assert = require('assert');
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function waitFor(predicate, timeoutMs) {
+  const end = Date.now() + timeoutMs;
+  while (Date.now() < end) {
+    if (predicate()) return true;
+    await sleep(100);
+  }
+  return false;
+}
+
 function client(port, name) {
   const log = []; const ws = new WebSocket('ws://localhost:' + port + '/ws');
   const c = { ws, log, send: (o) => ws.send(JSON.stringify(o)), last: (t) => [...log].reverse().find((m) => m.t === t), name };
@@ -22,6 +31,8 @@ function client(port, name) {
   const init = a.last('init'); assert(init && s.last('init') && a.last('go')); console.log('  ✓ 開局、倒數、go');
   const w = new MR.World({ mode: 'race', diff: init.diff, seed: init.seed, players: [] }); const g = MR.cellCenter(w.maze, w.maze.goal);
   a.send({ t: 'pos', x: g.x, y: g.y, vx: 0, vy: 0 }); b.send({ t: 'pos', x: g.x, y: g.y, vx: 0, vy: 0 }); await sleep(400);
+  assert.strictEqual(s.last('grace').left, 10); console.log('  ✓ 抵達終點後開始 10 秒倒數');
+  assert(await waitFor(() => s.last('end'), (MR.ESCAPE_GRACE + 2) * 1000));
   assert(s.last('end') && s.last('end').results.length === 2); console.log('  ✓ 結算（觀戰者同步收到）');
   a.send({ t: 'leave' }); b.send({ t: 'leave' }); await sleep(200); assert(s.last('closed')); console.log('  ✓ 實體玩家歸零 → 觀戰者收到 closed');
   [a, b, s].forEach((c) => c.ws.close()); hub.shutdown(); server.close(); console.log('online-check 通過'); process.exit(0);
