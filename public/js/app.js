@@ -388,6 +388,11 @@ function gameScreen(p) {
   const canvas = h('canvas', { class: 'cv', role: 'img', 'aria-label': T('3D 迷宮遊戲畫面') });
   const hudMode = h('span', { class: 'hmode' }), hudTime = h('b', { class: 'htime', text: '0:00' }), hudExtra = h('span', { class: 'hextra' });
   const hudTop = h('div', { class: 'hudTop' }, hudMode, hudTime, hudExtra);
+  const graceValue = h('b', { class: 'graceValue', text: '10' });
+  const graceCountdown = h('div', { class: 'graceCountdown', hidden: true, role: 'status', 'aria-live': 'polite' },
+    h('span', { class: 'graceLabel', text: T('結算倒數') }),
+    h('span', { class: 'graceDial' }, graceValue, h('small', { class: 'graceUnit', text: T('秒') })));
+  const hudStack = h('div', { class: 'hudStack' }, hudTop, graceCountdown);
   const mini = h('canvas', { class: 'mini', width: 240, height: 240, 'aria-hidden': 'true' });
   const miniBtn = h('button', { type: 'button', class: 'miniBtn', 'aria-label': T('放大小地圖'), title: T('放大小地圖') }, mini, h('span', { class: 'miniZoom', 'aria-hidden': 'true' }, icon('zoom')));
   miniBtn.addEventListener('pointerdown', (e) => e.stopPropagation()); // 不要觸發搖桿
@@ -396,7 +401,7 @@ function gameScreen(p) {
   const badge = h('span', { class: 'badge', hidden: true });
   const sideTab = h('button', { type: 'button', class: 'btn sideTab', 'aria-label': T('開關對局資訊'), 'aria-expanded': 'true' }, icon(online ? 'chat' : 'people'), badge);
   const respawnBtn = h('button', { type: 'button', class: 'btn respawnBtn', 'aria-label': T('回到起點（R）'), title: T('回到起點（R）') }, icon('undo'), h('span', { class: 'rl', text: T('回起點') }));
-  const arena = h('div', { class: 'arena' }, canvas, hudTop, miniBtn, respawnBtn, stickZone, countEl, banner, sideTab);
+  const arena = h('div', { class: 'arena' }, canvas, hudStack, miniBtn, respawnBtn, stickZone, countEl, banner, sideTab);
   const sumList = h('div', { class: 'sumList' });
   const lvTxt = cfg && cfg.kind === 'level' ? T('第 {level} 關', { level: cfg.level }) : cfg && cfg.kind === 'daily' ? T('每日挑戰') : '';
   const sumHead = h('div', { class: 'sumHead' }, h('b', { text: MODE_INFO[mode].name }), h('small', { text: `${T(MR.DIFFS[diff])}${lvTxt ? '・' + lvTxt : ''}・${size}×${size}` }));
@@ -419,7 +424,11 @@ function gameScreen(p) {
   const hooks = {
     onCount(n) { countEl.textContent = n == null ? '' : n === 0 ? T('出發！') : String(n); countEl.classList.toggle('go', n === 0); countEl.style.display = n == null ? 'none' : ''; },
     onMe(state, e) {
-      if (state === 'finished') showBanner(mode === 'escape' ? T('逃出成功！第 {place} 名', { place: e.place }) : T('抵達終點！第 {place} 名', { place: e.place }), null);
+      if (state === 'finished') {
+        graceCountdown.hidden = true;
+        graceCountdown.classList.remove('tick');
+        showBanner(mode === 'escape' ? T('逃出成功！第 {place} 名', { place: e.place }) : T('抵達終點！第 {place} 名', { place: e.place }), null);
+      }
       else if (state === 'out') showBanner(T('你掉下去了…'), !online && game.world.players.some((q) => q.alive) ? Button({ label: T('直接看結果'), size: 'small', onClick: () => { game.fastForward(); banner.hidden = true; } }) : h('small', { text: T('可以繼續觀戰') }));
     },
     onHud(hd) {
@@ -427,15 +436,24 @@ function gameScreen(p) {
       hudMode.textContent = MODE_INFO[mode].name;
       hudTime.textContent = hd.left != null ? fmt(hd.left) : fmt(hd.t);
       hudTime.classList.toggle('warn', hd.left != null && hd.left < 10);
+      const graceActive = run && hd.grace != null && hd.grace > 0 && hd.meState !== 'finished';
       let ex = '';
-      if (run && hd.grace != null && hd.grace > 0) ex = mode === 'escape' ? T('逃出倒數 {x1} 秒', { x1: Math.ceil(hd.grace) }) : T('衝線倒數 {x1} 秒', { x1: Math.ceil(hd.grace) });
-      else if (mode === 'escape') {
+      if (mode === 'escape' && !(run && hd.grace != null && hd.grace > 0)) {
         const v = game.me() || w.byId.get(hd.follow); if (v) { const left = Math.min(...Array.from(v.open).filter((x) => x > 0 && x < 1e8)); ex = T('逃出進度 {a}/{b}', { a: w.passed(v), b: w.esc.doors.length }) + (isFinite(left) ? '・' + T('機關 {x1} 秒', { x1: Math.ceil(left) }) : ''); }
       }
       else if (mode === 'collapse') ex = T('剩 {alive} 人', { alive: hd.alive });
       else if (mode === 'stars') { const me = game.me(); ex = me ? T('你 {score} ★', { score: me.score }) : ''; }
       hudExtra.textContent = ex;
-      hudTop.classList.toggle('counting', run && hd.grace != null && hd.grace > 0);
+      graceCountdown.hidden = !graceActive;
+      if (graceActive) {
+        const seconds = Math.ceil(hd.grace);
+        if (graceValue.textContent !== String(seconds)) {
+          graceValue.textContent = String(seconds);
+          graceCountdown.classList.remove('tick');
+          void graceCountdown.offsetWidth;
+          graceCountdown.classList.add('tick');
+        }
+      } else graceCountdown.classList.remove('tick');
       const shapes = store.get('shapes');
       sumList.replaceChildren(...hd.rows.map((r) => {
         const val = run ? (r.done ? fmt(r.fin) : r.alive ? T('剩 {n} 格', { n: Math.round(r.rem) }) : '') : mode === 'stars' ? r.score + ' ★' : r.alive ? T('存活') : T('淘汰');

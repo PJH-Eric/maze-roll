@@ -12,6 +12,8 @@ window.MR_EN = {
  "逃出": "Escape",
  "拿鑰匙開門、踩踏板開機關，第一個逃出迷宮的人贏": "Grab keys and press plates to open doors; first to escape the maze wins",
  "逃出倒數 {x1} 秒": "Escape countdown {x1} s",
+ "結算倒數": "Round ends in",
+ "秒": "s",
  "逃出進度 {a}/{b}": "Escape {a}/{b}",
  "機關 {x1} 秒": "Plate {x1} s",
  "逃出成功！第 {place} 名": "Escaped! Place {place}",
