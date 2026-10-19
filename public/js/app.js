@@ -408,7 +408,7 @@ function gameScreen(p) {
   const canvas = h('canvas', { class: 'cv', role: 'img', 'aria-label': T('3D 迷宮遊戲畫面') });
   const hudMode = h('span', { class: 'hmode' }), hudTime = h('b', { class: 'htime', text: '0:00' }), hudExtra = h('span', { class: 'hextra' });
   const hudTop = h('div', { class: 'hudTop' }, hudMode, hudTime, hudExtra);
-  const graceValue = h('b', { class: 'graceValue', text: '10' });
+  const graceValue = h('b', { class: 'graceValue', text: '' });
   const graceCountdown = h('div', { class: 'graceCountdown', hidden: true, role: 'status', 'aria-live': 'polite', 'aria-label': T('結算倒數') },
     h('span', { class: 'graceDial' }, graceValue));
   const hudStack = h('div', { class: 'hudStack' }, hudTop);
@@ -463,6 +463,7 @@ function gameScreen(p) {
         const seconds = Math.ceil(hd.grace);
         if (graceValue.textContent !== String(seconds)) {
           graceValue.textContent = String(seconds);
+          audio.beep(seconds === 1);
           graceCountdown.setAttribute('aria-label', `${T('結算倒數')} ${seconds}`);
           graceCountdown.classList.remove('tick');
           void graceCountdown.offsetWidth;
