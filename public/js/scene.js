@@ -287,7 +287,7 @@ export class Scene3D {
         const q = this.world.esc && this.world.esc.portals[e.w >> 1], W = this.maze.w; // 事件到達時球已在終點，出發端由 w 反推
         if (q) { const sc = e.w % 2 ? q.a : q.b; this._flashPortal((sc % W) + 0.5, ((sc / W) | 0) + 0.5); } this._flashPortal(e.x, e.y);
         this._ghost(b.g.position.x, b.g.position.z, BALL_COLORS[b.p.idx % 8]);
-        this._burst(b.g.position.x, 0.4, b.g.position.z, 0xffffff, 24); b.hist.length = 0; b.lx = e.x; b.ly = e.y; b.lastTx = e.x; b.lastTy = e.y; this._burst(e.x, 0.4, e.y, 0x9ad8ff, 28);
+        this._burst(b.g.position.x, 0.4, b.g.position.z, 0xffffff, 24); b.hist.length = 0; b.lx = e.x; b.ly = e.y; b.lastTx = e.x; b.lastTy = e.y; this._burst(e.x, 0.4, e.y, 0x9ad8ff, 20);
         b.pop = 0; if (e.id === this.camFollow) { this.glide = 2.2; this.camRate = 1.3; }
       }
     } else if (e.e === 'key' || e.e === 'unlock' || e.e === 'plate') {
@@ -342,7 +342,7 @@ export class Scene3D {
       o.swirl.rotation.z = -t * 3 + o.ph; o.swirl2.rotation.z = t * 2.1 + o.ph; o.ring.rotation.z = t * 0.8;
       const br = 1 + 0.05 * Math.sin(t * 3 + o.ph); o.ring.scale.setScalar(br); o.disc.scale.setScalar(br);
       o.disc.material.opacity = 0.32 + 0.12 * Math.sin(t * 4 + o.ph); o.beam.material.opacity = 0.12 + 0.05 * Math.sin(t * 3 + o.ph);
-      if (o.fl < 1) { o.fl = Math.min(1, o.fl + dt * 0.9); const e = 1 - (1 - o.fl) * (1 - o.fl), k = 1 - o.fl; o.flash.scale.setScalar(0.6 + e * 4.2); o.flash.material.opacity = k * 1.2; o.disc.material.opacity += k * 0.6; o.ring.scale.setScalar(br + k * 0.4); o.beam.material.opacity += k * 0.5; o.beam.scale.set(1 + k * 0.8, 1 + k * 1.2, 1 + k * 0.8); o.beam.position.y = 0.55 * (1 + k * 1.2); }
+      if (o.fl < 1) { o.fl = Math.min(1, o.fl + dt * 1.3); const e = 1 - (1 - o.fl) * (1 - o.fl), k = 1 - o.fl; o.flash.scale.setScalar(0.6 + e * 3); o.flash.material.opacity = k * 0.9; o.disc.material.opacity += k * 0.4; o.ring.scale.setScalar(br + k * 0.25); o.beam.material.opacity += k * 0.25; o.beam.scale.set(1 + k * 0.4, 1 + k * 0.6, 1 + k * 0.4); o.beam.position.y = 0.55 * (1 + k * 0.6); }
       if (!this.reduce) o.sparks.forEach((sp, k) => { const u = (t * 0.55 + k / o.sparks.length) % 1, a = t * 2.4 + k * 1.05 + o.ph; sp.position.set(Math.cos(a) * 0.3 * (1 - u * 0.6), 0.06 + u * 0.9, Math.sin(a) * 0.3 * (1 - u * 0.6)); sp.scale.setScalar(1 - u * 0.7); });
     }
     if (this.doors && this.doors.length) {
