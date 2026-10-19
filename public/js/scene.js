@@ -281,7 +281,7 @@ export class Scene3D {
       const b = this.balls.get(e.id);
       if (b) {
         this._flashPortal(b.p.x, b.p.y); this._flashPortal(e.x, e.y);
-        this._burst(b.p.x, 0.4, b.p.y, 0xffffff, 12); b.hist.length = 0; b.lx = e.x; b.ly = e.y; b.lastTx = e.x; b.lastTy = e.y; this._burst(e.x, 0.4, e.y, 0x9ad8ff, 16);
+        this._burst(b.g.position.x, 0.4, b.g.position.z, 0xffffff, 12); b.hist.length = 0; b.lx = e.x; b.ly = e.y; b.lastTx = e.x; b.lastTy = e.y; this._burst(e.x, 0.4, e.y, 0x9ad8ff, 16);
         b.pop = 0; if (e.id === this.camFollow) this.glide = 1.1;
       }
     } else if (e.e === 'key' || e.e === 'unlock' || e.e === 'plate') {
