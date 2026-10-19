@@ -324,7 +324,7 @@
         this.players.forEach((p, i) => { const c = cellCenter(m, spots[i]); p.x = c.x; p.y = c.y; p.spawn = spots[i]; });
         if (this.mode === 'stars') {
           this.stars = []; this.nextStar = 1;
-          const cnt = Math.max(3, Math.round(m.n / 22));
+          const cnt = Math.max(5, Math.round(m.n / 12)); // 星星不再補生，數量要夠一局搶
           const taken = new Set(spots);
           for (let k = 0; k < cnt; k++) this._spawnStar(taken, null, false);
         } else {
@@ -471,12 +471,11 @@
           const s = this.stars[k], c = cellCenter(m, s.c);
           if (Math.hypot(p.x - c.x, p.y - c.y) < STAR_R) {
             this.stars.splice(k, 1); p.score++; p.last = this.t;
-            const ns = this._spawnStar(null, c, true);
-            this.emit({ e: 'star', id: p.id, sid: s.id, score: p.score, nid: ns.id, nc: ns.c });
+            this.emit({ e: 'star', id: p.id, sid: s.id, score: p.score });
           }
         }
       }
-      if (this.t >= STAR_TIME) this._finish();
+      if (this.t >= STAR_TIME || !this.stars.length) this._finish(); // 時間到或星星被搶光都結束
     }
     _collapse(dt) {
       const m = this.maze;
