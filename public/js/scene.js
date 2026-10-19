@@ -247,7 +247,7 @@ export class Scene3D {
       const beam = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.3, 1.1, 20, 1, true), new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.16, side: THREE.DoubleSide, depthWrite: false, blending: THREE.AdditiveBlending })); beam.position.y = 0.55; g.add(beam);
       const swirl2 = new THREE.Mesh(new THREE.RingGeometry(0.17, 0.29, 5, 1, 0, Math.PI * 1.1), new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.55, side: THREE.DoubleSide, depthWrite: false, blending: THREE.AdditiveBlending })); swirl2.rotation.x = -Math.PI / 2; swirl2.position.y = 0.055; g.add(swirl2);
       const flash = new THREE.Mesh(new THREE.RingGeometry(0.3, 0.38, 36), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0, side: THREE.DoubleSide, depthWrite: false, blending: THREE.AdditiveBlending })); flash.rotation.x = -Math.PI / 2; flash.position.y = 0.06; g.add(flash);
-      const smat = new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.8, depthWrite: false, blending: THREE.AdditiveBlending }), sparks = [];
+      const smat = new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.55, depthWrite: false, blending: THREE.AdditiveBlending }), sparks = [];
       for (let k = 0; k < 6; k++) { const sp = new THREE.Mesh(this.portalSparkGeo || (this.portalSparkGeo = new THREE.SphereGeometry(0.03, 6, 4)), smat); g.add(sp); sparks.push(sp); }
       root.add(g); this.portals.push({ g, ring, disc, swirl, swirl2, beam, flash, sparks, smat, cell: c, ph: c % 7, fl: 1 });
     }
@@ -308,7 +308,7 @@ export class Scene3D {
   }
   /** 傳送出發端：球的殘影縮小、上升、淡出 */
   _ghost(x, z, color) {
-    const m = new THREE.Mesh(this.ballGeo, new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.8, depthWrite: false, blending: THREE.AdditiveBlending })); m.position.set(x, R, z); this.root.add(m); (this.ghosts = this.ghosts || []).push({ m, t: 0 });
+    const m = new THREE.Mesh(this.ballGeo, new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.55, depthWrite: false, blending: THREE.AdditiveBlending })); m.position.set(x, R, z); this.root.add(m); (this.ghosts = this.ghosts || []).push({ m, t: 0 });
   }
   _flashPortal(x, z) {
     if (!this.portals) return;
@@ -329,7 +329,7 @@ export class Scene3D {
         const q = this.world.esc && this.world.esc.portals[e.w >> 1], W = this.maze.w; // 事件到達時球已在終點，出發端由 w 反推
         if (q) { const sc = e.w % 2 ? q.a : q.b; this._flashPortal((sc % W) + 0.5, ((sc / W) | 0) + 0.5); } this._flashPortal(e.x, e.y);
         this._ghost(b.g.position.x, b.g.position.z, BALL_COLORS[b.p.idx % 8]);
-        this._burst(b.g.position.x, 0.4, b.g.position.z, 0xffffff, 24); b.hist.length = 0; b.lx = e.x; b.ly = e.y; b.lastTx = e.x; b.lastTy = e.y; this._burst(e.x, 0.4, e.y, 0x9ad8ff, 20);
+        this._burst(b.g.position.x, 0.4, b.g.position.z, 0xffffff, 12); b.hist.length = 0; b.lx = e.x; b.ly = e.y; b.lastTx = e.x; b.lastTy = e.y; this._burst(e.x, 0.4, e.y, 0x9ad8ff, 12);
         b.pop = 0; if (e.id === this.camFollow) { this.glide = 1.3; this.camRate = 2; }
       }
     } else if (e.e === 'key' || e.e === 'unlock' || e.e === 'plate') {
@@ -374,7 +374,7 @@ export class Scene3D {
       b.label.position.y = 1.05 + (p.idx % 3) * 0.2 + (R - y) * -0.2; b.label.visible = p.alive || b.fall < 1.5;
       if (b.ring) { b.ring.position.y = 0.02 - (y - R); b.ring.material.opacity = 0.55 + 0.3 * Math.sin(t * 5); b.ring.scale.setScalar(1 + 0.06 * Math.sin(t * 5)); }
     });
-    if (this.ghosts) for (let i = this.ghosts.length - 1; i >= 0; i--) { const gh = this.ghosts[i]; gh.t += dt / 0.7; const k = Math.min(1, gh.t); gh.m.scale.setScalar(Math.max(0.01, 1 - k)); gh.m.position.y = R + k * 0.9; gh.m.material.opacity = 0.8 * (1 - k); if (k >= 1) { this.root.remove(gh.m); gh.m.material.dispose(); this.ghosts.splice(i, 1); } }
+    if (this.ghosts) for (let i = this.ghosts.length - 1; i >= 0; i--) { const gh = this.ghosts[i]; gh.t += dt / 0.7; const k = Math.min(1, gh.t); gh.m.scale.setScalar(Math.max(0.01, 1 - k)); gh.m.position.y = R + k * 0.9; gh.m.material.opacity = 0.55 * (1 - k); if (k >= 1) { this.root.remove(gh.m); gh.m.material.dispose(); this.ghosts.splice(i, 1); } }
     // 星星、終點
     this.stars.forEach((m) => {
       if (m.userData.grow < 1) { m.userData.grow = Math.min(1, m.userData.grow + dt * 2.2); const q = m.userData.grow - 1; m.scale.setScalar(Math.max(0.01, (1 + 2.2 * q * q * q + 1.2 * q * q) * 1.35)); }
@@ -387,7 +387,7 @@ export class Scene3D {
       o.swirl.rotation.z = -t * 3 + o.ph; o.swirl2.rotation.z = t * 2.1 + o.ph; o.ring.rotation.z = t * 0.8;
       const br = 1 + 0.05 * Math.sin(t * 3 + o.ph); o.ring.scale.setScalar(br); o.disc.scale.setScalar(br);
       o.disc.material.opacity = 0.32 + 0.12 * Math.sin(t * 4 + o.ph); o.beam.material.opacity = 0.12 + 0.05 * Math.sin(t * 3 + o.ph);
-      if (o.fl < 1) { o.fl = Math.min(1, o.fl + dt * 1.3); const e = 1 - (1 - o.fl) * (1 - o.fl), k = 1 - o.fl; o.flash.scale.setScalar(0.6 + e * 3); o.flash.material.opacity = k * 0.9; o.disc.material.opacity += k * 0.4; o.ring.scale.setScalar(br + k * 0.25); o.beam.material.opacity += k * 0.25; o.beam.scale.set(1 + k * 0.4, 1 + k * 0.6, 1 + k * 0.4); o.beam.position.y = 0.55 * (1 + k * 0.6); }
+      if (o.fl < 1) { o.fl = Math.min(1, o.fl + dt * 1.6); const e = 1 - (1 - o.fl) * (1 - o.fl), k = 1 - o.fl; o.flash.scale.setScalar(0.6 + e * 2.1); o.flash.material.opacity = k * 0.55; o.disc.material.opacity += k * 0.22; o.ring.scale.setScalar(br + k * 0.12); o.beam.material.opacity += k * 0.1; o.beam.scale.set(1 + k * 0.15, 1 + k * 0.25, 1 + k * 0.15); o.beam.position.y = 0.55 * (1 + k * 0.25); }
       if (!this.reduce) o.sparks.forEach((sp, k) => { const u = (t * 0.55 + k / o.sparks.length) % 1, a = t * 2.4 + k * 1.05 + o.ph; sp.position.set(Math.cos(a) * 0.3 * (1 - u * 0.6), 0.06 + u * 0.9, Math.sin(a) * 0.3 * (1 - u * 0.6)); sp.scale.setScalar(1 - u * 0.7); });
     }
     if (this.doors && this.doors.length) {
