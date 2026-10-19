@@ -180,20 +180,34 @@ export class Scene3D {
       const L = 1 + T, hh = WALL_H * 0.92; let door;
       if (d.kind === 'key') { // 鑰匙門：實心厚門板＋金色鎖孔座，兩面都有
         door = new THREE.Mesh(new THREE.BoxGeometry(horiz ? L : th, hh, horiz ? th : L), mat); door.castShadow = true;
-        const band = new THREE.Mesh(new THREE.BoxGeometry(horiz ? L + 0.02 : th + 0.02, 0.06, horiz ? th + 0.02 : L + 0.02), gold); band.position.y = WALL_H * 0.3; door.add(band);
-        const dark = new THREE.MeshStandardMaterial({ color: 0x1b1108, roughness: 0.9 });
+        const dark = new THREE.MeshStandardMaterial({ color: 0x1b1108, roughness: 0.9 }), fm = new THREE.MeshStandardMaterial({ color: col.clone().multiplyScalar(0.5), roughness: 0.5, metalness: 0.2 }), tk = th + 0.03;
+        const add = (m, sx, sy, sz, x, y, z) => { const q = new THREE.Mesh(new THREE.BoxGeometry(sx, sy, sz), m); q.position.set(x, y, z); door.add(q); };
+        const U = (u) => (horiz ? [u, 0] : [0, u]); // 沿門長度方向的位移
+        for (const y of [hh / 2 - 0.045, -hh / 2 + 0.045]) add(fm, horiz ? L + 0.02 : tk, 0.09, horiz ? tk : L + 0.02, 0, y, 0);
+        for (const u of [L / 2 - 0.045, -L / 2 + 0.045]) { const [x, z] = U(u); add(fm, horiz ? 0.09 : tk, hh, horiz ? tk : 0.09, x, 0, z); }
+        for (const u of [L / 6, -L / 6]) { const [x, z] = U(u); add(dark, horiz ? 0.012 : th + 0.006, hh * 0.86, horiz ? th + 0.006 : 0.012, x, 0, z); }
+        const gm = new THREE.MeshStandardMaterial({ color: col, emissive: col, emissiveIntensity: 0.9, roughness: 0.2, metalness: 0.3 });
+        for (const sd of [1, -1]) {
+          for (const u of [L / 2 - 0.15, -L / 2 + 0.15]) for (const y of [hh / 2 - 0.15, -hh / 2 + 0.15]) { const r = new THREE.Mesh(new THREE.SphereGeometry(0.035, 8, 6), gold), [x, z] = U(u); r.position.set(horiz ? x : sd * (tk / 2 + 0.005), y, horiz ? sd * (tk / 2 + 0.005) : z); door.add(r); }
+        }
         for (const sd of [1, -1]) {
           const lock = new THREE.Group(), plate = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.16, 0.03, 24), gold); plate.rotation.x = Math.PI / 2; lock.add(plate);
           const hole = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.04, 16), dark); hole.rotation.x = Math.PI / 2; hole.position.y = 0.03; lock.add(hole);
           const slot = new THREE.Mesh(new THREE.BoxGeometry(0.035, 0.12, 0.04), dark); slot.position.y = -0.05; lock.add(slot);
           lock.position.y = WALL_H * 0.02; if (horiz) lock.position.z = sd * (th / 2 + 0.012); else { lock.position.x = sd * (th / 2 + 0.012); lock.rotation.y = Math.PI / 2; }
+          const gem = new THREE.Mesh(new THREE.OctahedronGeometry(0.075), gm); gem.position.y = 0.3; gem.scale.y = 1.4; lock.add(gem);
+          const rim = new THREE.Mesh(new THREE.TorusGeometry(0.16, 0.018, 8, 24), gold); lock.add(rim);
           door.add(lock);
         }
       } else { // 踏板門：一排鐵柵欄（上下橫樑＋直條），一眼就和鑰匙門不同
         door = new THREE.Group(); door.position.set(d.cx, WALL_H * 0.46, d.cy);
         const rail = (y) => { const r = new THREE.Mesh(new THREE.BoxGeometry(horiz ? L : 0.12, 0.1, horiz ? 0.12 : L), mat); r.position.y = y; r.castShadow = true; door.add(r); };
         rail(hh / 2 - 0.05); rail(-hh / 2 + 0.05);
-        const N = 6; for (let k = 0; k < N; k++) { const u = (k / (N - 1) - 0.5) * (L - 0.14), bar = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, hh, 10), mat); bar.position.set(horiz ? u : 0, 0, horiz ? 0 : u); bar.castShadow = true; door.add(bar); }
+        const N = 6; for (let k = 0; k < N; k++) { const u = (k / (N - 1) - 0.5) * (L - 0.14), bar = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, hh, 10), mat); bar.position.set(horiz ? u : 0, 0, horiz ? 0 : u); bar.castShadow = true; door.add(bar);
+          const tip = new THREE.Mesh(new THREE.ConeGeometry(0.055, 0.15, 10), gold); tip.position.set(bar.position.x, hh / 2 + 0.07, bar.position.z); door.add(tip); }
+        rail(0);
+        const gem = new THREE.Mesh(new THREE.OctahedronGeometry(0.1), new THREE.MeshStandardMaterial({ color: col, emissive: col, emissiveIntensity: 1, roughness: 0.2 })); gem.scale.set(1, 1.3, 1); gem.position.y = 0; door.add(gem);
+        const cap = new THREE.Mesh(new THREE.TorusGeometry(0.12, 0.02, 8, 20), gold); cap.rotation.x = horiz ? 0 : 0; if (!horiz) cap.rotation.y = Math.PI / 2; door.add(cap);
       }
       door.position.set(d.cx, WALL_H * 0.46, d.cy);
       root.add(door);
@@ -202,15 +216,23 @@ export class Scene3D {
       if (d.kind === 'key') {
         const km = new THREE.MeshStandardMaterial({ color: col, metalness: 0.6, roughness: 0.3, emissive: col.clone().multiplyScalar(0.4) });
         const g = new THREE.Group(), ring = new THREE.Mesh(new THREE.TorusGeometry(0.11, 0.035, 8, 20), km); ring.position.x = -0.17; g.add(ring);
-        const shaft = new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.06, 0.06), km); shaft.position.x = 0.07; g.add(shaft);
-        [0.14, 0.23].forEach((x, i) => { const tooth = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.1 + i * 0.03, 0.06), km); tooth.position.set(x, -0.07 - i * 0.015, 0); g.add(tooth); });
+        const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.4, 10), km); shaft.rotation.z = Math.PI / 2; shaft.position.x = 0.06; g.add(shaft);
+        const gk = new THREE.MeshStandardMaterial({ color: 0xffd24a, metalness: 0.8, roughness: 0.25, emissive: 0x6a4700 });
+        [-0.03, 0.02].forEach((x) => { const c = new THREE.Mesh(new THREE.TorusGeometry(0.045, 0.014, 6, 14), gk); c.rotation.y = Math.PI / 2; c.position.x = x; g.add(c); });
+        [[-0.3, 0], [-0.17, 0.12], [-0.17, -0.12]].forEach(([x, y]) => { const b = new THREE.Mesh(new THREE.SphereGeometry(0.04, 8, 6), gk); b.position.set(x, y, 0); g.add(b); });
+        const core = new THREE.Mesh(new THREE.OctahedronGeometry(0.06), new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: col, emissiveIntensity: 1.2, roughness: 0.2 })); core.position.x = -0.17; g.add(core);
+        [0.12, 0.18, 0.24].forEach((x, i) => { const tooth = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.09 + (i % 2) * 0.04, 0.05), km); tooth.position.set(x, -0.065 - (i % 2) * 0.02, 0); g.add(tooth); });
         g.scale.setScalar(1.5); g.position.set(ic.x, 0.5, ic.y); g.traverse((q) => { q.castShadow = true; }); root.add(g);
         const glow = new THREE.Mesh(new THREE.RingGeometry(0.2, 0.34, 28), new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.55, side: THREE.DoubleSide, depthWrite: false })); glow.rotation.x = -Math.PI / 2; glow.position.set(ic.x, 0.015, ic.y); root.add(glow);
+        const sm = new THREE.MeshBasicMaterial({ color: 0xfff2b0, transparent: true, opacity: 0.9, depthWrite: false, blending: THREE.AdditiveBlending });
+        o.sp = [0, 1, 2].map(() => { const m = new THREE.Mesh(new THREE.OctahedronGeometry(0.035), sm); root.add(m); return m; }); o.ic = ic;
         o.key = g; o.glow = glow;
       } else {
         const g = new THREE.Group(); g.position.set(ic.x, 0, ic.y);
         const base = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.43, 0.05, 28), new THREE.MeshStandardMaterial({ color: 0x3b2417, roughness: 0.7 })); base.position.y = 0.025; g.add(base);
         const top = new THREE.Mesh(new THREE.CylinderGeometry(0.31, 0.31, 0.07, 28), new THREE.MeshStandardMaterial({ color: col, roughness: 0.4, emissive: col.clone().multiplyScalar(0.3) })); top.position.y = 0.075; top.castShadow = true; g.add(top);
+        const rimM = new THREE.Mesh(new THREE.TorusGeometry(0.31, 0.02, 8, 36), new THREE.MeshStandardMaterial({ color: 0xffd24a, metalness: 0.8, roughness: 0.25, emissive: 0x6a4700 })); rimM.rotation.x = Math.PI / 2; rimM.position.y = 0.035; top.add(rimM);
+        const inset = new THREE.Mesh(new THREE.CylinderGeometry(0.19, 0.19, 0.02, 24), new THREE.MeshStandardMaterial({ color: col.clone().lerp(new THREE.Color(0xffffff), 0.45), emissive: col, emissiveIntensity: 0.5, roughness: 0.3 })); inset.position.y = 0.036; top.add(inset);
         root.add(g); o.plate = g; o.top = top;
       }
       this.doors.push(o);
@@ -370,7 +392,7 @@ export class Scene3D {
         o.door.visible = o.a < 0.985; o.door.position.y = WALL_H * 0.46 - o.a * WALL_H * 0.95 + (warn && Math.sin(t * 24) > 0 ? 0.3 : 0);
         const holds = !!vp && o.d.kind === 'key' && vp.keyHas[j] === 1 && !isOpen;
         o.mat.emissiveIntensity = holds ? 1.2 + 0.9 * Math.sin(t * 7) : 1;
-        if (o.key) { o.key.visible = o.glow.visible = !vp || vp.keyHas[j] === 0; o.key.rotation.y = t * 2.2 + j; o.key.position.y = 0.5 + (this.reduce ? 0 : Math.sin(t * 3 + j) * 0.05); o.glow.material.opacity = 0.4 + 0.2 * Math.sin(t * 4 + j); }
+        if (o.key) { o.key.visible = o.glow.visible = !vp || vp.keyHas[j] === 0; o.key.rotation.y = t * 2.2 + j; o.key.position.y = 0.5 + (this.reduce ? 0 : Math.sin(t * 3 + j) * 0.05); o.glow.material.opacity = 0.4 + 0.2 * Math.sin(t * 4 + j); o.sp.forEach((m, k) => { m.visible = o.key.visible && !this.reduce; const a = t * 1.8 + k * 2.094 + j; m.position.set(o.ic.x + Math.cos(a) * 0.3, 0.62 + Math.sin(t * 2.5 + k * 2) * 0.12, o.ic.y + Math.sin(a) * 0.3); m.rotation.y = t * 3; m.scale.setScalar(0.8 + 0.4 * Math.sin(t * 5 + k * 2)); }); }
         if (o.plate) { o.top.position.y += ((isOpen ? 0.03 : 0.075) - o.top.position.y) * Math.min(1, dt * 14); o.top.material.emissiveIntensity = isOpen ? 0.2 : 1 + 0.5 * Math.sin(t * 4 + j); }
       }
     }
