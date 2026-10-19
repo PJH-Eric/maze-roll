@@ -49,7 +49,7 @@
 
   const PHYS = { R: 0.36, T: 0.12, ACC: 9.5, FRI: 2.6, REST: 0.25 };
   const STAR_R = 0.55, GOAL_R = 0.5;
-  const STAR_TIME = 90, GRACE = 10, ESCAPE_GRACE = 10, RACE_CAP = 600, ESCAPE_CAP = 900, COLLAPSE_CAP = 240;
+  const STAR_TIME = 90, GRACE = 10, ESCAPE_GRACE = 10, RACE_CAP = 600, ESCAPE_CAP = 900;
   const COLLAPSE_FALL = 0.22, COLLAPSE_SUDDEN = 60, COLLAPSE_HEAD = 1.2;
   const MAX_PLAYERS = 8;
 
@@ -564,9 +564,7 @@
           this.tile[i] = 1; this.timer[i] = this.crumble; this.emit({ e: 'tile', c: i, s: 1 });
         }
       }
-      const alive = this.players.filter((p) => p.alive).length;
-      const solo = this.players.length === 1;
-      if ((solo && alive === 0) || (!solo && alive <= 1) || this.t >= COLLAPSE_CAP) this._finish();
+      if (this.players.every((p) => !p.alive)) this._finish();
     }
     _finish() {
       if (this.over) return;

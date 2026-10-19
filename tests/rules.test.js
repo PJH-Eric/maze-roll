@@ -122,6 +122,11 @@ for (const mode of ['race', 'escape']) {
   assert(!a.alive && w.byId.get('b').alive === false || w.over); ok('站在原地不動會掉下去被淘汰');
   const x = new MR.World({ mode: 'collapse', diff: 0, seed: 3, players: [{ id: 'a', name: 'A' }] }); x.start(); const p = x.byId.get('a');
   for (let k = 0; k < 60 * 30 && !x.over; k++) x.update(1 / 60); assert(x.over && x.results[0].alive === false); ok('單人崩塌：掉落即結束，紀錄存活秒數');
+  const last = new MR.World({ mode: 'collapse', diff: 0, seed: 4, players: [{ id: 'a', name: 'A' }, { id: 'b', name: 'B' }] }); last.start();
+  const survivor = last.byId.get('b'); last.t = 241; last.byId.get('a').alive = false; last.byId.get('a').out = last.t; last.update(0.01);
+  assert.strictEqual(last.over, false); assert.strictEqual(survivor.alive, true); ok('多人崩塌：剩最後一人且超過原時間上限時仍繼續');
+  last.tile[MR.cellAt(last.maze, survivor.x, survivor.y)] = 2; survivor.over = 1; last.update(0.01);
+  assert(last.over && last.results.find((r) => r.id === 'b').alive === false); ok('多人崩塌：最後一人實際淘汰後才結算');
   const y = new MR.World({ mode: 'collapse', diff: 2, seed: 8, players: [{ id: 'a', name: 'A' }, { id: 'b', name: 'B' }, { id: 'c', name: 'C' }] }); y.start();
   // 讓 b 一直換格存活；a、c 不動 → a、c 先淘汰，b 為最後贏家
   const bc = y.byId.get('b'); let guard = 0; while (!y.over && guard++ < 60 * 200) { const t = y.t; bc.x = 0.5 + ((Math.floor(t * 3) % y.maze.w)); bc.y = 0.5 + (Math.floor(t / 4) % y.maze.h); y.update(1 / 60); }
