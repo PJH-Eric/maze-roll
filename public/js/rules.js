@@ -27,7 +27,8 @@
     { wood: '烏木金邊', floor: '#8a7456', floorLine: 'rgba(40,26,12,A)', wall: '#241914', wallLine: 'rgba(0,0,0,A)', table: '#1c1410', bg: 0x1b120c, accent: '#e0b23c', trim: 0xe0b23c },
   ];
   /** 競速迷宮的「環路」比例：越難越少（死路越多、越像真迷宮）。 */
-  const RACE_BRAID = [0.5, 0.3, 0.15, 0.05, 0];
+  const RACE_BRAID = [0.5, 0.3, 0.15, 0, 0];
+  const JUNCTION_DENSITY = [0, 0, 0, 0.16, 0.24];
   const braidFor = (mode, diff) => (mode === 'race' ? RACE_BRAID[diff | 0] : BRAID[mode]);
   const AI_NAMES = ['幼幼班', '簡單', '普通', '困難', '神話'];
   const SIZE = { race: [6, 10, 15, 21, 28], stars: [8, 11, 15, 19, 23], collapse: [6, 8, 10, 13, 16], escape: [6, 9, 12, 16, 20] };
@@ -75,7 +76,7 @@
   const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 
   // ---------- 迷宮 ----------
-  function makeMaze(w, h, seed, braid) {
+  function makeMaze(w, h, seed, braid, branching = 0) {
     const r = rng(seed);
     const n = w * h;
     const cells = new Uint8Array(n).fill(15);
@@ -103,19 +104,8 @@
       if (nx < 0 || ny < 0 || nx >= w || ny >= h) return;
       cells[i] &= ~d; cells[ny * w + nx] &= ~OPP[d];
     };
-    // 編織：把死路打通，讓迷宮出現環與捷徑（braid 越高越多）
-    if (braid > 0) {
-      for (let i = 0; i < n; i++) {
-        let c = 0; for (const d of DIRS) if (!open(i, d)) c++;
-        if (c === 3 && r() < braid) {
-          const x = i % w, y = (i / w) | 0;
-          const cand = DIRS.filter((d) => { const nx = x + DX[d], ny = y + DY[d]; return nx >= 0 && ny >= 0 && nx < w && ny < h; });
-          if (cand.length) openWall(i, cand[(r() * cand.length) | 0]);
-        }
-      }
-    }
     const maze = {
-      w, h, n, cells, seed, braid,
+      w, h, n, cells, seed, braid, branching,
       open,
       neighbors(i) {
         const out = [], x = i % w, y = (i / w) | 0;
@@ -137,12 +127,66 @@
         return dist;
       },
     };
+    if (branching > 0) addJunctions(maze, r, branching);
+    // 編織只在調整樹狀支線後進行；逃出不編織，門仍位於必經的唯一通路。
+    if (braid > 0) {
+      for (let i = 0; i < n; i++) {
+        let c = 0; for (const d of DIRS) if (!open(i, d)) c++;
+        if (c === 3 && r() < braid) {
+          const x = i % w, y = (i / w) | 0;
+          const cand = DIRS.filter((d) => { const nx = x + DX[d], ny = y + DY[d]; return nx >= 0 && ny >= 0 && nx < w && ny < h; });
+          if (cand.length) openWall(i, cand[(r() * cand.length) | 0]);
+        }
+      }
+    }
     maze.start = 0;
     const d0 = maze.bfs(0);
     let far = 0; for (let i = 0; i < n; i++) if (d0[i] > d0[far]) far = i;
     maze.goal = far;
     maze.pathLen = d0[far];
     return maze;
+  }
+
+  /** 重接主路旁的子樹，增加三／四向岔路；不刪主路、不增環路，也不縮短既有解路。 */
+  function addJunctions(maze, random, density) {
+    const { w, h, n, cells } = maze, parent = new Int16Array(n).fill(-1), depth = new Int16Array(n);
+    const queue = [0]; parent[0] = 0;
+    let goal = 0;
+    for (let qi = 0; qi < queue.length; qi++) {
+      const c = queue[qi];
+      for (const nb of maze.neighbors(c)) if (parent[nb.i] < 0) {
+        parent[nb.i] = c; depth[nb.i] = depth[c] + 1; queue.push(nb.i);
+        if (depth[nb.i] > depth[goal]) goal = nb.i;
+      }
+    }
+    const main = new Uint8Array(n); main[0] = 1;
+    for (let c = goal; c !== 0; c = parent[c]) main[c] = 1;
+    const ancestor = (root, c) => { for (; c !== 0; c = parent[c]) if (c === root) return true; return false; };
+    const deepBranch = (root) => maze.neighbors(root).some((nb) => parent[nb.i] === root);
+    const target = Math.round(n * density);
+    let changes = 0;
+    for (let pass = 0; pass < 3 && changes < target; pass++) {
+      const candidates = Array.from({ length: n }, (_, c) => ({ c, score: main[c] * 4 + (maze.neighbors(c).length === 3 ? 2 : 0) + random() }));
+      candidates.sort((a, b) => b.score - a.score);
+      for (const { c } of candidates) {
+        const degree = maze.neighbors(c).length;
+        if (degree < 2 || degree >= 4) continue;
+        const x = c % w, y = (c / w) | 0;
+        for (const d of DIRS) {
+          if (!(cells[c] & d)) continue;
+          const nx = x + DX[d], ny = y + DY[d];
+          if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
+          const b = ny * w + nx, old = parent[b];
+          if (main[b] || main[old] || maze.neighbors(old).length !== 2 || !deepBranch(b) || (!main[c] && ancestor(b, c))) continue;
+          const cut = old === b - w ? N : old === b + w ? S : old === b - 1 ? W : E;
+          cells[b] |= cut; cells[old] |= OPP[cut];
+          cells[c] &= ~d; cells[b] &= ~OPP[d]; parent[b] = c;
+          changes++;
+          if (changes >= target) return;
+          break;
+        }
+      }
+    }
   }
   const cellCenter = (maze, i) => ({ x: (i % maze.w) + 0.5, y: ((i / maze.w) | 0) + 0.5 });
   const cellAt = (maze, x, y) => clamp(Math.floor(y), 0, maze.h - 1) * maze.w + clamp(Math.floor(x), 0, maze.w - 1);
@@ -299,7 +343,7 @@
     constructor(o) {
       this.mode = o.mode; this.diff = o.diff | 0; this.seed = o.seed >>> 0;
       this.size = o.size || SIZE[this.mode][this.diff];
-      this.maze = makeMaze(this.size, this.size, this.seed, o.braid != null ? o.braid : braidFor(this.mode, this.diff));
+      this.maze = makeMaze(this.size, this.size, this.seed, o.braid != null ? o.braid : braidFor(this.mode, this.diff), JUNCTION_DENSITY[this.diff]);
       this.rand = rng(this.seed ^ 0x9e3779b9);
       this.t = 0; this.started = false; this.over = false; this.results = null;
       this.events = []; this.finished = 0; this.graceLeft = null; this.grace = o.grace != null ? o.grace : (o.mode === 'escape' ? ESCAPE_GRACE : GRACE);

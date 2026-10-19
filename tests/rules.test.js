@@ -16,6 +16,39 @@ let n = 0; const ok = (m) => { n++; console.log('  ✓', m); };
   const braided = MR.makeMaze(15, 15, 9, 0.6), plain = MR.makeMaze(15, 15, 9, 0); const deadEnds = (mm) => { let k = 0; for (let i = 0; i < mm.n; i++) if (mm.neighbors(i).length === 1) k++; return k; };
   assert(deadEnds(braided) < deadEnds(plain)); ok('編織會減少死路');
 }
+// 高難度迷宮：增加岔路但保留長主路與門鎖必經條件。
+{
+  for (const mode of ['race', 'escape']) for (const diff of [3, 4]) {
+    let beforeJunctions = 0, afterJunctions = 0, beforeCrossroads = 0, afterCrossroads = 0;
+    for (let seed = 0; seed < 20; seed++) {
+      const world = new MR.World({ mode, diff, seed, players: [] }), maze = world.maze;
+      const plain = MR.makeMaze(maze.w, maze.h, seed, 0), originalField = plain.bfs(plain.goal);
+      assert(Array.from(maze.bfs(0)).every((d) => d >= 0));
+      assert(maze.pathLen >= plain.pathLen, '增加岔路不可縮短原本解路');
+      let edges = 0;
+      for (let c = 0; c < maze.n; c++) {
+        const neighbors = maze.neighbors(c), original = plain.neighbors(c);
+        edges += neighbors.length;
+        beforeJunctions += original.length >= 3; afterJunctions += neighbors.length >= 3;
+        beforeCrossroads += original.length === 4; afterCrossroads += neighbors.length === 4;
+        for (const nb of neighbors) assert(maze.neighbors(nb.i).some((back) => back.i === c));
+      }
+      assert.strictEqual(edges / 2, maze.n - 1, '高難度支線不產生繞門環路');
+      for (let c = 0; c !== plain.goal;) {
+        const next = plain.neighbors(c).find((nb) => originalField[nb.i] < originalField[c]).i;
+        assert(maze.neighbors(c).some((nb) => nb.i === next), '原本長主路應完整保留'); c = next;
+      }
+      const replay = new MR.World({ mode, diff, seed, players: [] });
+      assert.deepStrictEqual(maze.cells, replay.maze.cells);
+      if (mode === 'escape') for (const door of world.esc.doors) {
+        assert(!door.farSide[maze.start] && !door.farSide[door.item] && door.farSide[maze.goal]);
+      }
+    }
+    assert(afterJunctions > beforeJunctions * 1.5);
+    assert(afterCrossroads > beforeCrossroads * 3);
+  }
+  ok('困難／神話的三四向岔路明顯增加，主路保留、無環路、門鎖必經且可重播');
+}
 // 物理：球不穿牆、不出界、撞牆有衝擊值
 {
   const m = MR.makeMaze(10, 10, 3, 0), b = { x: 0.5, y: 0.5, vx: 0, vy: 0 }; let hit = 0;
@@ -232,6 +265,10 @@ for (const mode of ['race', 'escape']) {
     return input[0] > input[1] ? 'east' : 'south';
   });
   assert.strictEqual(new Set(directions).size, 2); ok('相同長度的兩條合法路線，同難度電腦會依個別偏好分流');
+  const moving = fork.players[0]; moving.vx = 2; moving.vy = 0;
+  const cornerBot = makeAI(fork, moving, 4); let input;
+  for (let tick = 0; tick < 100; tick++) { input = cornerBot.step(0.01); if (Math.hypot(...input) > 0) break; }
+  assert(input[0] > 0 && Math.abs(input[1]) < 1e-9); ok('高階電腦在等長路線中優先沿當前方向前進，減少無謂轉彎');
   for (const [diff, seed] of [[2, 11], [2, 44], [4, 11]]) {
     const w = simulate('escape', diff, seed, [4], { limit: 900 });
     assert(w.players[0].fin != null, '相鄰傳送門不可讓神話電腦卡住');
@@ -241,7 +278,8 @@ for (const mode of ['race', 'escape']) {
 }
 { // 難度主題與環路比例
   assert.strictEqual(MR.DIFF_THEME.length, 5); assert.strictEqual(new Set(MR.DIFF_THEME.map((t) => t.wall)).size, 5);
-  const b = [0, 1, 2, 3, 4].map((d) => MR.braidFor('race', d)); for (let i = 1; i < 5; i++) assert(b[i] < b[i - 1]);
+  const b = [0, 1, 2, 3, 4].map((d) => MR.braidFor('race', d)); for (let i = 1; i < 5; i++) assert(b[i] <= b[i - 1]);
+  assert.strictEqual(b[3], 0); assert.strictEqual(b[4], 0);
   const dead = (d) => { let t = 0; for (let l = 1; l <= 20; l++) { const sz = MR.levelSize(d, l * 5); const m = MR.makeMaze(sz, sz, MR.levelSeed(d, l * 5), MR.braidFor('race', d)); let c = 0; for (let k = 0; k < m.n; k++) { let o = 0; for (let q = 0; q < 4; q++) if (!(m.cells[k] & (1 << q))) o++; if (o === 1) c++; } t += c / m.n; } return t / 20; };
   assert(dead(4) > dead(0) * 1.2); ok('五種難度主題各不相同、環路比例遞減、越難死路比例越高');
 }

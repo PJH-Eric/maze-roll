@@ -484,17 +484,17 @@ function gameScreen(p) {
     game.bigMapEl = big;
     mapM = Modal({ title: T('迷宮地圖'), class: 'mapModal', body: h('div', { class: 'mapBody' }, big, legend, h('p', { class: 'hint', text: T('點一下空白處或按 Esc 關閉') })),
       actions: [Button({ label: T('關閉'), variant: 'primary', onClick: () => mapM.close('ok') })],
-      onClose: () => { game.bigMapEl = null; mapM = null; window.dispatchEvent(new Event('mapclose')); try { document.querySelectorAll('.scrim').forEach((e) => e.dispatchEvent(new Event('mapclose'))); } catch (e) {} if (wasPlaying && activeGame === game && !pauseM) game.pause(false); } });
+      onClose: () => { window.removeEventListener('resize', onRs); game.bigMapEl = null; mapM = null; window.dispatchEvent(new Event('mapclose')); try { document.querySelectorAll('.scrim').forEach((e) => e.dispatchEvent(new Event('mapclose'))); } catch (e) {} if (wasPlaying && activeGame === game && !pauseM) game.pause(false); } });
     game._drawMini(big);
     const fit = () => { // 依可用空間縮放地圖，確保不出現捲軸：先放到最大，有溢出就扣掉溢出量
       const body = big.parentElement, view = body && (body.closest('.sa-view') || body.parentElement); if (!view) return;
       let sz = Math.max(120, Math.min(540, body.clientWidth - 24)); big.style.width = sz + 'px';
       for (let i = 0; i < 5; i++) { const over = view.scrollHeight - view.clientHeight; if (over <= 0 || sz <= 120) break; sz = Math.max(120, sz - over - 1); big.style.width = sz + 'px'; }
     };
-    const onRs = () => fit(); window.addEventListener('resize', onRs); const prevClose = mapM.onClose;
+    const onRs = () => fit(); window.addEventListener('resize', onRs);
     requestAnimationFrame(() => { fit(); setTimeout(fit, 260); setTimeout(fit, 800); });
-    mapM.scrim.addEventListener('mapclose', () => window.removeEventListener('resize', onRs));
-    mapM.scrim.addEventListener('click', (e) => { if (e.target === mapM.scrim || e.target.closest('.mapBody') && !e.target.closest('button')) mapM.close('tap'); });
+    const dialog = mapM;
+    dialog.scrim.addEventListener('click', (e) => { if (e.target === dialog.scrim || e.target.closest('.mapBody') && !e.target.closest('button')) dialog.close('tap'); });
   };
   miniBtn.addEventListener('click', openMap);
   const doRespawn = () => { if (game.respawn()) { respawnBtn.disabled = true; respawnBtn.classList.add('cool'); setTimeout(() => { respawnBtn.disabled = false; respawnBtn.classList.remove('cool'); }, 1000); } };

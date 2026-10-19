@@ -8,21 +8,23 @@
   const { cellAt, cellCenter, rng, clamp } = MR;
 
   const LEVELS = [
-    { cap: 0.5, mistake: 0.22, commit: [1, 4], jitter: 0.16, idle: 0.3, think: 0.45, corner: 1.2 },
-    { cap: 0.74, mistake: 0.09, commit: [1, 3], jitter: 0.09, idle: 0, think: 0.28, corner: 1.25 },
-    { cap: 0.91, mistake: 0.025, commit: [1, 2], jitter: 0.04, idle: 0, think: 0.15, corner: 1.3 },
-    { cap: 1, mistake: 0, commit: [0, 0], jitter: 0.01, idle: 0, think: 0.09, corner: 1.4 },
-    { cap: 1, mistake: 0, commit: [0, 0], jitter: 0, idle: 0, think: 0.045, corner: 1.6 },
+    { cap: 0.55, mistake: 0.16, commit: [1, 3], jitter: 0.13, idle: 0.2, think: 0.4, corner: 1.25, response: 1.5, smoothness: 0 },
+    { cap: 0.8, mistake: 0.055, commit: [1, 2], jitter: 0.07, idle: 0, think: 0.22, corner: 1.35, response: 1.7, smoothness: 0.2 },
+    { cap: 0.96, mistake: 0.01, commit: [1, 2], jitter: 0.025, idle: 0, think: 0.1, corner: 1.5, response: 1.9, smoothness: 0.6 },
+    { cap: 1, mistake: 0, commit: [0, 0], jitter: 0.008, idle: 0, think: 0.06, corner: 1.65, response: 2.1, smoothness: 1.2 },
+    { cap: 1, mistake: 0, commit: [0, 0], jitter: 0, idle: 0, think: 0.03, corner: 1.85, response: 2.4, smoothness: 2 },
   ];
 
   /** 沿著距離場往下走，找出一段直線並回傳最遠的直線端點與是否為轉彎點。 */
-  function straightRun(maze, field, from, preference) {
+  function straightRun(maze, field, from, preference, smoothness, heading) {
     let cur = from, dir = 0, count = 0;
     for (let guard = 0; guard < 8; guard++) {
-      let best = null;
+      let best = null, bestScore = Infinity;
       for (const nb of maze.neighbors(cur)) {
         if (field[nb.i] < 0 || field[nb.i] >= field[cur]) continue;
-        if (!best || field[nb.i] < field[best.i] || (field[nb.i] === field[best.i] && preference[nb.i] < preference[best.i])) best = nb;
+        const preferredDir = count ? dir : heading;
+        const score = preference[nb.i] + (preferredDir && nb.d !== preferredDir ? smoothness : 0);
+        if (!best || field[nb.i] < field[best.i] || (field[nb.i] === field[best.i] && score < bestScore)) { best = nb; bestScore = score; }
       }
       if (!best) return { to: cur, turn: false, end: true };
       if (count === 0) dir = best.d;
@@ -40,7 +42,8 @@
     const va = p.vx * ux + p.vy * uy;
     const px = p.vx - va * ux, py = p.vy - va * uy;
     const vAllowed = turn ? lvl.corner + dist * 2.0 : 6;
-    const throttle = clamp((Math.min(vAllowed, cap * 3.65) - va) * 1.6, -1, 1);
+    const targetSpeed = Math.min(vAllowed, cap * MR.PHYS.ACC / MR.PHYS.FRI);
+    const throttle = clamp(targetSpeed * MR.PHYS.FRI / MR.PHYS.ACC + (targetSpeed - va) * lvl.response, -1, 1);
     let ix = ux * throttle - px * 1.3, iy = uy * throttle - py * 1.3;
     const m = Math.hypot(ix, iy);
     if (m > cap) { ix = ix / m * cap; iy = iy / m * cap; }
@@ -55,8 +58,9 @@
       pace: 0.9 + r() * 0.1, corner: 0.9 + r() * 0.2, focus: 0.75 + r() * 0.5,
       rhythm: 0.02 + r() * 0.06, competition: 0.7 + r() * 0.6,
     };
+    const drivePace = Math.min(1, profile.pace + (level === 4 ? 0.05 : level === 3 ? 0.015 : 0));
     const L = {
-      ...base, cap: base.cap * profile.pace, corner: base.corner * profile.corner,
+      ...base, cap: base.cap * drivePace, corner: base.corner * profile.corner,
       mistake: base.mistake * profile.focus, think: base.think * profile.focus,
     };
     const maze = world.maze;
@@ -107,7 +111,9 @@
         if (pick) { st.wrongTo = pick.i; const q = cellCenter(maze, pick.i); tx = q.x; ty = q.y; }
       }
       if (tx == null) {
-        const run = straightRun(maze, field, c, preference);
+        let heading = 0;
+        if (Math.hypot(player.vx, player.vy) >= 0.4) heading = Math.abs(player.vx) > Math.abs(player.vy) ? (player.vx > 0 ? MR.E : MR.W) : (player.vy > 0 ? MR.S : MR.N);
+        const run = straightRun(maze, field, c, preference, L.smoothness, heading);
         const q = cellCenter(maze, run.to); tx = q.x; ty = q.y; turn = run.turn || run.end;
       }
       const pace = L.cap * (1 - profile.rhythm * (0.5 + 0.5 * Math.sin(t * 0.7 + st.phase)));
