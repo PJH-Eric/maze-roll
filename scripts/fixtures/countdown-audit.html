@@ -1,0 +1,139 @@
+<!-- 測試專用頁：由 node scripts/countdown-audit.js 提供，不隨 public/ 部署。
+     使用真實 App、World、Game 及 HUD；安排抵達位置／接收線上事件，隔離尋路及網路延遲。 -->
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <base href="/">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div id="app"></div>
+<div id="popRoot"></div>
+<div id="modalRoot"></div>
+<div id="toastRoot"></div>
+<script src="js/config.js"></script>
+<script src="js/rules.js"></script>
+<script src="js/ai.js"></script>
+<script src="js/i18n.js"></script>
+<script src="js/locales.js"></script>
+<script type="module">
+import './js/app.js';
+
+const controls = document.createElement('div');
+controls.style = 'position:fixed;bottom:4px;left:4px;z-index:9999;background:#fff;color:#111;padding:6px;max-width:90%;font:12px monospace';
+const output = document.createElement('pre');
+output.style = 'max-height:160px;overflow:auto;margin:0';
+
+function advance(game, seconds) {
+  if (game.online) game.net({ t: 'grace', left: game.graceLeft - seconds });
+  else for (const event of game.world.update(seconds)) game._event(event, false);
+  game._hud();
+}
+
+function scenario(mode, online, first, solo = false) {
+  const app = window.__MRAPP;
+  const players = [
+    { id: 'me', name: '測試玩家', kind: 'human' },
+    ...(solo ? [] : [{ id: 'other', name: '測試對手', kind: online ? 'remote' : 'ai', ai: 4 }]),
+  ];
+  if (online) {
+    Object.assign(app.session, { you: 'me', role: 'player' });
+    app.go('game', { online: true, init: { players, mode, diff: 0, seed: 7, size: 6 } });
+  } else {
+    app.go('game', {
+      local: true, cfg: { kind: 'vsai', mode, diff: 0, ais: solo ? [] : [4] },
+      players, meId: 'me', mode, diff: 0, seed: 7, size: 6,
+    });
+  }
+  const game = app.getGame();
+  clearTimeout(game.cdT);
+  game.hooks.onCount(null);
+  game.state = 'play';
+  game.world.start();
+  const ids = first === 'both' ? ['me', 'other'] : [first === 'late' ? 'other' : first];
+  if (window.MR.isRun(mode)) {
+    if (online) {
+      game.net({ t: 'ev', ev: ids.map((id, i) => ({ e: 'finish', id, t: 1, place: i + 1 })) });
+      game.net({ t: 'grace', left: solo ? null : 10 });
+    } else {
+      const goal = window.MR.cellCenter(game.world.maze, game.world.maze.goal);
+      ids.forEach((id) => Object.assign(game.world.byId.get(id), goal));
+      for (const event of game.world.update(0.01)) game._event(event, false);
+    }
+  }
+  if (first === 'late' && window.MR.isRun(mode)) {
+    advance(game, 5);
+    if (online) game.net({ t: 'ev', ev: [{ e: 'finish', id: 'me', t: 6, place: 2 }] });
+    else {
+      Object.assign(game.me(), window.MR.cellCenter(game.world.maze, game.world.maze.goal));
+      for (const event of game.world.update(0)) game._event(event, false);
+    }
+  }
+  game.paused = true;
+  game._hud();
+  return game;
+}
+
+function check() {
+  const failures = [], passes = [];
+  const cases = [];
+  for (const mode of ['race', 'escape', 'stars', 'collapse']) {
+    for (const online of [false, true]) {
+      const arrivals = window.MR.isRun(mode) ? ['me', 'other', 'both', 'late'] : ['me', 'other', 'both'];
+      for (const first of arrivals) cases.push({ mode, online, first });
+    }
+  }
+  for (const { mode, online, first } of cases) {
+    const game = scenario(mode, online, first), run = window.MR.isRun(mode);
+    const label = `${mode}/${online ? 'online' : 'local'}/${first}`;
+    const shown = !document.querySelector('.graceCountdown').hidden;
+    const banner = !document.querySelector('.banner').hidden;
+    const seconds = first === 'late' ? 5 : 10;
+    const errors = [];
+    if (shown !== run || banner) errors.push(`countdown=${shown}, banner=${banner}`);
+    if (run) {
+      if ((!online && game.world.over) || document.querySelector('.graceValue').textContent !== String(seconds)) {
+        errors.push('premature end or wrong value');
+      }
+      advance(game, 1);
+      if (document.querySelector('.graceValue').textContent !== String(seconds - 1) ||
+          !document.querySelector('.graceCountdown').classList.contains('tick')) errors.push('missing countdown tick');
+    }
+    if (errors.length) failures.push(`${label}: ${errors.join('; ')}`);
+    else passes.push(label);
+  }
+  for (const mode of ['race', 'escape']) {
+    scenario(mode, false, 'me', true);
+    if (!document.querySelector('.graceCountdown').hidden || !document.querySelector('.banner').hidden) {
+      failures.push(`${mode}/solo: unexpected countdown/banner`);
+    } else passes.push(`${mode}/solo`);
+  }
+  output.textContent = `PASS ${passes.length}; FAIL ${failures.length}\n${failures.join('\n')}`;
+  scenario('race', false, 'me');
+}
+
+const actions = [
+  ['Run countdown audit', check],
+  ['Race player first', () => scenario('race', false, 'me')],
+  ['Escape player first', () => scenario('escape', false, 'me')],
+  ['Online player first', () => scenario('escape', true, 'me')],
+  ['Other first', () => scenario('race', false, 'other')],
+  ['Next second', () => advance(window.__MRAPP.getGame(), 1)],
+  ['Resume countdown', () => { window.__MRAPP.getGame().paused = false; }],
+  ['English', () => window.I18N.setLang('en', { persist: false })],
+  ['繁體中文', () => window.I18N.setLang('zh-Hant', { persist: false })],
+  ['Hide audit', () => { controls.hidden = true; }],
+];
+for (const [label, action] of actions) {
+  const button = document.createElement('button');
+  button.textContent = label;
+  button.onclick = action;
+  controls.append(button);
+}
+controls.append(output);
+document.body.append(controls);
+</script>
+</body>
+</html>

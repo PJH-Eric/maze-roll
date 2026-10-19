@@ -423,20 +423,15 @@ function gameScreen(p) {
   const showBanner = (text, btn) => { banner.hidden = false; rc(banner, h('b', { text }), btn); };
   const hooks = {
     onCount(n) { countEl.textContent = n == null ? '' : n === 0 ? T('出發！') : String(n); countEl.classList.toggle('go', n === 0); countEl.style.display = n == null ? 'none' : ''; },
-    onMe(state, e) {
-      if (state === 'finished') {
-        graceCountdown.hidden = true;
-        graceCountdown.classList.remove('tick');
-        showBanner(mode === 'escape' ? T('逃出成功！第 {place} 名', { place: e.place }) : T('抵達終點！第 {place} 名', { place: e.place }), null);
-      }
-      else if (state === 'out') showBanner(T('你掉下去了…'), !online && game.world.players.some((q) => q.alive) ? Button({ label: T('直接看結果'), size: 'small', onClick: () => { game.fastForward(); banner.hidden = true; } }) : h('small', { text: T('可以繼續觀戰') }));
+    onMe(state) {
+      if (state === 'out') showBanner(T('你掉下去了…'), !online && game.world.players.some((q) => q.alive) ? Button({ label: T('直接看結果'), size: 'small', onClick: () => { game.fastForward(); banner.hidden = true; } }) : h('small', { text: T('可以繼續觀戰') }));
     },
     onHud(hd) {
       last = hd; const w = game.world;
       hudMode.textContent = MODE_INFO[mode].name;
       hudTime.textContent = hd.left != null ? fmt(hd.left) : fmt(hd.t);
       hudTime.classList.toggle('warn', hd.left != null && hd.left < 10);
-      const graceActive = run && hd.grace != null && hd.grace > 0 && hd.meState !== 'finished';
+      const graceActive = run && hd.state === 'play' && hd.grace != null && hd.grace > 0;
       let ex = '';
       if (mode === 'escape' && !(run && hd.grace != null && hd.grace > 0)) {
         const v = game.me() || w.byId.get(hd.follow); if (v) { const left = Math.min(...Array.from(v.open).filter((x) => x > 0 && x < 1e8)); ex = T('逃出進度 {a}/{b}', { a: w.passed(v), b: w.esc.doors.length }) + (isFinite(left) ? '・' + T('機關 {x1} 秒', { x1: Math.ceil(left) }) : ''); }
