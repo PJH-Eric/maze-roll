@@ -288,7 +288,7 @@ export class Scene3D {
         if (q) { const sc = e.w % 2 ? q.a : q.b; this._flashPortal((sc % W) + 0.5, ((sc / W) | 0) + 0.5); } this._flashPortal(e.x, e.y);
         this._ghost(b.g.position.x, b.g.position.z, BALL_COLORS[b.p.idx % 8]);
         this._burst(b.g.position.x, 0.4, b.g.position.z, 0xffffff, 24); b.hist.length = 0; b.lx = e.x; b.ly = e.y; b.lastTx = e.x; b.lastTy = e.y; this._burst(e.x, 0.4, e.y, 0x9ad8ff, 20);
-        b.pop = 0; if (e.id === this.camFollow) { this.glide = 2.2; this.camRate = 1.3; }
+        b.pop = 0; if (e.id === this.camFollow) { this.glide = 1.3; this.camRate = 2; }
       }
     } else if (e.e === 'key' || e.e === 'unlock' || e.e === 'plate') {
       const o = this.doors && this.doors[e.d];
@@ -389,10 +389,10 @@ export class Scene3D {
     const fb = this.balls.get(followId) || this.balls.values().next().value;
     if (fb) {
       const p = fb.p, tx = p.x + p.vx * 0.1, tz = p.y + p.vy * 0.1;
-      if (this.camFollow !== fb.p.id) { if (this.camFollow != null && this.focusReady) this.glide = 2.4; this.camRate = 1.3; this.camFollow = fb.p.id; }
+      if (this.camFollow !== fb.p.id) { if (this.camFollow != null && this.focusReady) this.glide = 1.5; this.camRate = 2; this.camFollow = fb.p.id; }
       // 切換視角／傳送後：鏡頭用較慢的速率滑過去，再平順回到正常跟隨
       this.glide = Math.max(0, (this.glide || 0) - dt);
-      const want = this.glide > 0 ? 1.3 : 9.5; this.camRate = this.camRate == null ? want : this.camRate + (want - this.camRate) * Math.min(1, dt * (this.glide > 0 ? 4 : 1.4));
+      const want = this.glide > 0 ? 2 : 9.5; this.camRate = this.camRate == null ? want : this.camRate + (want - this.camRate) * Math.min(1, dt * (this.glide > 0 ? 4 : 1.4));
       if (!this.focusReady || quick) { this.focus.set(tx, 0, tz); this.focusReady = true; this.camRate = 9.5; this.glide = 0; }
       else { const k = 1 - Math.exp(-this.camRate * dt); this.focus.x += (tx - this.focus.x) * k; this.focus.z += (tz - this.focus.z) * k; }
     }
