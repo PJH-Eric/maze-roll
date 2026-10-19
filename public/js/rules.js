@@ -259,7 +259,7 @@
       const kind = j % 2 === 0 ? 'key' : 'plate';
       const di = maze.bfs(near)[item];
       doors.push({ j, idx, kind, near, far, d, rect, cx, cy, item, detour: Math.max(0, depth[item]), color: DOOR_COLORS[j % DOOR_COLORS.length], farSide,
-        T: kind === 'plate' ? Math.max(7, (di / 1.6 + 4) * ESCAPE_TIME[df]) : 0 });
+        T: kind === 'plate' ? Math.ceil(Math.max(7, (di / 1.6 + 4) * ESCAPE_TIME[df]) / 5) * 5 : 0 }); // 踏板門開啟秒數：以 5 秒為單位無條件進位
       prevFar = farSide;
     }
     return { doors };
