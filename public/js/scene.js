@@ -104,7 +104,7 @@ export class Scene3D {
   _clear() {
     if (!this.root) return;
     this.root.traverse((o) => { if (o.geometry) o.geometry.dispose(); if (o.material) { (Array.isArray(o.material) ? o.material : [o.material]).forEach((m) => { if (m.map) m.map.dispose(); m.dispose(); }); } });
-    this.scene.remove(this.root); this.root = null; this.balls.clear(); this.stars.clear(); this.parts = []; this.doors = []; this.portals = [];
+    this.scene.remove(this.root); this.root = null; this.balls.clear(); this.stars.clear(); this.parts = []; this.ghosts = []; this.doors = []; this.portals = [];
   }
   /** 依世界建立場景。me 為自己的玩家 id（可為 null：觀戰）。 */
   load(world, me) {
@@ -264,6 +264,10 @@ export class Scene3D {
     if (!this.tileMesh) return;
     this.tileState[i] = s; this.tileT[i] = instant ? 9 : 0; this.tileActive.add(i);
   }
+  /** 傳送出發端：球的殘影縮小、上升、淡出 */
+  _ghost(x, z, color) {
+    const m = new THREE.Mesh(this.ballGeo, new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.8, depthWrite: false, blending: THREE.AdditiveBlending })); m.position.set(x, R, z); this.root.add(m); (this.ghosts = this.ghosts || []).push({ m, t: 0 });
+  }
   _flashPortal(x, z) {
     if (!this.portals) return;
     for (const o of this.portals) if (Math.hypot(o.g.position.x - x, o.g.position.z - z) < 0.6) o.fl = 0;
@@ -280,9 +284,11 @@ export class Scene3D {
     else if (e.e === 'warp') {
       const b = this.balls.get(e.id);
       if (b) {
-        this._flashPortal(b.p.x, b.p.y); this._flashPortal(e.x, e.y);
-        this._burst(b.g.position.x, 0.4, b.g.position.z, 0xffffff, 12); b.hist.length = 0; b.lx = e.x; b.ly = e.y; b.lastTx = e.x; b.lastTy = e.y; this._burst(e.x, 0.4, e.y, 0x9ad8ff, 16);
-        b.pop = 0; if (e.id === this.camFollow) this.glide = 1.1;
+        const q = this.world.esc && this.world.esc.portals[e.w >> 1], W = this.maze.w; // 事件到達時球已在終點，出發端由 w 反推
+        if (q) { const sc = e.w % 2 ? q.a : q.b; this._flashPortal((sc % W) + 0.5, ((sc / W) | 0) + 0.5); } this._flashPortal(e.x, e.y);
+        this._ghost(b.g.position.x, b.g.position.z, BALL_COLORS[b.p.idx % 8]);
+        this._burst(b.g.position.x, 0.4, b.g.position.z, 0xffffff, 24); b.hist.length = 0; b.lx = e.x; b.ly = e.y; b.lastTx = e.x; b.lastTy = e.y; this._burst(e.x, 0.4, e.y, 0x9ad8ff, 28);
+        b.pop = 0; if (e.id === this.camFollow) { this.glide = 2.2; this.camRate = 1.3; }
       }
     } else if (e.e === 'key' || e.e === 'unlock' || e.e === 'plate') {
       const o = this.doors && this.doors[e.d];
@@ -305,7 +311,7 @@ export class Scene3D {
       let y = R, s = 1;
       if (!p.alive) { b.fallV += 9 * dt; b.fall += b.fallV * dt; y = R - b.fall; s = Math.max(0.2, 1 - b.fall * 0.15); if (b.fall > 9) b.hidden = true; }
       if (this.world.run && p.fin != null) { b.sink = Math.min(1, b.sink + dt * 2.2); y = R - b.sink * 0.3; s = 1 - b.sink * 0.45; if (b.sink >= 1) b.hidden = true; }
-      if (b.pop < 1) { b.pop = Math.min(1, b.pop + dt * 3); const q = b.pop - 1; s *= Math.max(0.05, 1 + 2.2 * q * q * q + 1.2 * q * q); }
+      if (b.pop < 1) { b.pop = Math.min(1, b.pop + dt * 1.5); const q = b.pop - 1; s *= Math.max(0.02, 1 + 2.7 * q * q * q + 1.7 * q * q); y += Math.sin(b.pop * Math.PI) * 0.35; }
       g.visible = !b.hidden; g.position.set(p.x, y, p.y); b.mesh.scale.setScalar(s);
       if (this.trail && !this.reduce && p.alive && !b.hidden) {
         let trailChanged = false;
@@ -326,6 +332,7 @@ export class Scene3D {
       b.label.position.y = 1.05 + (p.idx % 3) * 0.2 + (R - y) * -0.2; b.label.visible = p.alive || b.fall < 1.5;
       if (b.ring) { b.ring.position.y = 0.02 - (y - R); b.ring.material.opacity = 0.55 + 0.3 * Math.sin(t * 5); b.ring.scale.setScalar(1 + 0.06 * Math.sin(t * 5)); }
     });
+    if (this.ghosts) for (let i = this.ghosts.length - 1; i >= 0; i--) { const gh = this.ghosts[i]; gh.t += dt / 0.7; const k = Math.min(1, gh.t); gh.m.scale.setScalar(Math.max(0.01, 1 - k)); gh.m.position.y = R + k * 0.9; gh.m.material.opacity = 0.8 * (1 - k); if (k >= 1) { this.root.remove(gh.m); gh.m.material.dispose(); this.ghosts.splice(i, 1); } }
     // 星星、終點
     this.stars.forEach((m) => {
       if (m.userData.grow < 1) { m.userData.grow = Math.min(1, m.userData.grow + dt * 3); m.scale.setScalar(Math.max(0.01, m.userData.grow * 1.35)); }
@@ -335,7 +342,7 @@ export class Scene3D {
       o.swirl.rotation.z = -t * 3 + o.ph; o.swirl2.rotation.z = t * 2.1 + o.ph; o.ring.rotation.z = t * 0.8;
       const br = 1 + 0.05 * Math.sin(t * 3 + o.ph); o.ring.scale.setScalar(br); o.disc.scale.setScalar(br);
       o.disc.material.opacity = 0.32 + 0.12 * Math.sin(t * 4 + o.ph); o.beam.material.opacity = 0.12 + 0.05 * Math.sin(t * 3 + o.ph);
-      if (o.fl < 1) { o.fl = Math.min(1, o.fl + dt * 1.8); const e = 1 - (1 - o.fl) * (1 - o.fl); o.flash.scale.setScalar(0.6 + e * 2.2); o.flash.material.opacity = (1 - o.fl) * 0.9; o.disc.material.opacity += (1 - o.fl) * 0.4; o.ring.scale.setScalar(br + (1 - o.fl) * 0.25); }
+      if (o.fl < 1) { o.fl = Math.min(1, o.fl + dt * 0.9); const e = 1 - (1 - o.fl) * (1 - o.fl), k = 1 - o.fl; o.flash.scale.setScalar(0.6 + e * 4.2); o.flash.material.opacity = k * 1.2; o.disc.material.opacity += k * 0.6; o.ring.scale.setScalar(br + k * 0.4); o.beam.material.opacity += k * 0.5; o.beam.scale.set(1 + k * 0.8, 1 + k * 1.2, 1 + k * 0.8); o.beam.position.y = 0.55 * (1 + k * 1.2); }
       if (!this.reduce) o.sparks.forEach((sp, k) => { const u = (t * 0.55 + k / o.sparks.length) % 1, a = t * 2.4 + k * 1.05 + o.ph; sp.position.set(Math.cos(a) * 0.3 * (1 - u * 0.6), 0.06 + u * 0.9, Math.sin(a) * 0.3 * (1 - u * 0.6)); sp.scale.setScalar(1 - u * 0.7); });
     }
     if (this.doors && this.doors.length) {
@@ -382,10 +389,10 @@ export class Scene3D {
     const fb = this.balls.get(followId) || this.balls.values().next().value;
     if (fb) {
       const p = fb.p, tx = p.x + p.vx * 0.1, tz = p.y + p.vy * 0.1;
-      if (this.camFollow !== fb.p.id) { if (this.camFollow != null && this.focusReady) this.glide = 1.4; this.camFollow = fb.p.id; }
+      if (this.camFollow !== fb.p.id) { if (this.camFollow != null && this.focusReady) this.glide = 2.4; this.camRate = 1.3; this.camFollow = fb.p.id; }
       // 切換視角／傳送後：鏡頭用較慢的速率滑過去，再平順回到正常跟隨
       this.glide = Math.max(0, (this.glide || 0) - dt);
-      const want = this.glide > 0 ? 3.2 : 9.5; this.camRate = this.camRate == null ? want : this.camRate + (want - this.camRate) * Math.min(1, dt * 4);
+      const want = this.glide > 0 ? 1.3 : 9.5; this.camRate = this.camRate == null ? want : this.camRate + (want - this.camRate) * Math.min(1, dt * (this.glide > 0 ? 4 : 1.4));
       if (!this.focusReady || quick) { this.focus.set(tx, 0, tz); this.focusReady = true; this.camRate = 9.5; this.glide = 0; }
       else { const k = 1 - Math.exp(-this.camRate * dt); this.focus.x += (tx - this.focus.x) * k; this.focus.z += (tz - this.focus.z) * k; }
     }
