@@ -1,7 +1,7 @@
 {
   "name": "maze-roll",
   "version": "0.1.0",
-  "description": "迷宮滾球 — 3D 木質迷宮滾球：競速、搶星星、地板崩塌，單機闖關、對電腦與線上對戰",
+  "description": "迷宮滾球 — 3D 木質迷宮：同圖競速、搶星星、地板崩塌與逃出，可單人闖關、對電腦及線上對戰",
   "private": true,
   "scripts": {
     "start": "node server.js",

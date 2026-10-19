@@ -1,4 +1,4 @@
-// 規則核心單元測試：迷宮、物理、三種玩法、排名、闖關、電腦難度
+// 規則核心單元測試：迷宮、物理、四種玩法、排名、闖關、電腦難度
 const assert = require('assert');
 const MR = require('../public/js/rules.js');
 const { simulate } = require('./sim.js');

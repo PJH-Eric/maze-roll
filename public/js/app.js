@@ -11,12 +11,11 @@ import { BALL_COLORS, SHAPES, BALL_TYPES } from './scene.js';
 const MR = window.MR;
 const $app = document.getElementById('app');
 const MODE_INFO = {
-  race: { get name() { return T('同圖競速'); }, get sub() { return T('同一座迷宮，先滾到終點旗的人贏'); }, icon: 'flag' },
-  stars: { get name() { return T('搶星星'); }, get sub() { return T('90 秒內撿最多星星；被撿走就消失，搶光即結束'); }, icon: 'star' },
-  collapse: { get name() { return T('地板崩塌'); }, get sub() { return T('踩過的磚會碎裂，掉下去就淘汰，最後留下的人贏'); }, icon: 'crown' },
-  escape: { get name() { return T('逃出模式'); }, get sub() { return T('拿鑰匙開門、踩踏板開機關，第一個逃出迷宮的人贏'); }, icon: 'key' },
+  race: { get name() { return T('同圖競速'); }, get sub() { return T('單人抵達即結束；多人第一人抵達後倒數 10 秒結算'); }, icon: 'flag' },
+  stars: { get name() { return T('搶星星'); }, get sub() { return T('90 秒內撿星星得分；全數撿完可提前結束，同分比最後得分時間'); }, icon: 'star' },
+  collapse: { get name() { return T('地板崩塌'); }, get sub() { return T('地磚延遲碎裂；多人留到最後者勝，單人挑戰存活時間'); }, icon: 'crown' },
+  escape: { get name() { return T('逃出模式'); }, get sub() { return T('拿鑰匙開門、踩踏板限時開門；多人首位抵達後倒數 10 秒結算'); }, icon: 'key' },
 };
-const DIFF_SUB = ['極小・很慢', '小迷宮', '中迷宮', '大迷宮', '巨大迷宮']; // 顯示時再 T()
 // 時間一律顯示到小數點第二位（m:ss.cc）
 const fmt = (s) => { const cs = Math.floor(Math.max(0, s) * 100 + 1e-6); return Math.floor(cs / 6000) + ':' + String(Math.floor(cs / 100) % 60).padStart(2, '0') + '.' + String(cs % 100).padStart(2, '0'); };
 const fmtShort = fmt;
@@ -33,7 +32,7 @@ $app.append($screen, chrome);
 
 // ---------- 多語系（核心沿用箭頭解密的 i18n.js：繁體中文／English）----------
 const langToggle = window.I18N ? window.I18N.mountToggle({ after: gearBtn }) : null;
-const META = { title: '迷宮滾球｜免費線上 3D 滾球迷宮・多人競速', desc: '免費免下載的 3D 木質迷宮滾球遊戲：單人闖關五種難度各 100 關，可對電腦，也能線上最多 4 人競速、搶星星、地板崩塌，支援觀戰與邀請連結，手機平板都能玩。' };
+const META = { title: '迷宮滾球｜免費線上 3D 滾球迷宮・多人競速', desc: '免費免下載的 3D 木質迷宮滾球遊戲，含同圖競速、搶星星、地板崩塌、逃出四種玩法；同圖競速與逃出各有五種難度、每種 100 關，可單人闖關、自由練習或對電腦，也能線上最多 4 人同玩。另有每日挑戰、觀戰與邀請連結，支援手機、平板和桌機。' };
 function applyLang() {
   document.title = T(META.title);
   const d = document.querySelector('meta[name="description"]'); if (d) d.setAttribute('content', T(META.desc));
@@ -104,12 +103,12 @@ function openHow() {
   const m = Modal({
     title: T('怎麼玩'), class: 'howModal',
     body: h('div', { class: 'how' },
-      sec(T('基本操作'), h('p', {}, T('推動搖桿（或按 '), Key('W'), Key('A'), Key('S'), Key('D'), T('／方向鍵）讓球往那個方向滾。牆會擋住球，撞牆會減速，慢慢控制比硬衝更快。'))),
+      sec(T('基本操作'), h('p', {}, T('依設定用虛擬搖桿、手指拖曳、裝置傾斜或按 '), Key('W'), Key('A'), Key('S'), Key('D'), T('／方向鍵）控制球。牆會擋住球，撞牆會減速，慢慢控制比硬衝更快。'))),
       sec(T('同圖競速'), h('p', { text: T('所有人用同一座迷宮、從同一個起點出發，先滾進終點旗洞的人贏。多人局第一名到達後完整倒數 10 秒才結算，全員抵達也不提前結束；球和球不會互相碰撞，可以穿過去。') })),
-      sec(T('搶星星'), h('p', { text: T('迷宮裡散落著星星，碰到就得 1 分，星星被撿走就不會再出現，全部被搶光時比賽提前結束。90 秒內分數最高的人贏；同分時，比較早拿到最後一顆的人名次較前。') })),
-      sec(T('地板崩塌'), h('p', { text: T('你踩過的地磚會先晃動，接著碎裂掉下去。一直停在原地也會掉！規劃好路線，不要把自己困在死路裡，最後還站著的人贏。拖太久時，場地會自己隨機碎裂。') })),
-      sec(T('逃出模式'), h('p', { text: T('迷宮裡有幾道彩色的門擋住去路。同色的鑰匙要繞去支線撿起來，帶著鑰匙走到門前門就會打開；踩踏板的門只會開一小段時間，要在關上前衝過去（快關上時門會閃爍）。每個人的鑰匙與門各自獨立，不會被別人搶走。路旁小岔路上成對的發光光圈是傳送門，走進一邊會從另一邊出來，可以當作捷徑。第一個逃出的人贏，之後其他人還有 10 秒可以逃出。') })),
-      sec(T('闖關模式'), h('p', { text: T('五種難度各 100 關，依序解鎖。依完成時間評 1～3 顆星。') })),
+      sec(T('搶星星'), h('p', { text: T('迷宮裡散落著星星，碰到就得 1 分，星星被撿走就不會再出現，全部被撿完時比賽提前結束。90 秒內分數最高的人贏；同分時，最後一次得分較早者排名較前。') })),
+      sec(T('地板崩塌'), h('p', { text: T('你踩過的地磚會先晃動，再依難度於約 1.2～3.2 秒後碎裂。站在碎裂的地磚上也會掉落！60 秒後場地開始隨機崩塌。多人局最後存活者勝；單人挑戰以存活時間記錄。') })),
+      sec(T('逃出模式'), h('p', { text: T('迷宮裡有幾道彩色的門擋住去路。同色的鑰匙要繞去支線撿起來，帶著鑰匙走到門前門就會打開；踩踏板的門只會開一小段時間，要在關上前衝過去（快關上時門會閃爍）。每個人的鑰匙與門各自獨立，不會被別人搶走。路旁小岔路上成對的發光光圈是傳送門，走進一邊會從另一邊出來，可以當作捷徑。單人抵達即結束；多人首位抵達後完整倒數 10 秒才結算，未抵達者為未完賽。') })),
+      sec(T('闖關模式'), h('p', { text: T('競速與逃出各有五種難度，每種 100 關。五種難度都可選；各難度內的關卡依序解鎖。完成時間評 1～3 顆星。') })),
       sec(T('線上對戰'), h('p', { text: T('每房最多 4 位玩家、20 位觀戰者。房主可以複製邀請連結給朋友；朋友打開連結後確認暱稱就能加入。觀戰者可以看全場並聊天。') }))),
     actions: [Button({ label: T('知道了'), variant: 'primary', onClick: () => m.close('ok') })],
   });
@@ -125,11 +124,11 @@ function homeScreen() {
     ScrollArea(h('div', { class: 'homeIn' },
       h('div', { class: 'logo', html: LOGO }),
       h('h1', { class: 'gameTitle', text: T('迷宮滾球') }),
-      h('p', { class: 'sub', text: T('3D 木質迷宮・推著小球衝向終點') }),
+      h('p', { class: 'sub', text: T('3D 木質迷宮・滾動小球體驗四種玩法') }),
       h('div', { class: 'menu' },
-        menuBtn('flag', T('闖關模式'), T('單人・五種難度各 100 關'), () => go('levels'), 'primary'),
-        menuBtn('key', T('每日挑戰'), T('同圖競速與逃出・每天一張新圖'), () => go('daily')),
-        menuBtn('star', T('自由練習'), T('一個人・三種玩法・計時'), () => go('setup', { kind: 'practice' })),
+        menuBtn('flag', T('闖關模式'), T('競速／逃出・各 5 難度 × 100 關'), () => go('levels'), 'primary'),
+        menuBtn('key', T('每日挑戰'), T('競速／逃出・每天更新 10 張迷宮'), () => go('daily')),
+        menuBtn('star', T('自由練習'), T('單人練習・四種玩法・保留紀錄'), () => go('setup', { kind: 'practice' })),
         menuBtn('people', T('對電腦'), T('1～7 位電腦・各自選難度'), () => go('setup', { kind: 'vsai' })),
         menuBtn('link', T('線上對戰'), T('最多 4 人・觀戰・邀請連結'), () => go('online')),
         Button({ label: T('怎麼玩'), variant: 'ghost', onClick: openHow }))), { class: 'homeScroll' })));
@@ -184,7 +183,7 @@ function dailyScreen(p = {}) {
     h('div', { class: 'body' }, panel(ScrollArea(h('div', { class: 'setupBody' },
       modeChips,
       mazeNote,
-      h('p', { class: 'note', text: streak ? T('連續挑戰 {n} 天', { n: streak }) : T('今天完成任一玩法，就開始累積連續天數') }),
+      h('p', { class: 'note', text: streak ? T('連續挑戰 {n} 天', { n: streak }) : T('今天完成任一每日挑戰，就開始累積連續天數') }),
       rows), { class: 'setupScroll' })))));
   draw();
 }
@@ -210,10 +209,15 @@ function setupScreen(p) {
         Select({ label: T('電腦 {x1} 難度', { x1: i + 1 }), value: S.ai[i] != null ? S.ai[i] : 1, options: MR.AI_NAMES.map((n, k) => ({ value: k, label: T(n) })), onChange: (v) => { S.ai[i] = v; } })));
     }
   };
-  const modeChips = Chips({ label: T('玩法'), value: S.mode, options: MR.MODES.map((m) => ({ value: m, label: MODE_INFO[m].name, icon: MODE_INFO[m].icon })), onChange: (v) => { S.mode = v; modeDesc.textContent = MODE_INFO[v].sub; showBest(); } });
-  const diffChips = Chips({ label: T('迷宮難度'), value: S.diff, options: MR.DIFFS.map((d, i) => ({ value: i, label: T(d), sub: T(DIFF_SUB[i]) })), onChange: (v) => { S.diff = v; showBest(); } });
+  const diffChipsWrap = h('div');
+  const drawDiffChips = () => {
+    const options = MR.DIFFS.map((d, i) => ({ value: i, label: T(d), sub: `${MR.SIZE[S.mode][i]}×${MR.SIZE[S.mode][i]}` }));
+    diffChipsWrap.replaceChildren(Chips({ label: T('迷宮難度'), value: S.diff, options, onChange: (v) => { S.diff = v; showBest(); } }));
+  };
+  const modeChips = Chips({ label: T('玩法'), value: S.mode, options: MR.MODES.map((m) => ({ value: m, label: MODE_INFO[m].name, icon: MODE_INFO[m].icon })), onChange: (v) => { S.mode = v; modeDesc.textContent = MODE_INFO[v].sub; drawDiffChips(); showBest(); } });
+  drawDiffChips();
   const stepper = vsai ? h('div', { class: 'stepper' }, IconButton({ icon: 'minus', ariaLabel: T('減少一位電腦'), onClick: () => { if (S.count > 1) { S.count--; drawComps(); } } }), countLbl, IconButton({ icon: 'plus', ariaLabel: T('增加一位電腦'), onClick: () => { if (S.count < 7) { S.count++; while (S.ai.length < S.count) S.ai.push(1); drawComps(); } } })) : null;
-  const sections = [h('h3', { text: T('玩法') }), modeChips, modeDesc, h('h3', { text: T('迷宮難度') }), diffChips, vsai ? h('h3', { text: T('電腦對手') }) : best, vsai ? stepper : null, vsai ? compList : null];
+  const sections = [h('h3', { text: T('玩法') }), modeChips, modeDesc, h('h3', { text: T('迷宮難度') }), diffChipsWrap, vsai ? h('h3', { text: T('電腦對手') }) : best, vsai ? stepper : null, vsai ? compList : null];
   $screen.append(h('section', { class: 'screen setup' }, topbar(vsai ? T('對電腦') : T('自由練習'), () => go('home')),
     h('div', { class: 'body' }, panel(ScrollArea(h('div', { class: 'setupBody' }, ...sections), { class: 'setupScroll' }),
       h('div', { class: 'panelActions' }, Button({ label: T('開始遊戲'), variant: 'primary', size: 'big', onClick: () => startLocal({ kind: p.kind, mode: S.mode, diff: S.diff, ais: vsai ? S.ai.slice(0, S.count) : [] }) }))))));
@@ -575,7 +579,8 @@ function gameScreen(p) {
     let again, back, home;
     if (!online) {
       again = Button({ label: T('再來一局'), variant: nextBtn ? '' : 'primary', onClick: () => { resultM.close(); againLocal(); } });
-      back = Button({ label: T('回到房間'), title: T('回到這個模式的設定／選關畫面'), ariaLabel: T('回到房間（設定畫面）'), onClick: () => { resultM.close(); backLocal(); } });
+      const backLabel = cfg && cfg.kind === 'daily' ? T('回到每日挑戰') : cfg && cfg.kind === 'level' ? T('回到關卡選擇') : T('回到玩法設定');
+      back = Button({ label: backLabel, onClick: () => { resultM.close(); backLocal(); } });
     } else {
       const isHost = session.room && session.room.host === session.you;
       again = Button({ label: isHost ? T('再來一局') : T('再來一局（請房主開始）'), variant: 'primary', disabled: !meId, onClick: function () { net.send({ t: 'rematch' }); if (!isHost) { this.disabled = true; toast(T('已通知房主，等房主開始')); } } });

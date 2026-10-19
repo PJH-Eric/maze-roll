@@ -1,5 +1,5 @@
 /* 迷宮滾球：共用規則核心（瀏覽器與伺服器同一份）。
-   純函式／純資料：迷宮生成、球物理、三種玩法（競速／搶星星／地板崩塌）的判定與排名。
+   純函式／純資料：迷宮生成、球物理、四種玩法（競速／搶星星／地板崩塌／逃出）的判定與排名。
    不碰 DOM、網路、音訊、儲存；隨機一律用可注入的 seed。 */
 (function (root, factory) {
   if (typeof module === 'object' && module.exports) module.exports = factory();
