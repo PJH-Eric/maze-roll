@@ -35,6 +35,14 @@ export const store = {
     while (a.length < n) a.push(0);
     if ((a[n - 1] || 0) < stars) a[n - 1] = stars; save(); return a[n - 1];
   },
+  ymd(d) { return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); },
+  /** 每日挑戰的連續天數：從今天（今天還沒玩就從昨天）往回數，任一難度完成就算那天有玩。 */
+  dailyStreak(today) {
+    const done = new Set(Object.keys(load().best).filter((k) => k.startsWith('daily-')).map((k) => k.slice(6, 16)));
+    const d = new Date(today + 'T00:00:00'); let n = 0; if (!done.has(today)) d.setDate(d.getDate() - 1);
+    while (done.has(this.ymd(d))) { n++; d.setDate(d.getDate() - 1); }
+    return n;
+  },
   // 最佳紀錄：race 越小越好（秒），stars 分數越大越好，collapse 存活秒數越大越好
   getBest(key) { return load().best[key]; },
   recordBest(key, v, lowerIsBetter) {

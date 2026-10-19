@@ -104,7 +104,7 @@ export class Scene3D {
   _clear() {
     if (!this.root) return;
     this.root.traverse((o) => { if (o.geometry) o.geometry.dispose(); if (o.material) { (Array.isArray(o.material) ? o.material : [o.material]).forEach((m) => { if (m.map) m.map.dispose(); m.dispose(); }); } });
-    this.scene.remove(this.root); this.root = null; this.balls.clear(); this.stars.clear(); this.parts = []; this.doors = [];
+    this.scene.remove(this.root); this.root = null; this.balls.clear(); this.stars.clear(); this.parts = []; this.doors = []; this.portals = [];
   }
   /** 依世界建立場景。me 為自己的玩家 id（可為 null：觀戰）。 */
   load(world, me) {
@@ -199,6 +199,16 @@ export class Scene3D {
       }
       this.doors.push(o);
     }
+    // 傳送門：發光的旋轉光圈，一對同色
+    this.portals = [];
+    for (const q of world.esc.portals) for (const c of [q.a, q.b]) {
+      const col = new THREE.Color(q.color), g = new THREE.Group(); g.position.set((c % world.maze.w) + 0.5, 0, ((c / world.maze.w) | 0) + 0.5);
+      const ring = new THREE.Mesh(new THREE.TorusGeometry(0.34, 0.05, 10, 32), new THREE.MeshStandardMaterial({ color: col, emissive: col, emissiveIntensity: 0.9, roughness: 0.3 })); ring.rotation.x = Math.PI / 2; ring.position.y = 0.05; g.add(ring);
+      const disc = new THREE.Mesh(new THREE.CircleGeometry(0.31, 28), new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.4, side: THREE.DoubleSide, depthWrite: false, blending: THREE.AdditiveBlending })); disc.rotation.x = -Math.PI / 2; disc.position.y = 0.03; g.add(disc);
+      const swirl = new THREE.Mesh(new THREE.RingGeometry(0.1, 0.24, 5, 1, 0, Math.PI * 1.4), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.6, side: THREE.DoubleSide, depthWrite: false })); swirl.rotation.x = -Math.PI / 2; swirl.position.y = 0.045; g.add(swirl);
+      const beam = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.3, 1.1, 20, 1, true), new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.16, side: THREE.DoubleSide, depthWrite: false, blending: THREE.AdditiveBlending })); beam.position.y = 0.55; g.add(beam);
+      root.add(g); this.portals.push({ g, ring, disc, swirl, beam, ph: c % 7 });
+    }
   }
   _addBall(p) {
     const idx = p.idx, me = p.id === this.me;
@@ -259,7 +269,10 @@ export class Scene3D {
       const b = this.balls.get(e.id);
       if (b) { this._burst(b.p.x, 0.4, b.p.y, 0xffffff, 10); b.hist.length = 0; b.lx = e.x; b.ly = e.y; b.lastTx = e.x; b.lastTy = e.y; b.fall = 0; b.fallV = 0; this._burst(e.x, 0.4, e.y, 0xffd24a, 14); }
     } else if (e.e === 'tile') this._tile(e.c, e.s, false);
-    else if (e.e === 'key' || e.e === 'unlock' || e.e === 'plate') {
+    else if (e.e === 'warp') {
+      const b = this.balls.get(e.id);
+      if (b) { this._burst(b.p.x, 0.4, b.p.y, 0xffffff, 12); b.hist.length = 0; b.lx = e.x; b.ly = e.y; b.lastTx = e.x; b.lastTy = e.y; this._burst(e.x, 0.4, e.y, 0x9ad8ff, 16); }
+    } else if (e.e === 'key' || e.e === 'unlock' || e.e === 'plate') {
       const o = this.doors && this.doors[e.d];
       if (o && e.id === this.me) { const m = this.maze, d = o.d; if (e.e === 'unlock') this._burst(d.cx, 0.5, d.cy, new THREE.Color(d.color).getHex(), 20); else this._burst((d.item % m.w) + 0.5, 0.4, ((d.item / m.w) | 0) + 0.5, new THREE.Color(d.color).getHex(), 16); }
     } else if (e.e === 'finish' && this.goal) this._burst(this.goal.g.position.x, 0.3, this.goal.g.position.z, 0xffd24a, 18);
@@ -305,6 +318,7 @@ export class Scene3D {
       if (m.userData.grow < 1) { m.userData.grow = Math.min(1, m.userData.grow + dt * 3); m.scale.setScalar(Math.max(0.01, m.userData.grow * 1.35)); }
       m.rotation.y = t * 2.2 + m.userData.ph; m.position.y = 0.46 + (this.reduce ? 0 : Math.sin(t * 3 + m.userData.ph) * 0.05);
     });
+    if (this.portals && this.portals.length) for (const o of this.portals) { o.swirl.rotation.z = -t * 3 + o.ph; o.ring.rotation.z = t * 0.8; o.disc.material.opacity = 0.32 + 0.12 * Math.sin(t * 4 + o.ph); o.beam.material.opacity = 0.12 + 0.05 * Math.sin(t * 3 + o.ph); }
     if (this.doors && this.doors.length) {
       const vp = this.world.byId.get(followId) || this.world.byId.get(this.me);
       for (const o of this.doors) {

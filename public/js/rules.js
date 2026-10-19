@@ -37,6 +37,10 @@
   const ESCAPE_TIME = [1.4, 1.25, 1.1, 1, 0.9];
   const DOOR_COLORS = ['#22b8c7', '#3d7bd9', '#4cbf5a', '#f2d230', '#c45ad6']; // 避開紅／橘／褐（跟木牆太像）
   const KEY_R = 0.5, PLATE_R = 0.42, UNLOCK_R = 0.85, FOREVER = 1e9;
+  /** 傳送門：各難度的成對數、顏色與觸發／離開半徑。 */
+  const PORTAL_PAIRS = [1, 1, 2, 2, 3];
+  const PORTAL_COLORS = ['#ff5fa2', '#9aff5f', '#5fd0ff'];
+  const PORTAL_R = 0.42, PORTAL_LEAVE = 0.7;
   const CRUMBLE = [3.2, 2.5, 2.0, 1.6, 1.2];
   const LEVEL_SIZE = [[5, 9], [8, 14], [11, 19], [15, 25], [19, 31]];
   const ESCAPE_LEVEL_SIZE = [[6, 8], [8, 11], [10, 14], [13, 18], [16, 22]]; // 逃出要繞路拿鑰匙，迷宮比競速小
@@ -200,6 +204,8 @@
     const [a, b] = (mode === 'escape' ? ESCAPE_LEVEL_SIZE : LEVEL_SIZE)[diff];
     return Math.round(a + (b - a) * ((clamp(n, 1, LEVELS_PER_DIFF) - 1) / (LEVELS_PER_DIFF - 1)));
   }
+  /** 每日挑戰：同一天、同一難度，所有人都是同一張逃出迷宮。date 為 'YYYY-MM-DD'。 */
+  function dailySeed(date, diff) { return hashSeed('maze-roll', 'daily', date, diff); }
   function levelSeed(diff, n, mode) { return mode === 'escape' ? hashSeed('maze-roll', 'level', diff, n, 'escape') : hashSeed('maze-roll', 'level', diff, n); }
   /** 闖關評星：以最短路徑長度推算基準時間；逃出模式再加上繞去拿鑰匙／踏板的來回路程與每道門的操作時間。 */
   function levelPar(maze, esc) {
@@ -262,7 +268,29 @@
         T: kind === 'plate' ? Math.ceil(Math.max(7, (di / 1.6 + 4) * ESCAPE_TIME[df]) / 5) * 5 : 0 }); // 踏板門開啟秒數：以 5 秒為單位無條件進位
       prevFar = farSide;
     }
-    return { doors };
+    // 傳送門：成對、雙向，放在主路旁 1～2 格的岔路上（自願走進去的捷徑，不會擋住必經之路）。
+    // 兩端必須在同一段（同樣的門之間），所以傳送不可能繞過任何一道門；通往鑰匙／踏板的支線上不放，保證仍然有解。
+    const pathIdx = new Map(path.map((c, i) => [c, i])), blocked = new Set();
+    const parent = (c) => maze.neighbors(c).find((x) => depth[x.i] === depth[c] - 1).i;
+    for (const d of doors) { let c = d.item; blocked.add(c); while (depth[c] > 0) { c = parent(c); blocked.add(c); } }
+    const attach = (c) => { while (depth[c] > 0) c = parent(c); return pathIdx.get(c); };
+    const seg = (c) => { let k = 0; for (const d of doors) if (d.farSide[c]) k++; return k; };
+    let cands = [];
+    for (let i = 0; i < n; i++) if (depth[i] >= 1 && depth[i] <= 2 && !blocked.has(i) && !used.has(i)) cands.push({ c: i, seg: seg(i), at: attach(i), x: i % w, y: (i / w) | 0 });
+    const portals = [];
+    for (let k = 0; k < PORTAL_PAIRS[df]; k++) {
+      const pairs = [];
+      for (let a = 0; a < cands.length; a++) for (let b = a + 1; b < cands.length; b++) {
+        const A = cands[a], B = cands[b], gap = Math.abs(A.at - B.at);
+        if (A.seg === B.seg && gap >= (df === 0 ? 3 : 6) && Math.hypot(A.x - B.x, A.y - B.y) >= (df === 0 ? 2.5 : 4)) pairs.push({ a: A.c, b: B.c, gap });
+      }
+      if (!pairs.length) break;
+      pairs.sort((p, q) => q.gap - p.gap || p.a - q.a || p.b - q.b);
+      const pick = pairs[Math.min(pairs.length - 1, (r() * Math.min(5, pairs.length)) | 0)];
+      portals.push({ a: pick.a, b: pick.b, color: PORTAL_COLORS[k % PORTAL_COLORS.length] });
+      cands = cands.filter((q) => q.c !== pick.a && q.c !== pick.b);
+    }
+    return { doors, portals };
   }
 
   // ---------- 世界（四種玩法共用）----------
@@ -284,7 +312,7 @@
       if (this.mode === 'escape') {
         this.esc = buildEscape(m, this.diff, this.seed);
         const G = this.esc.doors.length;
-        for (const p of this.players) { p.keyHas = new Uint8Array(G); p.open = new Float32Array(G); } // keyHas: 0 沒拿／1 持有／2 已用；open: 門開著的剩餘秒數（FOREVER＝永久）
+        for (const p of this.players) { p.keyHas = new Uint8Array(G); p.open = new Float32Array(G); p.warp = -1; } // keyHas: 0 沒拿／1 持有／2 已用；open: 門開著的剩餘秒數（FOREVER＝永久）
       }
       this.byId = new Map(this.players.map((p) => [p.id, p]));
       if (this.run) {
@@ -406,11 +434,25 @@
       for (const d of this.esc.doors) if (d.farSide[c]) k++;
       return k;
     }
+    /** 傳送門：走進一端就從另一端出來；剛傳送完要先離開出口一小段才會再觸發。 */
+    _portals(p) {
+      const m = this.maze, ps = this.esc.portals;
+      if (p.warp >= 0) { const q = cellCenter(m, p.warp % 2 ? ps[p.warp >> 1].b : ps[p.warp >> 1].a); if (Math.hypot(p.x - q.x, p.y - q.y) > PORTAL_LEAVE) p.warp = -1; return; }
+      for (let i = 0; i < ps.length; i++) for (let end = 0; end < 2; end++) {
+        const from = cellCenter(m, end ? ps[i].b : ps[i].a);
+        if (Math.hypot(p.x - from.x, p.y - from.y) >= PORTAL_R) continue;
+        const to = cellCenter(m, end ? ps[i].a : ps[i].b);
+        p.x = to.x; p.y = to.y; p.vx = 0; p.vy = 0; p.warp = i * 2 + (1 - end);
+        this.emit({ e: 'warp', id: p.id, x: +to.x.toFixed(3), y: +to.y.toFixed(3), w: p.warp });
+        return;
+      }
+    }
     _escape() {
       const m = this.maze;
       for (const p of this.players) {
         if (p.fin != null) continue;
         const c = cellAt(m, p.x, p.y);
+        this._portals(p);
         for (const d of this.esc.doors) {
           const j = d.j, ic = cellCenter(m, d.item);
           if (d.kind === 'key') {
@@ -513,6 +555,7 @@
       } else if (e.e === 'key') { const p = this.byId.get(e.id); if (p && p.keyHas) p.keyHas[e.d] = 1; }
       else if (e.e === 'unlock') { const p = this.byId.get(e.id); if (p && p.open) { p.keyHas[e.d] = 2; p.open[e.d] = FOREVER; } }
       else if (e.e === 'plate') { const p = this.byId.get(e.id); if (p && p.open) p.open[e.d] = e.T; }
+      else if (e.e === 'warp') { const p = this.byId.get(e.id); if (p) { p.x = e.x; p.y = e.y; p.vx = 0; p.vy = 0; p.warp = e.w; } }
       else if (e.e === 'tile') { this.tile[e.c] = e.s; if (e.s === 1) this.timer[e.c] = this.crumble; }
       else if (e.e === 'out') { const p = this.byId.get(e.id); if (p) { p.alive = false; p.out = e.t; } }
       else if (e.e === 'respawn') { const p = this.byId.get(e.id); if (p) { p.x = e.x; p.y = e.y; p.vx = 0; p.vy = 0; } }
@@ -523,6 +566,6 @@
   return {
     N, E, S, W, DX, DY, OPP, DIRS, MODES, MODE_NAMES, isRun, DOOR_COLORS, FOREVER, ESCAPE_GRACE, DIFFS, DIFF_THEME, braidFor, AI_NAMES, SIZE, BRAID, CRUMBLE, LEVELS_PER_DIFF, PHYS,
     STAR_R, GOAL_R, STAR_TIME, GRACE, MAX_PLAYERS, COLLAPSE_SUDDEN, COLLAPSE_HEAD,
-    rng, hashSeed, clamp, makeMaze, cellCenter, cellAt, stepBall, levelSize, levelSeed, levelPar, levelStars, World,
+    rng, hashSeed, dailySeed, PORTAL_COLORS, clamp, makeMaze, cellCenter, cellAt, stepBall, levelSize, levelSeed, levelPar, levelStars, World,
   };
 });

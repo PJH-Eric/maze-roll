@@ -130,6 +130,23 @@ let n = 0; const ok = (m) => { n++; console.log('  ✓', m); };
   at({ w: w6, p: w6.byId.get('a') }, cNear); at({ w: w6, p: w6.byId.get('b') }, w6.maze.start); assert.strictEqual(w6.rank()[0].id, 'a'); ok('逃出：未逃出者以通過的門數優先排名');
   // 回起點：保留已拿的鑰匙與開過的門
   const w7 = mk(1, 9, [{ id: 'a', name: 'A' }]); const p7 = w7.byId.get('a'); p7.keyHas[0] = 1; p7.x = 3.5; p7.y = 3.5; assert(w7.respawn('a')); assert(p7.keyHas[0] === 1 && Math.hypot(p7.x - 0.5, p7.y - 0.5) < 1e-6); ok('逃出：回到起點時保留鑰匙');
+  // 傳送門：成對、同一段、不擋必經之路、不在鑰匙／踏板上
+  { let pairs = 0;
+    for (let diff = 0; diff < 5; diff++) for (let seed = 1; seed <= 80; seed++) {
+      const w = mk(diff, seed, [{ id: 'a', name: 'A' }]), e = w.esc, items = new Set(e.doors.map((d) => d.item)), seg = (c) => e.doors.map((d) => (d.farSide[c] ? 1 : 0)).join('');
+      const bl = new Set(e.portals.flatMap((q) => [q.a, q.b])), dist = w.maze.bfs(w.maze.start, (j) => bl.has(j));
+      assert(e.portals.length <= [1, 1, 2, 2, 3][diff]); assert(dist[w.maze.goal] >= 0 && [...items].every((i) => dist[i] >= 0 && !bl.has(i)));
+      for (const q of e.portals) { pairs++; assert.strictEqual(seg(q.a), seg(q.b)); assert(q.a !== q.b); }
+    }
+    assert(pairs > 100); ok('逃出：傳送門成對、同一段（不能繞門）、不擋住必經之路與鑰匙（' + pairs + ' 對）'); }
+  { const w = mk(4, 5, [{ id: 'a', name: 'A' }]), p = w.byId.get('a'), q = w.esc.portals[0], A = MR.cellCenter(w.maze, q.a), B = MR.cellCenter(w.maze, q.b);
+    p.x = A.x; p.y = A.y; p.vx = 2; let ev = w.update(0.01); assert(ev.some((e) => e.e === 'warp' && e.id === 'a') && Math.hypot(p.x - B.x, p.y - B.y) < 1e-6 && p.vx === 0); ok('逃出：走進傳送門從另一端出來並停下');
+    ev = w.update(0.01); assert(!ev.some((e) => e.e === 'warp') && Math.hypot(p.x - B.x, p.y - B.y) < 1e-6); ok('逃出：剛傳送完停在出口不會立刻彈回');
+    p.x = B.x + 1; p.y = B.y; w.update(0.01); p.x = B.x; p.y = B.y; ev = w.update(0.01); assert(ev.some((e) => e.e === 'warp') && Math.hypot(p.x - A.x, p.y - A.y) < 1e-6); ok('逃出：離開出口後，從原出口走回去可雙向傳回');
+    const cl = mk(4, 5, [{ id: 'a', name: 'A' }]); cl.applyEvent({ e: 'warp', id: 'a', x: 3.5, y: 4.5, w: 1 }); assert(cl.byId.get('a').x === 3.5 && cl.byId.get('a').y === 4.5); ok('逃出：warp 事件可同步套用'); }
+  // 每日挑戰種子
+  assert.strictEqual(MR.dailySeed('2026-10-19', 2), MR.dailySeed('2026-10-19', 2)); assert.notStrictEqual(MR.dailySeed('2026-10-19', 2), MR.dailySeed('2026-10-20', 2)); assert.notStrictEqual(MR.dailySeed('2026-10-19', 2), MR.dailySeed('2026-10-19', 3)); ok('每日挑戰：同日同難度同一張圖，換日或換難度就不同');
+  { const ds = new Set(); for (let d = 1; d <= 120; d++) for (let diff = 0; diff < 5; diff++) { const date = '2026-' + String(1 + ((d / 28) | 0)).padStart(2, '0') + '-' + String(1 + (d % 28)).padStart(2, '0'); const w = mk(diff, MR.dailySeed(date, diff), [{ id: 'a', name: 'A' }]); assert(w.esc.doors.length >= 2); ds.add(date + diff); } ok('每日挑戰：連續 120 天、五種難度的圖都能生成且有機關'); }
   // 電腦：四段 AI 都能逃出簡單迷宮（含開門流程）
   for (const lv of [1, 2, 3]) { const r = simulate('escape', 0, 11, [lv], { limit: 900 }); assert(r.players[0].fin != null, 'AI ' + lv + ' 沒逃出'); } ok('逃出：簡單迷宮電腦（簡單／普通／困難）都能完成開門並逃出');
   const tms = [1, 2, 3].map((lv) => { let t = 0; for (const sd of [11, 22, 33, 44]) { const r = simulate('escape', 1, sd, [lv], { limit: 900 }).players[0]; t += r.fin != null ? r.fin : 900; } return t / 4; }); assert(tms[2] < tms[1] && tms[1] < tms[0], '逃出 AI 難度：' + tms.join(',')); ok('逃出：電腦難度越高逃得越快 ' + tms.map((x) => x.toFixed(0) + 's').join(' > '));

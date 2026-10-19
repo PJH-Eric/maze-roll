@@ -88,7 +88,10 @@ export class Game {
     this.scene.onEvent(e);
     const me = this.meId;
     if (e.e === 'star') { if (e.id === me) { audio.star(); audio.vibrate(30); } else audio.starOther(); }
-    else if (e.e === 'key' || e.e === 'unlock' || e.e === 'plate') {
+    else if (e.e === 'warp') {
+      const r = this.remote.get(e.id); if (r) { r.tx = e.x; r.ty = e.y; } // 線上：其他玩家的平滑追趕目標一起跳過去，不要滑回來
+      if (e.id === me) { audio.starOther(); audio.vibrate(30); }
+    } else if (e.e === 'key' || e.e === 'unlock' || e.e === 'plate') {
       if (e.id === me) { e.e === 'key' ? audio.star() : audio.finish(); audio.vibrate(40); this.hooks.onEscape && this.hooks.onEscape(e); }
     } else if (e.e === 'finish') {
       if (e.id === me) { e.place === 1 ? audio.win() : audio.finish(); audio.vibrate(60); this.meState = 'finished'; this.hooks.onMe && this.hooks.onMe('finished', e); }
@@ -231,6 +234,11 @@ export class Game {
     }
     if (w.esc) { // 逃出：以「正在看的那位玩家」的視角畫門、鑰匙、踏板
       const v = w.byId.get(this.meId) || w.byId.get(this._followId());
+      for (const q of w.esc.portals) for (const c of [q.a, q.b]) {
+        const x = ox + ((c % m.w) + 0.5) * S, y = oy + (((c / m.w) | 0) + 0.5) * S, r = Math.max(3, S * 0.4), ph = Math.sin(tt * 4 + c) * 0.12;
+        g.strokeStyle = '#2a1a10'; g.lineWidth = Math.max(3.4, r * 0.7); g.beginPath(); g.arc(x, y, r * (1 + ph), 0, 7); g.stroke();
+        g.strokeStyle = q.color; g.lineWidth = Math.max(1.8, r * 0.38); g.beginPath(); g.arc(x, y, r * (1 + ph), 0, 7); g.stroke();
+      }
       for (const d of w.esc.doors) {
         const closed = !v || v.open[d.j] <= 0, ic = { x: ox + ((d.item % m.w) + 0.5) * S, y: oy + (((d.item / m.w) | 0) + 0.5) * S }, u = Math.max(3, S * 0.42);
         g.strokeStyle = d.color; g.fillStyle = d.color; g.lineCap = 'round';

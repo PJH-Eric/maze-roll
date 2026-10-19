@@ -107,7 +107,7 @@ function openHow() {
       sec(T('同圖競速'), h('p', { text: T('所有人用同一座迷宮、從同一個起點出發，先滾進終點旗洞的人贏。第一名到達後，其他人還有 15 秒可以衝線；球和球不會互相碰撞，可以穿過去。') })),
       sec(T('搶星星'), h('p', { text: T('迷宮裡散落著星星，碰到就得 1 分，星星被撿走後會在別處重新出現。90 秒內分數最高的人贏；同分時，比較早拿到最後一顆的人名次較前。') })),
       sec(T('地板崩塌'), h('p', { text: T('你踩過的地磚會先晃動，接著碎裂掉下去。一直停在原地也會掉！規劃好路線，不要把自己困在死路裡，最後還站著的人贏。拖太久時，場地會自己隨機碎裂。') })),
-      sec(T('逃出模式'), h('p', { text: T('迷宮裡有幾道彩色的門擋住去路。同色的鑰匙要繞去支線撿起來，帶著鑰匙走到門前門就會打開；踩踏板的門只會開一小段時間，要在關上前衝過去（快關上時門會閃爍）。每個人的鑰匙與門各自獨立，不會被別人搶走。第一個逃出的人贏，之後其他人還有 10 秒可以逃出。') })),
+      sec(T('逃出模式'), h('p', { text: T('迷宮裡有幾道彩色的門擋住去路。同色的鑰匙要繞去支線撿起來，帶著鑰匙走到門前門就會打開；踩踏板的門只會開一小段時間，要在關上前衝過去（快關上時門會閃爍）。每個人的鑰匙與門各自獨立，不會被別人搶走。路旁小岔路上成對的發光光圈是傳送門，走進一邊會從另一邊出來，可以當作捷徑。第一個逃出的人贏，之後其他人還有 10 秒可以逃出。') })),
       sec(T('闖關模式'), h('p', { text: T('五種難度各 100 關，依序解鎖。依完成時間評 1～3 顆星。') })),
       sec(T('線上對戰'), h('p', { text: T('每房最多 4 位玩家、20 位觀戰者。房主可以複製邀請連結給朋友；朋友打開連結後確認暱稱就能加入。觀戰者可以看全場並聊天。') }))),
     actions: [Button({ label: T('知道了'), variant: 'primary', onClick: () => m.close('ok') })],
@@ -127,6 +127,7 @@ function homeScreen() {
       h('p', { class: 'sub', text: T('3D 木質迷宮・推著小球衝向終點') }),
       h('div', { class: 'menu' },
         menuBtn('flag', T('闖關模式'), T('單人・五種難度各 100 關'), () => go('levels'), 'primary'),
+        menuBtn('key', T('每日挑戰'), T('逃出模式・每天一張新圖'), () => go('daily')),
         menuBtn('star', T('自由練習'), T('一個人・三種玩法・計時'), () => go('setup', { kind: 'practice' })),
         menuBtn('people', T('對電腦'), T('1～7 位電腦・各自選難度'), () => go('setup', { kind: 'vsai' })),
         menuBtn('link', T('線上對戰'), T('最多 4 人・觀戰・邀請連結'), () => go('online')),
@@ -163,6 +164,20 @@ function levelsScreen(p) {
   draw();
 }
 
+// ---------- 畫面：每日挑戰（逃出模式；日期即種子，同一天同難度所有人都是同一張圖）----------
+function dailyScreen() {
+  const date = store.ymd(new Date()), streak = store.dailyStreak(date);
+  const rows = MR.DIFFS.map((d, i) => {
+    const b = store.getBest('daily-' + date + '-' + i), st = store.getBest('dailys-' + date + '-' + i) || 0, sz = MR.SIZE.escape[i];
+    return menuBtn('key', T(d) + '・' + sz + '×' + sz, b != null ? '★'.repeat(st) + '☆'.repeat(3 - st) + '・' + fmtShort(b) : T('尚未挑戰'), () => startLocal({ kind: 'daily', mode: 'escape', diff: i, date, ais: [] }), b != null ? '' : 'primary');
+  });
+  $screen.append(h('section', { class: 'screen setup' }, topbar(T('每日挑戰'), () => go('home')),
+    h('div', { class: 'body' }, panel(ScrollArea(h('div', { class: 'setupBody' },
+      h('p', { class: 'note', text: T('{date}・今天的逃出迷宮，所有人都一樣', { date }) }),
+      h('p', { class: 'note', text: streak ? T('連續挑戰 {n} 天', { n: streak }) : T('今天完成任一難度，就開始累積連續天數') }),
+      h('div', { class: 'menu' }, ...rows)), { class: 'setupScroll' })))));
+}
+
 // ---------- 畫面：自由練習／對電腦 設定 ----------
 function setupScreen(p) {
   const vsai = p.kind === 'vsai', S = { mode: p.mode || 'race', diff: p.diff != null ? p.diff : 1, ai: p.ai || [1], count: p.ai ? p.ai.length : 1 };
@@ -195,7 +210,7 @@ function startLocal(cfg) {
   const players = [{ id: 'me', name: myName(), kind: 'human' }];
   cfg.ais.forEach((lv, i) => players.push({ id: 'ai' + (i + 1), name: T('電腦{x1}・{AI_NAMES_lv_}', { x1: i + 1, AI_NAMES_lv_: T(MR.AI_NAMES[lv]) }), kind: 'ai', ai: lv }));
   let seed, size;
-  if (cfg.kind === 'level') { seed = MR.levelSeed(cfg.diff, cfg.level, cfg.mode); size = MR.levelSize(cfg.diff, cfg.level, cfg.mode); } else seed = (Math.random() * 4294967296) >>> 0;
+  if (cfg.kind === 'level') { seed = MR.levelSeed(cfg.diff, cfg.level, cfg.mode); size = MR.levelSize(cfg.diff, cfg.level, cfg.mode); } else if (cfg.kind === 'daily') { seed = MR.dailySeed(cfg.date, cfg.diff); size = MR.SIZE.escape[cfg.diff]; } else seed = (Math.random() * 4294967296) >>> 0;
   go('game', { local: true, cfg, players, mode: cfg.mode, diff: cfg.diff, seed, size, meId: 'me' });
 }
 
@@ -383,7 +398,7 @@ function gameScreen(p) {
   const respawnBtn = h('button', { type: 'button', class: 'btn respawnBtn', 'aria-label': T('回到起點（R）'), title: T('回到起點（R）') }, icon('undo'), h('span', { class: 'rl', text: T('回起點') }));
   const arena = h('div', { class: 'arena' }, canvas, hudTop, miniBtn, respawnBtn, stickZone, countEl, banner, sideTab);
   const sumList = h('div', { class: 'sumList' });
-  const lvTxt = cfg && cfg.kind === 'level' ? T('第 {level} 關', { level: cfg.level }) : '';
+  const lvTxt = cfg && cfg.kind === 'level' ? T('第 {level} 關', { level: cfg.level }) : cfg && cfg.kind === 'daily' ? T('每日挑戰') : '';
   const sumHead = h('div', { class: 'sumHead' }, h('b', { text: MODE_INFO[mode].name }), h('small', { text: `${T(MR.DIFFS[diff])}${lvTxt ? '・' + lvTxt : ''}・${size}×${size}` }));
   const chat = online ? ChatBox() : null;
   const side = h('aside', { class: 'panelSide gameSide' }, h('div', { class: 'sideTop' }, sumHead, ScrollArea(sumList, { class: 'sumScroll', label: T('排行') })), chat ? h('div', { class: 'sideChat' }, h('h3', { text: T('聊天室') }), chat) : null);
@@ -463,7 +478,7 @@ function gameScreen(p) {
     if (mapM || modalOpen() || game.state === 'ended') return;
     const big = h('canvas', { class: 'bigMap', width: 720, height: 720, role: 'img', 'aria-label': T('迷宮地圖') });
     const w = game.world, dots = w.players.map((p) => h('span', { class: 'lgItem' }, h('i', { class: 'lgDot' + (p.id === meId ? ' me' : ''), style: { background: BALL_COLORS[p.idx % 8] } }), h('span', { text: who(p.name, p.id === meId) })));
-    const legend = h('div', { class: 'mapLegend' }, ...dots, w.run ? h('span', { class: 'lgItem' }, icon('flag'), h('span', { text: T('終點') })) : null, w.stars ? h('span', { class: 'lgItem' }, icon('star'), h('span', { text: T('星星') })) : null, w.esc ? h('span', { class: 'lgItem' }, icon('key'), h('span', { text: T('鑰匙・踏板・門（同色一組）') })) : null);
+    const legend = h('div', { class: 'mapLegend' }, ...dots, w.run ? h('span', { class: 'lgItem' }, icon('flag'), h('span', { text: T('終點') })) : null, w.stars ? h('span', { class: 'lgItem' }, icon('star'), h('span', { text: T('星星') })) : null, w.esc ? h('span', { class: 'lgItem' }, icon('key'), h('span', { text: T('鑰匙・踏板・門（同色一組）') })) : null, w.esc && w.esc.portals.length ? h('span', { class: 'lgItem' }, h('i', { class: 'lgDot', style: { background: 'transparent', border: '3px solid ' + w.esc.portals[0].color } }), h('span', { text: T('傳送門（同色成對）') })) : null);
     const wasPlaying = !online && game.state === 'play' && !game.paused; if (wasPlaying) game.pause(true);
     game.bigMapEl = big;
     mapM = Modal({ title: T('迷宮地圖'), class: 'mapModal', body: h('div', { class: 'mapBody' }, big, legend, h('p', { class: 'hint', text: T('點一下空白處或按 Esc 關閉') })),
@@ -486,7 +501,7 @@ function gameScreen(p) {
   const rsVis = () => { const me = game.me(); respawnBtn.style.display = meId && me && me.alive && !(game.world.run && me.fin != null) && game.state === 'play' ? '' : 'none'; };
   const rsT = setInterval(rsVis, 250); rsVis();
   const againLocal = () => { if (cfg) startLocal(cfg); };
-  const backLocal = () => { if (!cfg) return go('home'); if (cfg.kind === 'level') go('levels', { diff: cfg.diff, mode: cfg.mode }); else go('setup', { kind: cfg.kind, mode: cfg.mode, diff: cfg.diff, ai: cfg.ais && cfg.ais.length ? cfg.ais : undefined }); };
+  const backLocal = () => { if (!cfg) return go('home'); if (cfg.kind === 'daily') return go('daily'); if (cfg.kind === 'level') go('levels', { diff: cfg.diff, mode: cfg.mode }); else go('setup', { kind: cfg.kind, mode: cfg.mode, diff: cfg.diff, ai: cfg.ais && cfg.ais.length ? cfg.ais : undefined }); };
 
   function showResults(info) {
     const { world, results, mine } = info, solo = world.players.length === 1;
@@ -506,6 +521,13 @@ function gameScreen(p) {
           h('div', { class: 'resStars', role: 'img', 'aria-label': st + ' / 3 ' + T('星星') }, [0, 1, 2].map((i) => h('span', { class: 'rs' + (i < st ? ' on' : ''), style: { animationDelay: (0.15 + i * 0.18) + 's' } }, icon('star')))));
         if (cfg.level < 100) nextBtn = Button({ label: T('下一關（第 {x1} 關）', { x1: cfg.level + 1 }), variant: 'primary', onClick: () => { resultM.close(); startLocal(Object.assign({}, cfg, { level: cfg.level + 1 })); } });
         else lines.push(h('p', { class: 'note', text: T('這個難度的 100 關全部通過了！') }));
+      } else if (cfg && cfg.kind === 'daily' && run && mine && !mine.dnf) {
+        const st = MR.levelStars(mine.time, world.maze, world.esc), dk = cfg.date + '-' + cfg.diff;
+        store.recordBest('dailys-' + dk, st, false); newBest = store.recordBest('daily-' + dk, mine.time, true); bestTxt = fmtShort(store.getBest('daily-' + dk)); isLevel = true;
+        const streak = store.dailyStreak(cfg.date);
+        lines.push(h('p', { class: 'resLevel', text: T('每日挑戰') + ' · ' + cfg.date + ' · ' + T(MR.DIFFS[cfg.diff]) }),
+          h('div', { class: 'resStars', role: 'img', 'aria-label': st + ' / 3 ' + T('星星') }, [0, 1, 2].map((i) => h('span', { class: 'rs' + (i < st ? ' on' : ''), style: { animationDelay: (0.15 + i * 0.18) + 's' } }, icon('star')))),
+          streak ? h('p', { class: 'note', text: T('連續挑戰 {n} 天', { n: streak }) }) : null);
       } else if (cfg && cfg.kind === 'practice' && mine) {
         const key = mode + '-' + diff; let nb = false, val = '';
         if (run && !mine.dnf) { nb = store.recordBest(key, mine.time, true); val = fmtShort(mine.time); }
@@ -574,7 +596,7 @@ function gameScreen(p) {
   };
 }
 
-const SCREENS = { home: homeScreen, levels: levelsScreen, setup: setupScreen, online: onlineScreen, room: roomScreen, game: gameScreen };
+const SCREENS = { home: homeScreen, daily: dailyScreen, levels: levelsScreen, setup: setupScreen, online: onlineScreen, room: roomScreen, game: gameScreen };
 
 // ---------- 開機 ----------
 function inviteFromHash() {

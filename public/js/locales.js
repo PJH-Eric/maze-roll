@@ -1,9 +1,16 @@
 // 英文字典（以繁中原文為鍵）。新增介面文字時，請同步在這裡補英文；tests/i18n.test.js 會檢查缺漏。
 window.MR_EN = {
+ "傳送門（同色成對）": "Portals (same color = a pair)",
+ "迷宮裡有幾道彩色的門擋住去路。同色的鑰匙要繞去支線撿起來，帶著鑰匙走到門前門就會打開；踩踏板的門只會開一小段時間，要在關上前衝過去（快關上時門會閃爍）。每個人的鑰匙與門各自獨立，不會被別人搶走。路旁小岔路上成對的發光光圈是傳送門，走進一邊會從另一邊出來，可以當作捷徑。第一個逃出的人贏，之後其他人還有 10 秒可以逃出。": "Colored doors block the way. Detour into side branches to pick up the matching key, then walk up to the door and it opens. Doors tied to a plate only stay open for a short time, so dash through before they close (they flash when about to shut). Everyone has their own keys and doors, so nothing can be stolen. Pairs of glowing rings on little side paths are portals: step into one and you come out of the other, a handy shortcut. The first to escape wins; the others get 10 more seconds to get out.",
+ "每日挑戰": "Daily challenge",
+ "逃出模式・每天一張新圖": "Escape mode · a new maze every day",
+ "{date}・今天的逃出迷宮，所有人都一樣": "{date} · today's escape maze, the same for everyone",
+ "連續挑戰 {n} 天": "{n}-day streak",
+ "今天完成任一難度，就開始累積連續天數": "Finish any difficulty today to start a streak",
+ "尚未挑戰": "Not played yet",
  "逃出模式": "Escape mode",
  "逃出": "Escape",
  "拿鑰匙開門、踩踏板開機關，第一個逃出迷宮的人贏": "Grab keys and press plates to open doors; first to escape the maze wins",
- "迷宮裡有幾道彩色的門擋住去路。同色的鑰匙要繞去支線撿起來，帶著鑰匙走到門前門就會打開；踩踏板的門只會開一小段時間，要在關上前衝過去（快關上時門會閃爍）。每個人的鑰匙與門各自獨立，不會被別人搶走。第一個逃出的人贏，之後其他人還有 10 秒可以逃出。": "Colored doors block the way. Detour into side branches to pick up the matching key, then walk up to the door and it opens. Doors tied to a plate only stay open for a short time, so dash through before they close (they flash when about to shut). Everyone has their own keys and doors, so nothing can be stolen. The first to escape wins; the others get 10 more seconds to get out.",
  "逃出倒數 {x1} 秒": "Escape countdown {x1} s",
  "逃出進度 {a}/{b}": "Escape {a}/{b}",
  "機關 {x1} 秒": "Plate {x1} s",
