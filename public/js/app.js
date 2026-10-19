@@ -136,28 +136,30 @@ function homeScreen() {
 // ---------- 畫面：闖關 ----------
 function levelsScreen(p) {
   const dOpen = () => true; // 五種難度皆可直接選擇，不需星星門檻
-  let diff = p.diff != null && dOpen(p.diff) ? p.diff : Math.max(0, MR.DIFFS.findIndex((_, i) => dOpen(i) && store.levelStars(i).filter((x) => x > 0).length < 100));
+  let lmode = p.mode === 'escape' ? 'escape' : 'race';
+  let diff = p.diff != null && dOpen(p.diff) ? p.diff : Math.max(0, MR.DIFFS.findIndex((_, i) => dOpen(i) && store.levelStars(i, lmode).filter((x) => x > 0).length < 100));
   const grid = h('div', { class: 'levelGrid' }), prog = h('p', { class: 'note' });
   const sa = ScrollArea(h('div', { class: 'levelWrap' }, grid), { class: 'levelScroll', label: T('關卡列表') });
   const draw = () => {
-    const stars = store.levelStars(diff), un = store.unlockedLevel(diff), done = stars.filter((x) => x > 0).length, tot = stars.reduce((a, b) => a + b, 0);
+    const stars = store.levelStars(diff, lmode), un = store.unlockedLevel(diff, lmode), done = stars.filter((x) => x > 0).length, tot = stars.reduce((a, b) => a + b, 0);
     grid.dataset.diff = String(diff); grid.style.setProperty('--dtheme', MR.DIFF_THEME[diff].accent);
     const nx = '';
-    const progTxt = T('{wood}・已通過 {done}/100 關・共 {tot} 顆星{nx}・迷宮大小 {x5}×{x6} ～ {x7}×{x8}', { wood: T(MR.DIFF_THEME[diff].wood), done, tot, nx, x5: MR.levelSize(diff, 1), x6: MR.levelSize(diff, 1), x7: MR.levelSize(diff, 100), x8: MR.levelSize(diff, 100) });
+    const progTxt = T('{wood}・已通過 {done}/100 關・共 {tot} 顆星{nx}・迷宮大小 {x5}×{x6} ～ {x7}×{x8}', { wood: T(MR.DIFF_THEME[diff].wood), done, tot, nx, x5: MR.levelSize(diff, 1, lmode), x6: MR.levelSize(diff, 1, lmode), x7: MR.levelSize(diff, 100, lmode), x8: MR.levelSize(diff, 100, lmode) });
     prog.textContent = ''; progTxt.split(/[・·]\s*/).forEach((seg, k) => { if (k) prog.appendChild(document.createTextNode(' · ')); prog.appendChild(h('span', { class: 'nw', text: seg })); });
     grid.replaceChildren();
     for (let n = 1; n <= 100; n++) {
       const locked = n > un, s = stars[n - 1] || 0;
-      const bt = !locked && store.getBest('lv-' + diff + '-' + n);
+      const bt = !locked && store.getBest((lmode === 'escape' ? 'lve-' : 'lv-') + diff + '-' + n);
       const b = h('button', { type: 'button', class: 'lv' + (locked ? ' locked' : '') + (s ? ' done' : '') + (n === un ? ' next' : ''), disabled: locked || null, 'aria-label': T('第 {n} 關{x2}', { n, x2: locked ? T('（未解鎖）') : s ? T('，{s} 顆星', { s }) : '' }) },
         h('b', { text: String(n) }), locked ? icon('lock') : h('span', { class: 'stars', text: '★'.repeat(s) + '☆'.repeat(3 - s) }), locked ? null : h('span', { class: 'lvTime', text: bt ? fmtShort(bt) : '--' }));
-      if (!locked) b.addEventListener('click', () => startLocal({ kind: 'level', mode: 'race', diff, level: n, ais: [] }));
+      if (!locked) b.addEventListener('click', () => startLocal({ kind: 'level', mode: lmode, diff, level: n, ais: [] }));
       grid.append(b);
       if (n === un) setTimeout(() => b.scrollIntoView({ block: 'center' }), 30);
     }
   };
+  const modeChips = Chips({ label: T('玩法'), value: lmode, options: ['race', 'escape'].map((m) => ({ value: m, label: MODE_INFO[m].name, icon: MODE_INFO[m].icon })), onChange: (v) => { lmode = v; draw(); sa.view.scrollTop = 0; } });
   const chips = Chips({ label: T('難度'), value: diff, options: MR.DIFFS.map((d, i) => ({ value: i, label: T(d), disabled: !dOpen(i), sub: T(MR.DIFF_THEME[i].wood) })), onChange: (v) => { diff = v; draw(); sa.view.scrollTop = 0; } });
-  $screen.append(h('section', { class: 'screen levels' }, topbar(T('闖關模式'), () => go('home')), h('div', { class: 'body' }, panel(chips, prog, sa))));
+  $screen.append(h('section', { class: 'screen levels' }, topbar(T('闖關模式'), () => go('home')), h('div', { class: 'body' }, panel(modeChips, chips, prog, sa))));
   draw();
 }
 
@@ -193,7 +195,7 @@ function startLocal(cfg) {
   const players = [{ id: 'me', name: myName(), kind: 'human' }];
   cfg.ais.forEach((lv, i) => players.push({ id: 'ai' + (i + 1), name: T('電腦{x1}・{AI_NAMES_lv_}', { x1: i + 1, AI_NAMES_lv_: T(MR.AI_NAMES[lv]) }), kind: 'ai', ai: lv }));
   let seed, size;
-  if (cfg.kind === 'level') { seed = MR.levelSeed(cfg.diff, cfg.level); size = MR.levelSize(cfg.diff, cfg.level); } else seed = (Math.random() * 4294967296) >>> 0;
+  if (cfg.kind === 'level') { seed = MR.levelSeed(cfg.diff, cfg.level, cfg.mode); size = MR.levelSize(cfg.diff, cfg.level, cfg.mode); } else seed = (Math.random() * 4294967296) >>> 0;
   go('game', { local: true, cfg, players, mode: cfg.mode, diff: cfg.diff, seed, size, meId: 'me' });
 }
 
@@ -484,7 +486,7 @@ function gameScreen(p) {
   const rsVis = () => { const me = game.me(); respawnBtn.style.display = meId && me && me.alive && !(game.world.run && me.fin != null) && game.state === 'play' ? '' : 'none'; };
   const rsT = setInterval(rsVis, 250); rsVis();
   const againLocal = () => { if (cfg) startLocal(cfg); };
-  const backLocal = () => { if (!cfg) return go('home'); if (cfg.kind === 'level') go('levels', { diff: cfg.diff }); else go('setup', { kind: cfg.kind, mode: cfg.mode, diff: cfg.diff, ai: cfg.ais && cfg.ais.length ? cfg.ais : undefined }); };
+  const backLocal = () => { if (!cfg) return go('home'); if (cfg.kind === 'level') go('levels', { diff: cfg.diff, mode: cfg.mode }); else go('setup', { kind: cfg.kind, mode: cfg.mode, diff: cfg.diff, ai: cfg.ais && cfg.ais.length ? cfg.ais : undefined }); };
 
   function showResults(info) {
     const { world, results, mine } = info, solo = world.players.length === 1;
@@ -498,8 +500,8 @@ function gameScreen(p) {
     // 紀錄與闖關進度（只有單機）
     if (!online && mineP) {
       if (cfg && cfg.kind === 'level' && run && mine && !mine.dnf) {
-        const st = MR.levelStars(mine.time, world.maze), saved = store.setLevelStars(cfg.diff, cfg.level, st);
-        const lk = 'lv-' + cfg.diff + '-' + cfg.level; newBest = store.recordBest(lk, mine.time, true); bestTxt = fmtShort(store.getBest(lk)); isLevel = true;
+        const st = MR.levelStars(mine.time, world.maze, world.esc), saved = store.setLevelStars(cfg.diff, cfg.level, st, mode);
+        const lk = (mode === 'escape' ? 'lve-' : 'lv-') + cfg.diff + '-' + cfg.level; newBest = store.recordBest(lk, mine.time, true); bestTxt = fmtShort(store.getBest(lk)); isLevel = true;
         lines.push(h('p', { class: 'resLevel', text: T(MR.DIFFS[cfg.diff]) + ' · ' + T('第 {x1} 關', { x1: cfg.level }) }),
           h('div', { class: 'resStars', role: 'img', 'aria-label': st + ' / 3 ' + T('星星') }, [0, 1, 2].map((i) => h('span', { class: 'rs' + (i < st ? ' on' : ''), style: { animationDelay: (0.15 + i * 0.18) + 's' } }, icon('star')))));
         if (cfg.level < 100) nextBtn = Button({ label: T('下一關（第 {x1} 關）', { x1: cfg.level + 1 }), variant: 'primary', onClick: () => { resultM.close(); startLocal(Object.assign({}, cfg, { level: cfg.level + 1 })); } });

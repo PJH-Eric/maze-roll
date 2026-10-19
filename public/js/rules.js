@@ -39,6 +39,7 @@
   const KEY_R = 0.5, PLATE_R = 0.42, UNLOCK_R = 0.85, FOREVER = 1e9;
   const CRUMBLE = [3.2, 2.5, 2.0, 1.6, 1.2];
   const LEVEL_SIZE = [[5, 9], [8, 14], [11, 19], [15, 25], [19, 31]];
+  const ESCAPE_LEVEL_SIZE = [[6, 8], [8, 11], [10, 14], [13, 18], [16, 22]]; // 逃出要繞路拿鑰匙，迷宮比競速小
   const LEVELS_PER_DIFF = 100;
 
   const PHYS = { R: 0.36, T: 0.12, ACC: 9.5, FRI: 2.6, REST: 0.25 };
@@ -195,15 +196,19 @@
   }
 
   // ---------- 關卡 ----------
-  function levelSize(diff, n) {
-    const [a, b] = LEVEL_SIZE[diff];
+  function levelSize(diff, n, mode) {
+    const [a, b] = (mode === 'escape' ? ESCAPE_LEVEL_SIZE : LEVEL_SIZE)[diff];
     return Math.round(a + (b - a) * ((clamp(n, 1, LEVELS_PER_DIFF) - 1) / (LEVELS_PER_DIFF - 1)));
   }
-  function levelSeed(diff, n) { return hashSeed('maze-roll', 'level', diff, n); }
-  /** 闖關評星：以最短路徑長度推算基準時間。 */
-  function levelPar(maze) { return maze.pathLen / 2.1 + 2; }
-  function levelStars(time, maze) {
-    const par = levelPar(maze);
+  function levelSeed(diff, n, mode) { return mode === 'escape' ? hashSeed('maze-roll', 'level', diff, n, 'escape') : hashSeed('maze-roll', 'level', diff, n); }
+  /** 闖關評星：以最短路徑長度推算基準時間；逃出模式再加上繞去拿鑰匙／踏板的來回路程與每道門的操作時間。 */
+  function levelPar(maze, esc) {
+    let len = maze.pathLen, extra = 0;
+    if (esc) { for (const d of esc.doors) len += 2 * d.detour; extra = 1.5 * esc.doors.length; }
+    return len / 2.1 + 2 + extra;
+  }
+  function levelStars(time, maze, esc) {
+    const par = levelPar(maze, esc);
     return time <= par * 1.35 ? 3 : time <= par * 2.2 ? 2 : 1;
   }
 
@@ -253,7 +258,7 @@
       used.add(item);
       const kind = j % 2 === 0 ? 'key' : 'plate';
       const di = maze.bfs(near)[item];
-      doors.push({ j, idx, kind, near, far, d, rect, cx, cy, item, color: DOOR_COLORS[j % DOOR_COLORS.length], farSide,
+      doors.push({ j, idx, kind, near, far, d, rect, cx, cy, item, detour: Math.max(0, depth[item]), color: DOOR_COLORS[j % DOOR_COLORS.length], farSide,
         T: kind === 'plate' ? Math.max(7, (di / 1.6 + 4) * ESCAPE_TIME[df]) : 0 });
       prevFar = farSide;
     }

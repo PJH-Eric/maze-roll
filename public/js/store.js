@@ -23,13 +23,15 @@ export const store = {
   reset() { const keep = { levels: load().levels, best: load().best, name: load().name }; mem = Object.assign({}, DEFAULT, keep); save(); subs.forEach((f) => f('*')); },
   on(f) { subs.add(f); return () => subs.delete(f); },
   // 闖關：每個難度一個陣列，值為 0（未過）或 1～3 星
-  levelStars(diff) { const a = load().levels[diff] || []; return a; },
-  unlockedLevel(diff) { const a = load().levels[diff] || []; let n = 0; while (n < a.length && a[n] > 0) n++; return Math.min(100, n + 1); },
-  totalStars(diff) { return (load().levels[diff] || []).reduce((a, b) => a + b, 0); },
+  // 闖關進度的鍵：競速沿用原本的難度編號，逃出模式用 'e' + 難度編號（各自獨立）
+  levelKey: (diff, mode) => (mode === 'escape' ? 'e' + diff : diff),
+  levelStars(diff, mode) { const a = load().levels[this.levelKey(diff, mode)] || []; return a; },
+  unlockedLevel(diff, mode) { const a = load().levels[this.levelKey(diff, mode)] || []; let n = 0; while (n < a.length && a[n] > 0) n++; return Math.min(100, n + 1); },
+  totalStars(diff, mode) { return (load().levels[this.levelKey(diff, mode)] || []).reduce((a, b) => a + b, 0); },
   /** 五種難度一開始就全部開放（關卡仍依序解鎖）。 */
   diffUnlocked() { return true; },
-  setLevelStars(diff, n, stars) {
-    const L = load().levels; const a = (L[diff] = (L[diff] || []).slice());
+  setLevelStars(diff, n, stars, mode) {
+    const L = load().levels, k = this.levelKey(diff, mode); const a = (L[k] = (L[k] || []).slice());
     while (a.length < n) a.push(0);
     if ((a[n - 1] || 0) < stars) a[n - 1] = stars; save(); return a[n - 1];
   },

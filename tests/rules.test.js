@@ -64,6 +64,15 @@ let n = 0; const ok = (m) => { n++; console.log('  ✓', m); };
   const bc = y.byId.get('b'); let guard = 0; while (!y.over && guard++ < 60 * 200) { const t = y.t; bc.x = 0.5 + ((Math.floor(t * 3) % y.maze.w)); bc.y = 0.5 + (Math.floor(t / 4) % y.maze.h); y.update(1 / 60); }
   assert(y.over); ok('多人崩塌會在有限時間內決出勝負（含猝死機制）');
 }
+// 闖關：逃出模式
+{
+  assert.strictEqual(MR.levelSize(0, 1, 'escape'), 6); assert.strictEqual(MR.levelSize(4, 100, 'escape'), 22); for (let d = 0; d < 5; d++) for (let l = 2; l <= 100; l++) assert(MR.levelSize(d, l, 'escape') >= MR.levelSize(d, l - 1, 'escape')); ok('逃出闖關：五種難度的關卡大小隨關數遞增');
+  assert.strictEqual(MR.levelSeed(2, 7), MR.levelSeed(2, 7, 'race')); assert.notStrictEqual(MR.levelSeed(2, 7, 'escape'), MR.levelSeed(2, 7)); ok('逃出闖關：種子與競速關卡不同，競速關卡種子不變');
+  const seen = new Set(); for (let d = 0; d < 5; d++) for (let l = 1; l <= 100; l++) { const s = MR.levelSeed(d, l, 'escape'); seen.add(s); const sz = MR.levelSize(d, l, 'escape'); const w = new MR.World({ mode: 'escape', diff: d, seed: s, size: sz, players: [{ id: 'a', name: 'A' }] }); const ds = w.esc.doors; let prev = null; assert(ds.length >= 2); ds.forEach((x) => { assert(!x.farSide[x.item] && x.farSide[w.maze.goal] && (!prev || prev[x.item])); prev = x.farSide; }); }
+  assert.strictEqual(seen.size, 500); ok('逃出闖關：500 關全部可生成、彼此不同、機關都有解');
+  const w = new MR.World({ mode: 'escape', diff: 2, seed: MR.levelSeed(2, 5, 'escape'), size: MR.levelSize(2, 5, 'escape'), players: [{ id: 'a', name: 'A' }] }); const par = MR.levelPar(w.maze, w.esc); assert(par > MR.levelPar(w.maze)); assert.strictEqual(MR.levelStars(par, w.maze, w.esc), 3); assert.strictEqual(MR.levelStars(par * 2, w.maze, w.esc), 2); assert.strictEqual(MR.levelStars(par * 5, w.maze, w.esc), 1); ok('逃出闖關：評星基準含繞路與開門時間');
+  const ai = simulate('escape', 2, MR.levelSeed(2, 5, 'escape'), [3], { size: MR.levelSize(2, 5, 'escape'), limit: 900 }).players[0]; assert(ai.fin != null); ok('逃出闖關：困難電腦可完成關卡（' + ai.fin.toFixed(0) + ' 秒，三星基準 ' + (par * 1.35).toFixed(0) + ' 秒）');
+}
 // 回到起點
 {
   const mk = (mode) => { const w = new MR.World({ mode, diff: 1, seed: 77, players: [{ id: 'a', name: 'A' }, { id: 'b', name: 'B' }] }); w.start(); return w; };
