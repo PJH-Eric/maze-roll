@@ -117,10 +117,33 @@ export class Scene3D {
     const maple = new THREE.MeshStandardMaterial({ map: canvasTex(256, 256, grain(th.floor, th.floorLine, 46, 11), [Math.max(1, W / 3), Math.max(1, H / 3)]), roughness: 0.78 });
     const walnut = new THREE.MeshStandardMaterial({ map: canvasTex(256, 256, grain(th.wall, th.wallLine, 40, 7)), roughness: 0.62 });
     const table = new THREE.MeshStandardMaterial({ map: canvasTex(256, 256, grain(th.table, 'rgba(20,8,2,A)', 50, 3), [40, 40]), roughness: 0.9 });
-    // 桌面（崩塌模式放得很深當作深淵）
-    const tbl = new THREE.Mesh(new THREE.PlaneGeometry(200, 200), table); tbl.rotation.x = -Math.PI / 2; tbl.position.set(W / 2, collapse ? -14 : -0.32, H / 2); tbl.receiveShadow = !collapse; root.add(tbl);
+    // 桌面（崩塌模式放得很深當作深淵；競速終點下方留出通道）
+    let tableGeometry = new THREE.PlaneGeometry(200, 200), tableMaterial = table;
+    if (world.run) {
+      const shape = new THREE.Shape(); shape.moveTo(-100, -100); shape.lineTo(100, -100); shape.lineTo(100, 100); shape.lineTo(-100, 100); shape.closePath();
+      const gx = (m.goal % W) + 0.5, gz = ((m.goal / W) | 0) + 0.5, opening = new THREE.Path();
+      opening.absarc(gx - W / 2, H / 2 - gz, 0.46, 0, Math.PI * 2, true); shape.holes.push(opening);
+      tableGeometry = new THREE.ShapeGeometry(shape, 36); tableGeometry.rotateX(-Math.PI / 2);
+      const tableMap = table.map.clone(); tableMap.repeat.set(0.2, 0.2); tableMap.needsUpdate = true;
+      tableMaterial = table.clone(); tableMaterial.map = tableMap;
+    }
+    const tbl = new THREE.Mesh(tableGeometry, tableMaterial); if (!world.run) tbl.rotation.x = -Math.PI / 2; tbl.position.set(W / 2, collapse ? -14 : -0.32, H / 2); tbl.receiveShadow = !collapse; root.add(tbl);
     if (!collapse) {
-      const board = new THREE.Mesh(new THREE.BoxGeometry(W + 0.5, 0.3, H + 0.5), maple); board.position.set(W / 2, -0.15, H / 2); board.receiveShadow = true; root.add(board);
+      let board;
+      if (world.run) {
+        // 終點需要真正的洞口，球下沉時才不會被實心木底板遮住。
+        const shape = new THREE.Shape();
+        shape.moveTo(-0.25, -0.25); shape.lineTo(W + 0.25, -0.25); shape.lineTo(W + 0.25, H + 0.25); shape.lineTo(-0.25, H + 0.25); shape.closePath();
+        const gx = (m.goal % W) + 0.5, gz = ((m.goal / W) | 0) + 0.5, opening = new THREE.Path();
+        opening.absarc(gx, gz, 0.46, 0, Math.PI * 2, true); shape.holes.push(opening);
+        const geometry = new THREE.ExtrudeGeometry(shape, { depth: 0.3, bevelEnabled: false, curveSegments: 36 }); geometry.rotateX(Math.PI / 2);
+        const boardMap = maple.map.clone(); boardMap.repeat.set(1 / 3, 1 / 3); boardMap.needsUpdate = true;
+        const boardMaterial = maple.clone(); boardMaterial.map = boardMap;
+        board = new THREE.Mesh(geometry, boardMaterial); board.receiveShadow = true;
+      } else {
+        board = new THREE.Mesh(new THREE.BoxGeometry(W + 0.5, 0.3, H + 0.5), maple); board.position.set(W / 2, -0.15, H / 2);
+      }
+      board.receiveShadow = true; root.add(board);
     } else {
       this.tileMesh = new THREE.InstancedMesh(new THREE.BoxGeometry(0.96, 0.22, 0.96), maple, m.n); this.tileMesh.receiveShadow = true; this.tileMesh.castShadow = true;
       this.tileState = new Uint8Array(m.n); this.tileT = new Float32Array(m.n); this.tileActive = new Set();
@@ -153,10 +176,12 @@ export class Scene3D {
     // 終點（競速／逃出）
     if (world.run) {
       const g = new THREE.Group(); const gc = { x: (m.goal % W) + 0.5, y: ((m.goal / W) | 0) + 0.5 }; g.position.set(gc.x, 0, gc.y);
-      const hole = new THREE.Mesh(new THREE.CircleGeometry(0.46, 28), new THREE.MeshBasicMaterial({ color: 0x1a0d06 })); hole.rotation.x = -Math.PI / 2; hole.position.y = 0.012; g.add(hole);
+      const wellMat = new THREE.MeshStandardMaterial({ color: 0x24130b, roughness: 1, side: THREE.DoubleSide });
+      const well = new THREE.Mesh(new THREE.CylinderGeometry(0.46, 0.42, 1.2, 36, 1, true), wellMat); well.position.y = -0.6; g.add(well);
+      const hole = new THREE.Mesh(new THREE.CircleGeometry(0.42, 32), new THREE.MeshBasicMaterial({ color: 0x100b08 })); hole.rotation.x = -Math.PI / 2; hole.position.y = -1.205; g.add(hole);
       const ring = new THREE.Mesh(new THREE.TorusGeometry(0.5, 0.06, 10, 32), new THREE.MeshStandardMaterial({ color: 0xffc928, metalness: 0.6, roughness: 0.3, emissive: 0x6a4700 })); ring.rotation.x = Math.PI / 2; ring.position.y = 0.04; g.add(ring);
-      const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.018, 0.85, 8), new THREE.MeshStandardMaterial({ color: 0xf4ead2 })); pole.position.set(0.28, 0.42, -0.28); g.add(pole);
-      const fg = new THREE.PlaneGeometry(0.42, 0.26); fg.translate(0.21, 0, 0); const flag = new THREE.Mesh(fg, new THREE.MeshStandardMaterial({ color: 0xd4473a, side: THREE.DoubleSide })); flag.position.set(0.29, 0.74, -0.28); g.add(flag);
+      const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.018, 0.85, 8), new THREE.MeshStandardMaterial({ color: 0xf4ead2 })); pole.position.set(0.42, 0.42, -0.42); g.add(pole);
+      const fg = new THREE.PlaneGeometry(0.42, 0.26); fg.translate(0.21, 0, 0); const flag = new THREE.Mesh(fg, new THREE.MeshStandardMaterial({ color: 0xd4473a, side: THREE.DoubleSide })); flag.position.set(0.43, 0.74, -0.42); g.add(flag);
       const beam = new THREE.Mesh(new THREE.CylinderGeometry(0.26, 0.26, 2.2, 20, 1, true), new THREE.MeshBasicMaterial({ color: 0xffd24a, transparent: true, opacity: 0.14, side: THREE.DoubleSide, depthWrite: false, blending: THREE.AdditiveBlending })); beam.position.y = 1.1; g.add(beam);
       root.add(g); this.goal = { g, flag, beam, ring };
     } else this.goal = null;
@@ -335,7 +360,11 @@ export class Scene3D {
     } else if (e.e === 'key' || e.e === 'unlock' || e.e === 'plate') {
       const o = this.doors && this.doors[e.d];
       if (o && e.id === this.me) { const m = this.maze, d = o.d; if (e.e === 'unlock') this._burst(d.cx, 0.5, d.cy, new THREE.Color(d.color).getHex(), 20); else this._burst((d.item % m.w) + 0.5, 0.4, ((d.item / m.w) | 0) + 0.5, new THREE.Color(d.color).getHex(), 16); }
-    } else if (e.e === 'finish' && this.goal) this._burst(this.goal.g.position.x, 0.3, this.goal.g.position.z, 0xffd24a, 18);
+    } else if (e.e === 'finish') {
+      const b = this.balls.get(e.id);
+      if (b) { b.hist.length = 0; b.trailMeshes.forEach((m) => { m.visible = false; }); }
+      if (this.goal) this._burst(this.goal.g.position.x, 0.3, this.goal.g.position.z, 0xffd24a, 18);
+    }
   }
   /** 每幀：更新球、動畫與鏡頭。followId 為鏡頭跟隨的球。 */
   frame(dt, followId, quick) {
@@ -343,6 +372,7 @@ export class Scene3D {
     // 球
     this.balls.forEach((b) => {
       const p = b.p, g = b.g;
+      let x = p.x, z = p.y;
       const dx = p.x - b.lx, dz = p.y - b.ly; b.lx = p.x; b.ly = p.y;
       const dist = Math.hypot(dx, dz);
       // 滾動：頂端朝前進方向轉（接地點相對球心往後），轉角 = 位移 / 半徑，與真實的球一致
@@ -352,9 +382,17 @@ export class Scene3D {
       }
       let y = R, s = 1;
       if (!p.alive) { b.fallV += 9 * dt; b.fall += b.fallV * dt; y = R - b.fall; s = Math.max(0.2, 1 - b.fall * 0.15); if (b.fall > 9) b.hidden = true; }
-      if (this.world.run && p.fin != null) { b.sink = Math.min(1, b.sink + dt * 2.2); y = R - b.sink * 0.3; s = 1 - b.sink * 0.45; if (b.sink >= 1) b.hidden = true; }
+      if (this.world.run && p.fin != null) {
+        b.sink = Math.min(1, b.sink + dt * 1.25);
+        const k = b.sink * b.sink * (3 - 2 * b.sink), drop = 1.45 * k;
+        y = R - drop; s = Math.max(0.03, 1 - k * 0.97);
+        if (this.goal) { x += (this.goal.g.position.x - x) * k; z += (this.goal.g.position.z - z) * k; }
+        if (!this.reduce) { b.mesh.rotation.x += dt * (1.6 + 4.8 * k); b.mesh.rotation.z += dt * (2.2 + 5 * k); }
+        if (b.ring) { b.ring.material.opacity = 0.85 * (1 - k); b.ring.scale.setScalar(1 - k * 0.8); }
+        if (b.sink >= 1) b.hidden = true;
+      }
       if (b.pop < 1) { b.pop = Math.min(1, b.pop + dt * 1.5); const q = b.pop - 1; s *= Math.max(0.02, 1 + 2.7 * q * q * q + 1.7 * q * q); y += Math.sin(b.pop * Math.PI) * 0.35; }
-      g.visible = !b.hidden; g.position.set(p.x, y, p.y); b.mesh.scale.setScalar(s);
+      g.visible = !b.hidden; g.position.set(x, y, z); b.mesh.scale.setScalar(s);
       if (this.trail && !this.reduce && p.alive && !b.hidden) {
         let trailChanged = false;
         if (Math.hypot(p.x - b.lastTx, p.y - b.lastTy) > 0.14) {
@@ -371,8 +409,11 @@ export class Scene3D {
       } else if (b.hist.length) { b.hist.length = 0; b.trailMeshes.forEach((m) => { m.visible = false; }); }
       const ls = (typeof innerWidth !== 'undefined' && innerWidth < 560) ? 0.76 : 1;
       b.label.scale.set(LABEL_HEIGHT * ls * b.labelAspect, LABEL_HEIGHT * ls, 1);
-      b.label.position.y = 1.05 + (p.idx % 3) * 0.2 + (R - y) * -0.2; b.label.visible = p.alive || b.fall < 1.5;
-      if (b.ring) { b.ring.position.y = 0.02 - (y - R); b.ring.material.opacity = 0.55 + 0.3 * Math.sin(t * 5); b.ring.scale.setScalar(1 + 0.06 * Math.sin(t * 5)); }
+      b.label.position.y = 1.05 + (p.idx % 3) * 0.2 + (R - y) * -0.2; b.label.visible = p.fin == null && (p.alive || b.fall < 1.5);
+      if (b.ring) {
+        b.ring.position.y = 0.02 - (y - R);
+        if (p.fin == null) { b.ring.material.opacity = 0.55 + 0.3 * Math.sin(t * 5); b.ring.scale.setScalar(1 + 0.06 * Math.sin(t * 5)); }
+      }
     });
     if (this.ghosts) for (let i = this.ghosts.length - 1; i >= 0; i--) { const gh = this.ghosts[i]; gh.t += dt / 0.7; const k = Math.min(1, gh.t); gh.m.scale.setScalar(Math.max(0.01, 1 - k)); gh.m.position.y = R + k * 0.9; gh.m.material.opacity = 0.55 * (1 - k); if (k >= 1) { this.root.remove(gh.m); gh.m.material.dispose(); this.ghosts.splice(i, 1); } }
     // 星星、終點
