@@ -128,7 +128,7 @@ function homeScreen() {
       h('p', { class: 'sub', text: T('3D 木質迷宮・推著小球衝向終點') }),
       h('div', { class: 'menu' },
         menuBtn('flag', T('闖關模式'), T('單人・五種難度各 100 關'), () => go('levels'), 'primary'),
-        menuBtn('key', T('每日挑戰'), T('逃出模式・每天一張新圖'), () => go('daily')),
+        menuBtn('key', T('每日挑戰'), T('同圖競速與逃出・每天一張新圖'), () => go('daily')),
         menuBtn('star', T('自由練習'), T('一個人・三種玩法・計時'), () => go('setup', { kind: 'practice' })),
         menuBtn('people', T('對電腦'), T('1～7 位電腦・各自選難度'), () => go('setup', { kind: 'vsai' })),
         menuBtn('link', T('線上對戰'), T('最多 4 人・觀戰・邀請連結'), () => go('online')),
@@ -165,18 +165,32 @@ function levelsScreen(p) {
   draw();
 }
 
-// ---------- 畫面：每日挑戰（逃出模式；日期即種子，同一天同難度所有人都是同一張圖）----------
-function dailyScreen() {
+// ---------- 畫面：每日挑戰（同日、同玩法與難度共用同一張迷宮）----------
+function dailyScreen(p = {}) {
   const date = store.ymd(new Date()), streak = store.dailyStreak(date);
-  const rows = MR.DIFFS.map((d, i) => {
-    const b = store.getBest('daily-' + date + '-' + i), st = store.getBest('dailys-' + date + '-' + i) || 0, sz = MR.SIZE.escape[i];
-    return menuBtn('key', T(d) + '・' + sz + '×' + sz, b != null ? '★'.repeat(st) + '☆'.repeat(3 - st) + '・' + fmtShort(b) : T('尚未挑戰'), () => startLocal({ kind: 'daily', mode: 'escape', diff: i, date, ais: [] }), b != null ? '' : 'primary');
-  });
+  let mode = p.mode === 'race' ? 'race' : 'escape';
+  const mazeNote = h('p', { class: 'note' });
+  const rows = h('div', { class: 'menu dailyGrid' });
+  const draw = () => {
+    mazeNote.textContent = T('{date}・今天的{mode_}迷宮，同難度玩家共用相同地圖', { date, mode_: MODE_INFO[mode].name });
+    rows.replaceChildren(...MR.DIFFS.map((d, i) => {
+      const bestKey = dailyRecordKey('daily', mode, date, i), starsKey = dailyRecordKey('dailys', mode, date, i);
+      const b = store.getBest(bestKey), st = store.getBest(starsKey) || 0, sz = MR.SIZE[mode][i];
+      return menuBtn(MODE_INFO[mode].icon, T(d) + '・' + sz + '×' + sz, b != null ? '★'.repeat(st) + '☆'.repeat(3 - st) + '・' + fmtShort(b) : T('尚未挑戰'), () => startLocal({ kind: 'daily', mode, diff: i, date, ais: [] }), b != null ? '' : 'primary');
+    }));
+  };
+  const modeChips = Chips({ label: T('每日模式'), value: mode, options: ['race', 'escape'].map((m) => ({ value: m, label: MODE_INFO[m].name, icon: MODE_INFO[m].icon })), onChange: (v) => { mode = v; ctx = Object.assign({}, ctx, { mode }); draw(); } });
   $screen.append(h('section', { class: 'screen setup' }, topbar(T('每日挑戰'), () => go('home')),
     h('div', { class: 'body' }, panel(ScrollArea(h('div', { class: 'setupBody' },
-      h('p', { class: 'note', text: T('{date}・今天的逃出迷宮，所有人都一樣', { date }) }),
-      h('p', { class: 'note', text: streak ? T('連續挑戰 {n} 天', { n: streak }) : T('今天完成任一難度，就開始累積連續天數') }),
-      h('div', { class: 'menu' }, ...rows)), { class: 'setupScroll' })))));
+      modeChips,
+      mazeNote,
+      h('p', { class: 'note', text: streak ? T('連續挑戰 {n} 天', { n: streak }) : T('今天完成任一玩法，就開始累積連續天數') }),
+      rows), { class: 'setupScroll' })))));
+  draw();
+}
+
+function dailyRecordKey(kind, mode, date, diff) {
+  return mode === 'race' ? kind + '-race-' + date + '-' + diff : kind + '-' + date + '-' + diff;
 }
 
 // ---------- 畫面：自由練習／對電腦 設定 ----------
@@ -211,7 +225,7 @@ function startLocal(cfg) {
   const players = [{ id: 'me', name: myName(), kind: 'human' }];
   cfg.ais.forEach((lv, i) => players.push({ id: 'ai' + (i + 1), name: T('電腦{x1}・{AI_NAMES_lv_}', { x1: i + 1, AI_NAMES_lv_: T(MR.AI_NAMES[lv]) }), kind: 'ai', ai: lv }));
   let seed, size;
-  if (cfg.kind === 'level') { seed = MR.levelSeed(cfg.diff, cfg.level, cfg.mode); size = MR.levelSize(cfg.diff, cfg.level, cfg.mode); } else if (cfg.kind === 'daily') { seed = MR.dailySeed(cfg.date, cfg.diff); size = MR.SIZE.escape[cfg.diff]; } else seed = (Math.random() * 4294967296) >>> 0;
+  if (cfg.kind === 'level') { seed = MR.levelSeed(cfg.diff, cfg.level, cfg.mode); size = MR.levelSize(cfg.diff, cfg.level, cfg.mode); } else if (cfg.kind === 'daily') { seed = MR.dailySeed(cfg.date, cfg.diff, cfg.mode); size = MR.SIZE[cfg.mode][cfg.diff]; } else seed = (Math.random() * 4294967296) >>> 0;
   go('game', { local: true, cfg, players, mode: cfg.mode, diff: cfg.diff, seed, size, meId: 'me' });
 }
 
@@ -516,7 +530,7 @@ function gameScreen(p) {
   const rsVis = () => { const me = game.me(); respawnBtn.style.display = meId && me && me.alive && !(game.world.run && me.fin != null) && game.state === 'play' ? '' : 'none'; };
   const rsT = setInterval(rsVis, 250); rsVis();
   const againLocal = () => { if (cfg) startLocal(cfg); };
-  const backLocal = () => { if (!cfg) return go('home'); if (cfg.kind === 'daily') return go('daily'); if (cfg.kind === 'level') go('levels', { diff: cfg.diff, mode: cfg.mode }); else go('setup', { kind: cfg.kind, mode: cfg.mode, diff: cfg.diff, ai: cfg.ais && cfg.ais.length ? cfg.ais : undefined }); };
+  const backLocal = () => { if (!cfg) return go('home'); if (cfg.kind === 'daily') return go('daily', { mode: cfg.mode }); if (cfg.kind === 'level') go('levels', { diff: cfg.diff, mode: cfg.mode }); else go('setup', { kind: cfg.kind, mode: cfg.mode, diff: cfg.diff, ai: cfg.ais && cfg.ais.length ? cfg.ais : undefined }); };
 
   function showResults(info) {
     const { world, results, mine } = info, solo = world.players.length === 1;
@@ -537,10 +551,10 @@ function gameScreen(p) {
         if (cfg.level < 100) nextBtn = Button({ label: T('下一關（第 {x1} 關）', { x1: cfg.level + 1 }), variant: 'primary', onClick: () => { resultM.close(); startLocal(Object.assign({}, cfg, { level: cfg.level + 1 })); } });
         else lines.push(h('p', { class: 'note', text: T('這個難度的 100 關全部通過了！') }));
       } else if (cfg && cfg.kind === 'daily' && run && mine && !mine.dnf) {
-        const st = MR.levelStars(mine.time, world.maze, world.esc), dk = cfg.date + '-' + cfg.diff;
-        store.recordBest('dailys-' + dk, st, false); newBest = store.recordBest('daily-' + dk, mine.time, true); bestTxt = fmtShort(store.getBest('daily-' + dk)); isLevel = true;
+        const st = MR.levelStars(mine.time, world.maze, world.esc), bestKey = dailyRecordKey('daily', cfg.mode, cfg.date, cfg.diff), starsKey = dailyRecordKey('dailys', cfg.mode, cfg.date, cfg.diff);
+        store.recordBest(starsKey, st, false); newBest = store.recordBest(bestKey, mine.time, true); bestTxt = fmtShort(store.getBest(bestKey)); isLevel = true;
         const streak = store.dailyStreak(cfg.date);
-        lines.push(h('p', { class: 'resLevel', text: T('每日挑戰') + ' · ' + cfg.date + ' · ' + T(MR.DIFFS[cfg.diff]) }),
+        lines.push(h('p', { class: 'resLevel', text: T('每日挑戰') + ' · ' + MODE_INFO[cfg.mode].name + ' · ' + cfg.date + ' · ' + T(MR.DIFFS[cfg.diff]) }),
           h('div', { class: 'resStars', role: 'img', 'aria-label': st + ' / 3 ' + T('星星') }, [0, 1, 2].map((i) => h('span', { class: 'rs' + (i < st ? ' on' : ''), style: { animationDelay: (0.15 + i * 0.18) + 's' } }, icon('star')))),
           streak ? h('p', { class: 'note', text: T('連續挑戰 {n} 天', { n: streak }) }) : null);
       } else if (cfg && cfg.kind === 'practice' && mine) {

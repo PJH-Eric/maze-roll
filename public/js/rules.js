@@ -248,8 +248,8 @@
     const [a, b] = (mode === 'escape' ? ESCAPE_LEVEL_SIZE : LEVEL_SIZE)[diff];
     return Math.round(a + (b - a) * ((clamp(n, 1, LEVELS_PER_DIFF) - 1) / (LEVELS_PER_DIFF - 1)));
   }
-  /** 每日挑戰：同一天、同一難度，所有人都是同一張逃出迷宮。date 為 'YYYY-MM-DD'。 */
-  function dailySeed(date, diff) { return hashSeed('maze-roll', 'daily', date, diff); }
+  /** 每日挑戰：同一天、同玩法與難度共用一張迷宮，保留既有逃出地圖。 */
+  function dailySeed(date, diff, mode) { return mode === 'race' ? hashSeed('maze-roll', 'daily', date, diff, 'race') : hashSeed('maze-roll', 'daily', date, diff); }
   function levelSeed(diff, n, mode) { return mode === 'escape' ? hashSeed('maze-roll', 'level', diff, n, 'escape') : hashSeed('maze-roll', 'level', diff, n); }
   /** 闖關評星：以最短路徑長度推算基準時間；逃出模式再加上繞去拿鑰匙／踏板的來回路程與每道門的操作時間。 */
   function levelPar(maze, esc) {

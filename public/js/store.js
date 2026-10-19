@@ -36,9 +36,13 @@ export const store = {
     if ((a[n - 1] || 0) < stars) a[n - 1] = stars; save(); return a[n - 1];
   },
   ymd(d) { return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); },
-  /** 每日挑戰的連續天數：從今天（今天還沒玩就從昨天）往回數，任一難度完成就算那天有玩。 */
+  /** 每日挑戰的連續天數：從今天（今天還沒玩就從昨天）往回數，任一玩法／難度完成就算那天有玩。 */
   dailyStreak(today) {
-    const done = new Set(Object.keys(load().best).filter((k) => k.startsWith('daily-')).map((k) => k.slice(6, 16)));
+    const dates = Object.keys(load().best)
+      .map((key) => /^daily-(?:race-)?(\d{4}-\d{2}-\d{2})-\d+$/.exec(key))
+      .filter(Boolean)
+      .map((match) => match[1]);
+    const done = new Set(dates);
     const d = new Date(today + 'T00:00:00'); let n = 0; if (!done.has(today)) d.setDate(d.getDate() - 1);
     while (done.has(this.ymd(d))) { n++; d.setDate(d.getDate() - 1); }
     return n;
