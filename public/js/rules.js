@@ -29,7 +29,7 @@
   /** 競速迷宮的「環路」比例：越難越少（死路越多、越像真迷宮）。 */
   const RACE_BRAID = [0.5, 0.3, 0.15, 0.05, 0];
   const braidFor = (mode, diff) => (mode === 'race' ? RACE_BRAID[diff | 0] : BRAID[mode]);
-  const AI_NAMES = ['幼幼班', '簡單', '普通', '困難'];
+  const AI_NAMES = ['幼幼班', '簡單', '普通', '困難', '神話'];
   const SIZE = { race: [6, 10, 15, 21, 28], stars: [8, 11, 15, 19, 23], collapse: [6, 8, 10, 13, 16], escape: [6, 9, 12, 16, 20] };
   const BRAID = { race: 0.05, stars: 0.5, collapse: 0.55, escape: 0 }; // 逃出：完美迷宮（無環），每道門才一定擋得住路
   /** 逃出模式：各難度的門數、機關計時倍率（越難越短）、門的顏色。 */

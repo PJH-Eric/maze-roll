@@ -2,6 +2,7 @@
 const assert = require('assert');
 const MR = require('../public/js/rules.js');
 const { simulate } = require('./sim.js');
+const { makeAI, LEVELS } = require('../public/js/ai.js');
 let n = 0; const ok = (m) => { n++; console.log('  ✓', m); };
 
 // 迷宮：同 seed 同結果、完全連通、終點在最遠處
@@ -176,9 +177,9 @@ for (const mode of ['race', 'escape']) {
   // 每日挑戰種子
   assert.strictEqual(MR.dailySeed('2026-10-19', 2), MR.dailySeed('2026-10-19', 2)); assert.notStrictEqual(MR.dailySeed('2026-10-19', 2), MR.dailySeed('2026-10-20', 2)); assert.notStrictEqual(MR.dailySeed('2026-10-19', 2), MR.dailySeed('2026-10-19', 3)); ok('每日挑戰：同日同難度同一張圖，換日或換難度就不同');
   { const ds = new Set(); for (let d = 1; d <= 120; d++) for (let diff = 0; diff < 5; diff++) { const date = '2026-' + String(1 + ((d / 28) | 0)).padStart(2, '0') + '-' + String(1 + (d % 28)).padStart(2, '0'); const w = mk(diff, MR.dailySeed(date, diff), [{ id: 'a', name: 'A' }]); assert(w.esc.doors.length >= 2); ds.add(date + diff); } ok('每日挑戰：連續 120 天、五種難度的圖都能生成且有機關'); }
-  // 電腦：四段 AI 都能逃出簡單迷宮（含開門流程）
-  for (const lv of [1, 2, 3]) { const r = simulate('escape', 0, 11, [lv], { limit: 900 }); assert(r.players[0].fin != null, 'AI ' + lv + ' 沒逃出'); } ok('逃出：簡單迷宮電腦（簡單／普通／困難）都能完成開門並逃出');
-  const tms = [1, 2, 3].map((lv) => { let t = 0; for (const sd of [11, 22, 33, 44]) { const r = simulate('escape', 1, sd, [lv], { limit: 900 }).players[0]; t += r.fin != null ? r.fin : 900; } return t / 4; }); assert(tms[2] < tms[1] && tms[1] < tms[0], '逃出 AI 難度：' + tms.join(',')); ok('逃出：電腦難度越高逃得越快 ' + tms.map((x) => x.toFixed(0) + 's').join(' > '));
+  // 電腦：五段 AI 都能逃出簡單迷宮（含開門流程）
+  for (const lv of [0, 1, 2, 3, 4]) { const r = simulate('escape', 0, 11, [lv], { limit: 900 }); assert(r.players[0].fin != null, 'AI ' + lv + ' 沒逃出'); } ok('逃出：五段電腦都能完成開門並逃出');
+  const tms = [1, 2, 3, 4].map((lv) => { let t = 0; for (const sd of [11, 22, 33, 44]) { const r = simulate('escape', 1, sd, [lv], { limit: 900 }).players[0]; t += r.fin != null ? r.fin : 900; } return t / 4; }); assert(tms.every((t, i) => i === 0 || t < tms[i - 1]), '逃出 AI 難度：' + tms.join(',')); ok('逃出：電腦難度越高逃得越快 ' + tms.map((x) => x.toFixed(0) + 's').join(' > '));
 }
 // 闖關
 {
@@ -191,12 +192,52 @@ for (const mode of ['race', 'escape']) {
 {
   const avg = (mode, diff, lv, seeds, f) => { let t = 0; for (const s of seeds) t += f(simulate(mode, diff, s, [lv], { limit: 400 })); return t / seeds.length; };
   const seeds = [11, 22, 33, 44, 55];
-  const times = [0, 1, 2, 3].map((lv) => avg('race', 1, lv, seeds, (w) => (w.players[0].fin != null ? w.players[0].fin : 400)));
-  for (let i = 1; i < 4; i++) assert(times[i] < times[i - 1], '競速 AI 難度越高越快：' + times.join(',')); ok('競速：四段 AI 完賽時間嚴格遞減 ' + times.map((x) => x.toFixed(1) + 's').join(' > '));
-  const sc = [0, 1, 2, 3].map((lv) => avg('stars', 2, lv, seeds, (w) => w.players[0].score));
-  for (let i = 1; i < 4; i++) assert(sc[i] > sc[i - 1], '搶星星 AI 分數遞增：' + sc.join(',')); ok('搶星星：四段 AI 得分嚴格遞增 ' + sc.map((x) => x.toFixed(1)).join(' < '));
+  const times = [0, 1, 2, 3, 4].map((lv) => avg('race', 1, lv, seeds, (w) => (w.players[0].fin != null ? w.players[0].fin : 400)));
+  for (let i = 1; i < 5; i++) assert(times[i] < times[i - 1], '競速 AI 難度越高越快：' + times.join(',')); ok('競速：五段 AI 完賽時間嚴格遞減 ' + times.map((x) => x.toFixed(1) + 's').join(' > '));
+  const sc = [0, 1, 2, 3, 4].map((lv) => avg('stars', 2, lv, seeds, (w) => w.players[0].score));
+  for (let i = 1; i < 5; i++) assert(sc[i] > sc[i - 1], '搶星星 AI 分數遞增：' + sc.join(',')); ok('搶星星：五段 AI 得分嚴格遞增 ' + sc.map((x) => x.toFixed(1)).join(' < '));
   const sv = [0, 3].map((lv) => avg('collapse', 2, lv, [1, 2, 3, 4, 5, 6, 7, 8], (w) => w.players[0].out || w.t)); assert(sv[1] > sv[0], '崩塌：困難 AI 存活更久 ' + sv.join(',')); ok('地板崩塌：困難 AI 存活比幼幼班久 ' + sv.map((x) => x.toFixed(1) + 's').join(' vs '));
   const h = simulate('race', 3, 1234, [3], { limit: 400 }).players[0].fin; assert(h != null && h < 400); ok('困難 AI 能完成困難迷宮');
+}
+// 個別電腦有不同的節奏與路線偏好；固定種子仍可重播，神話不會超過人類輸入上限。
+{
+  assert.strictEqual(MR.AI_NAMES[4], '神話'); assert.strictEqual(LEVELS.length, MR.AI_NAMES.length);
+  const trace = (mode, level) => {
+    const w = new MR.World({ mode, diff: 0, seed: 11, players: [0, 1, 2].map((i) => ({ id: 'p' + i, kind: 'ai' })) });
+    const bots = w.players.map((p) => makeAI(w, p, level));
+    assert.strictEqual(new Set(bots.map((b) => b.profile.pace)).size, 3);
+    const paths = bots.map(() => []); w.start();
+    for (let tick = 0; tick < 300; tick++) {
+      bots.forEach((bot, i) => {
+        const input = bot.step(0.01);
+        assert(input.every(Number.isFinite) && Math.hypot(...input) <= 1 + 1e-9);
+        w.stepPlayer(w.players[i], ...input, 0.01);
+        if (tick % 50 === 0) paths[i].push([w.players[i].x, w.players[i].y]);
+      });
+      w.update(0.01);
+    }
+    assert.strictEqual(new Set(paths.map((p) => JSON.stringify(p))).size, 3, mode + ' 同難度軌跡不應相同');
+    return paths;
+  };
+  for (const mode of MR.MODES) for (let level = 0; level < 5; level++) trace(mode, level);
+  assert.deepStrictEqual(trace('race', 4), trace('race', 4));
+  ok('五段電腦在各玩法具有個別節奏、可重播，且輸入皆符合球體物理限制');
+  const fork = new MR.World({ mode: 'race', diff: 0, seed: 88, players: Array.from({ length: 7 }, (_, i) => ({ id: 'p' + i, kind: 'ai' })) });
+  fork.maze = MR.makeMaze(2, 2, 88, 0);
+  fork.maze.cells.set([MR.N | MR.W, MR.N | MR.E, MR.S | MR.W, MR.S | MR.E]);
+  fork.maze.goal = 3; fork.gd = fork.maze.bfs(3);
+  const directions = fork.players.map((p) => {
+    const bot = makeAI(fork, p, 3); let input;
+    for (let tick = 0; tick < 100; tick++) { input = bot.step(0.01); if (Math.hypot(...input) > 0) break; }
+    return input[0] > input[1] ? 'east' : 'south';
+  });
+  assert.strictEqual(new Set(directions).size, 2); ok('相同長度的兩條合法路線，同難度電腦會依個別偏好分流');
+  for (const [diff, seed] of [[2, 11], [2, 44], [4, 11]]) {
+    const w = simulate('escape', diff, seed, [4], { limit: 900 });
+    assert(w.players[0].fin != null, '相鄰傳送門不可讓神話電腦卡住');
+    assert(w.events.filter((e) => e.e === 'warp').length <= w.esc.portals.length);
+  }
+  ok('神話電腦能處理相鄰傳送門並逃出，不會來回傳送卡住');
 }
 { // 難度主題與環路比例
   assert.strictEqual(MR.DIFF_THEME.length, 5); assert.strictEqual(new Set(MR.DIFF_THEME.map((t) => t.wall)).size, 5);
