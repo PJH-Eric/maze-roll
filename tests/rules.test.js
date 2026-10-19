@@ -31,13 +31,41 @@ let n = 0; const ok = (m) => { n++; console.log('  ✓', m); };
   const g = MR.cellCenter(w.maze, w.maze.goal);
   w.byId.get('b').x = g.x; w.byId.get('b').y = g.y; w.update(0.1);
   assert(w.byId.get('b').fin != null && w.byId.get('b').place === 1 && w.graceLeft != null && w.graceLeft <= MR.GRACE && w.graceLeft > MR.GRACE - 0.2); ok('第一名抵達後開始寬限');
-  for (let k = 0; k < 15 * 60 + 5; k++) w.update(1 / 60);
+  for (let k = 0; k < 10 * 60 + 5; k++) w.update(1 / 60);
   assert(w.over && w.results[0].id === 'b' && w.results[1].dnf); ok('寬限結束自動結算，未到達者標記未完賽');
   const solo = new MR.World({ mode: 'race', diff: 0, seed: 5, players: [{ id: 'a', name: 'A' }] }); solo.start(); solo.byId.get('a').x = g.x; solo.byId.get('a').y = g.y; solo.update(0.1); assert(solo.over); ok('單人抵達立即結算（不等寬限）');
   const w2 = new MR.World({ mode: 'race', diff: 0, seed: 5, players: [{ id: 'a', name: 'A' }, { id: 'b', name: 'B' }, { id: 'c', name: 'C' }] }); w2.start();
   const cell = (i) => MR.cellCenter(w2.maze, i); const far = w2.gd; let near = 0, mid = 0; for (let i = 0; i < w2.maze.n; i++) { if (far[i] === 3) near = i; if (far[i] === 9) mid = i; }
   w2.byId.get('a').x = cell(near).x; w2.byId.get('a').y = cell(near).y; w2.byId.get('b').x = cell(mid).x; w2.byId.get('b').y = cell(mid).y;
   const rk = w2.rank(); assert.deepStrictEqual(rk.slice(0, 2).map((r) => r.id), ['a', 'b']); ok('未完賽者依離終點的路徑距離排名');
+}
+// 多人競速／逃出：真人或 AI 先抵達、全員抵達都必須倒數完整 10 秒。
+for (const mode of ['race', 'escape']) {
+  for (const kinds of [['human', 'ai'], ['ai', 'human'], ['remote', 'remote']]) {
+    const w = new MR.World({ mode, diff: 0, seed: 5, players: kinds.map((kind, i) => ({ id: String(i), name: String(i), kind })) });
+    w.start();
+    const goal = MR.cellCenter(w.maze, w.maze.goal);
+    Object.assign(w.players[0], goal); w.update(0.01);
+    assert.strictEqual(w.graceLeft, 10); assert(!w.over);
+    const firstTime = w.players[0].fin;
+    Object.assign(w.players[1], goal); w.update(0.01);
+    assert(!w.over, '全員抵達仍須繼續倒數');
+    for (let i = 0; i < 998; i++) w.update(0.01);
+    assert(!w.over && w.graceLeft > 0, '滿 10 秒前不可結算');
+    w.update(0.01);
+    assert(w.over && w.graceLeft === 0);
+    assert.strictEqual(w.results[0].time, +firstTime.toFixed(2));
+    assert(w.results.every((r) => !r.dnf));
+  }
+  const simultaneous = new MR.World({ mode, diff: 0, seed: 5, players: [{ id: 'a' }, { id: 'b' }] });
+  simultaneous.start(); const goal = MR.cellCenter(simultaneous.maze, simultaneous.maze.goal);
+  simultaneous.players.forEach((p) => Object.assign(p, goal)); simultaneous.update(0.01);
+  assert(!simultaneous.over && simultaneous.graceLeft === 10, '同時抵達也須倒數');
+  simultaneous.t = mode === 'race' ? 600 : 900; simultaneous.update(0.01);
+  assert(!simultaneous.over, '既有時間上限不可截斷已開始的倒數');
+  simultaneous.update(0.01, 9.98); assert(!simultaneous.over);
+  simultaneous.update(0.01, 0.01); assert(simultaneous.over, '低幀率仍依實際經過的 10 秒結算');
+  ok(mode + '：真人／AI／線上／同時抵達皆完整倒數 10 秒，保留衝線成績');
 }
 // 搶星星
 {

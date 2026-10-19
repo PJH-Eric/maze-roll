@@ -301,6 +301,8 @@ h3 { font-size: 1rem; margin: 10px 0 6px; letter-spacing: .08em; }
   .roomBody { flex-direction: column-reverse; }
   .roomChat { flex: 0 0 auto; height: min(34dvh, 260px); }
   .hextra { display: none; }
+  .hudTop.counting { flex-direction: column; gap: 0; padding: 4px 10px; }
+  .hudTop.counting .hextra { display: block; font-size: .75rem; }
   .modalActions .btn { min-width: 40%; }
 }
 @media (max-width: 760px) { .roomBody { flex-direction: column-reverse; } .roomChat { flex: 0 0 auto; height: min(34dvh, 260px); } }

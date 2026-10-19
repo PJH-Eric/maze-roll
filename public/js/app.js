@@ -104,7 +104,7 @@ function openHow() {
     title: T('怎麼玩'), class: 'howModal',
     body: h('div', { class: 'how' },
       sec(T('基本操作'), h('p', {}, T('推動搖桿（或按 '), Key('W'), Key('A'), Key('S'), Key('D'), T('／方向鍵）讓球往那個方向滾。牆會擋住球，撞牆會減速，慢慢控制比硬衝更快。'))),
-      sec(T('同圖競速'), h('p', { text: T('所有人用同一座迷宮、從同一個起點出發，先滾進終點旗洞的人贏。第一名到達後，其他人還有 15 秒可以衝線；球和球不會互相碰撞，可以穿過去。') })),
+      sec(T('同圖競速'), h('p', { text: T('所有人用同一座迷宮、從同一個起點出發，先滾進終點旗洞的人贏。多人局第一名到達後完整倒數 10 秒才結算，全員抵達也不提前結束；球和球不會互相碰撞，可以穿過去。') })),
       sec(T('搶星星'), h('p', { text: T('迷宮裡散落著星星，碰到就得 1 分，星星被撿走就不會再出現，全部被搶光時比賽提前結束。90 秒內分數最高的人贏；同分時，比較早拿到最後一顆的人名次較前。') })),
       sec(T('地板崩塌'), h('p', { text: T('你踩過的地磚會先晃動，接著碎裂掉下去。一直停在原地也會掉！規劃好路線，不要把自己困在死路裡，最後還站著的人贏。拖太久時，場地會自己隨機碎裂。') })),
       sec(T('逃出模式'), h('p', { text: T('迷宮裡有幾道彩色的門擋住去路。同色的鑰匙要繞去支線撿起來，帶著鑰匙走到門前門就會打開；踩踏板的門只會開一小段時間，要在關上前衝過去（快關上時門會閃爍）。每個人的鑰匙與門各自獨立，不會被別人搶走。路旁小岔路上成對的發光光圈是傳送門，走進一邊會從另一邊出來，可以當作捷徑。第一個逃出的人贏，之後其他人還有 10 秒可以逃出。') })),
@@ -378,7 +378,7 @@ function gameScreen(p) {
     const init = p.init; players = init.players.map((x) => ({ id: x.id, name: x.name, kind: 'remote' }));
     meId = session.role === 'player' && players.some((x) => x.id === session.you) ? session.you : null;
     mode = init.mode; diff = init.diff; seed = init.seed; size = init.size;
-    if (init.resume) snapshot = { snap: init.snap, stars: init.stars, tiles: init.tiles, state: init.state, tt: init.tt };
+    if (init.resume) snapshot = { snap: init.snap, stars: init.stars, tiles: init.tiles, state: init.state, tt: init.tt, graceLeft: init.graceLeft };
   } else { players = p.players; meId = p.meId; mode = p.mode; diff = p.diff; seed = p.seed; size = p.size; }
   size = size || MR.SIZE[mode][diff];
   const run = MR.isRun(mode);
@@ -435,6 +435,7 @@ function gameScreen(p) {
       else if (mode === 'collapse') ex = T('剩 {alive} 人', { alive: hd.alive });
       else if (mode === 'stars') { const me = game.me(); ex = me ? T('你 {score} ★', { score: me.score }) : ''; }
       hudExtra.textContent = ex;
+      hudTop.classList.toggle('counting', run && hd.grace != null && hd.grace > 0);
       const shapes = store.get('shapes');
       sumList.replaceChildren(...hd.rows.map((r) => {
         const val = run ? (r.done ? fmt(r.fin) : r.alive ? T('剩 {n} 格', { n: Math.round(r.rem) }) : '') : mode === 'stars' ? r.score + ' ★' : r.alive ? T('存活') : T('淘汰');

@@ -48,7 +48,7 @@
 
   const PHYS = { R: 0.36, T: 0.12, ACC: 9.5, FRI: 2.6, REST: 0.25 };
   const STAR_R = 0.55, GOAL_R = 0.5;
-  const STAR_TIME = 90, GRACE = 15, ESCAPE_GRACE = 10, RACE_CAP = 600, ESCAPE_CAP = 900, COLLAPSE_CAP = 240;
+  const STAR_TIME = 90, GRACE = 10, ESCAPE_GRACE = 10, RACE_CAP = 600, ESCAPE_CAP = 900, COLLAPSE_CAP = 240;
   const COLLAPSE_FALL = 0.22, COLLAPSE_SUDDEN = 60, COLLAPSE_HEAD = 1.2;
   const MAX_PLAYERS = 8;
 
@@ -386,19 +386,20 @@
     emit(e) { this.events.push(e); return e; }
     humans() { return this.players.filter((p) => p.kind !== 'ai'); }
 
-    /** 判定一個固定時間步（球的位置已由外部更新）。回傳本步事件。 */
-    update(dt) {
+    /** 判定一個固定時間步；graceDt 可另傳實際經過時間，避免掉幀延長結束倒數。回傳本步事件。 */
+    update(dt, graceDt = dt) {
       if (this.over || !this.started) return [];
       const ev0 = this.events.length;
       this.t += dt;
-      if (this.mode === 'escape') { this.doorTick(dt); this._escape(); this._race(dt); }
-      else if (this.mode === 'race') this._race(dt);
+      if (this.mode === 'escape') { this.doorTick(dt); this._escape(); this._race(graceDt); }
+      else if (this.mode === 'race') this._race(graceDt);
       else if (this.mode === 'stars') this._stars();
       else this._collapse(dt);
       return this.events.slice(ev0);
     }
     _race(dt) {
       const m = this.maze, g = cellCenter(m, m.goal);
+      const counting = this.graceLeft != null;
       for (const p of this.players) {
         if (p.fin != null) continue;
         if (Math.hypot(p.x - g.x, p.y - g.y) < GOAL_R) {
@@ -407,10 +408,10 @@
           if (this.graceLeft == null && this.players.length > 1) this.graceLeft = this.grace;
         }
       }
-      if (this.graceLeft != null) this.graceLeft -= dt;
-      const hs = this.humans();
-      const allHumans = hs.length > 0 && hs.every((p) => p.fin != null);
-      if (allHumans || this.finished === this.players.length || (this.graceLeft != null && this.graceLeft <= 0) || this.t >= (this.mode === 'escape' ? ESCAPE_CAP : RACE_CAP)) this._finish();
+      if (counting) this.graceLeft = Math.max(0, this.graceLeft - dt);
+      if (this.graceLeft != null) {
+        if (this.graceLeft <= 1e-9) { this.graceLeft = 0; this._finish(); }
+      } else if ((this.players.length === 1 && this.finished === 1) || this.t >= (this.mode === 'escape' ? ESCAPE_CAP : RACE_CAP)) this._finish();
     }
     // ---------- 逃出：機關 ----------
     /** 這位玩家目前關著的門的矩形（供球物理使用）；非逃出模式回傳 undefined。 */

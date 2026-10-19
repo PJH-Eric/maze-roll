@@ -19,7 +19,7 @@ export class Game {
     this.scene = new Scene3D(o.canvas, { reduce: store.get('reduce'), shapes: store.get('shapes'), ballType: store.get('ball'), trail: store.get('trail'), preserve: !!window.__MR_PRESERVE });
     this.scene.setCam(store.get('cam'));
     this.state = 'count'; this.paused = false; this.acc = 0; this.last = 0; this.raf = 0; this.endTimer = null; this.ff = false;
-    this.follow = null; this.hudT = 0; this.mapT = 0; this.posT = 0; this.rollT = 0; this.lastThud = 0; this.lastCrack = 0;
+    this.follow = null; this.hudT = 0; this.mapT = 0; this.posT = 0; this.rollT = 0; this.lastThud = 0; this.lastCrack = 0; this.graceAcc = 0;
     this.remote = new Map(); this.graceLeft = null; this.meState = 'play'; this.stopped = false; this.countN = null;
     if (o.snapshot) this._applySnapshot(o.snapshot);
     this.scene.load(this.world, this.meId);
@@ -35,7 +35,7 @@ export class Game {
     s.snap.forEach(([id, x, y, alive, score, fin, out, keys, open]) => { const p = w.byId.get(id); if (!p) return; p.x = x; p.y = y; p.alive = alive; p.score = score || 0; p.fin = fin; p.out = out; if (p.keyHas && keys) { p.keyHas.set(keys); p.open.set(open); } });
     if (s.stars) { w.stars = s.stars.map(([id, c]) => ({ id, c })); w.nextStar = 1e6; }
     if (s.tiles) { w.tile.set(s.tiles); for (let i = 0; i < s.tiles.length; i++) if (s.tiles[i] === 1) w.timer[i] = 1; }
-    w.t = s.tt || 0; w.started = s.state === 'playing';
+    w.t = s.tt || 0; w.started = s.state === 'playing'; this.graceLeft = s.graceLeft ?? null;
   }
 
   // ---------- 流程 ----------
@@ -71,6 +71,7 @@ export class Game {
     else if (m.t === 'go') { if (this.state !== 'play') { this._begin(); this._count(0); } w.started = true; }
     else if (m.t === 'snap') {
       w.t = m.tt;
+      if (m.graceLeft != null) this.graceLeft = m.graceLeft;
       for (const [id, x, y, vx, vy] of m.p) {
         const p = w.byId.get(id); if (!p || id === this.meId) continue;
         let r = this.remote.get(id); if (!r) { r = { tx: x, ty: y }; this.remote.set(id, r); p.x = x; p.y = y; }
@@ -114,7 +115,7 @@ export class Game {
   }
 
   // ---------- 主迴圈 ----------
-  _tick(dt) {
+  _tick(dt, graceDt = dt) {
     const w = this.world, me = this.me();
     if (!this.online) {
       for (const p of w.players) {
@@ -124,7 +125,7 @@ export class Game {
         const imp = w.stepPlayer(p, ix, iy, dt);
         if (p.id === this.meId && imp > 0.9) { const now = performance.now(); if (now - this.lastThud > 90) { audio.thud(imp); this.lastThud = now; } }
       }
-      const ev = w.update(dt);
+      const ev = w.update(dt, graceDt);
       for (const e of ev) this._event(e, false);
     } else {
       w.t += dt; w.doorTick(dt);
@@ -135,17 +136,22 @@ export class Game {
         this.posT += dt;
         if (this.posT >= 0.05) { this.posT = 0; this.o.online.net.send({ t: 'pos', x: +me.x.toFixed(3), y: +me.y.toFixed(3), vx: +me.vx.toFixed(2), vy: +me.vy.toFixed(2) }); }
       }
-      if (this.graceLeft != null) this.graceLeft = Math.max(0, this.graceLeft - dt);
+      if (this.graceLeft != null) this.graceLeft = Math.max(0, this.graceLeft - graceDt);
     }
   }
   _loop(ts) {
     if (this.stopped) return;
     this.raf = requestAnimationFrame(this._loop);
-    const dt = this.last ? Math.min(0.05, (ts - this.last) / 1000) : 0.016; this.last = ts;
+    const elapsed = this.last ? Math.max(0, (ts - this.last) / 1000) : 0.016;
+    const dt = Math.min(0.05, elapsed); this.last = ts;
     const w = this.world;
     if (this.state === 'play' && !this.paused) {
       this.acc = this.ff ? FAST_FORWARD_STEPS * STEP : this.acc + dt; let n = 0; const max = this.ff ? FAST_FORWARD_STEPS : 8;
-      while (this.acc >= STEP && n++ < max && this.state === 'play') { this._tick(STEP); this.acc -= STEP; if (this.ff && w.over) break; }
+      this.graceAcc += elapsed;
+      while (this.acc >= STEP && n++ < max && this.state === 'play') {
+        this._tick(STEP, this.ff ? STEP : this.graceAcc); this.graceAcc = 0; this.acc -= STEP;
+        if (this.ff && w.over) break;
+      }
       if (this.ff || this.acc > 0.2) this.acc = 0;
     }
     if (this.online) { // 其他玩家：往伺服器位置平滑追趕（含速度外插）
@@ -188,7 +194,7 @@ export class Game {
   _hud() {
     const w = this.world; if (!this.hooks.onHud) return;
     const total = w.mode === 'stars' ? MR.STAR_TIME : null;
-    this.hooks.onHud({ mode: w.mode, t: w.t, left: total != null ? Math.max(0, total - w.t) : null, grace: this.graceLeft, rows: this.standings(), state: this.state, meState: this.meState, alive: w.players.filter((p) => p.alive).length, follow: this._followId() });
+    this.hooks.onHud({ mode: w.mode, t: w.t, left: total != null ? Math.max(0, total - w.t) : null, grace: this.online ? this.graceLeft : w.graceLeft, rows: this.standings(), state: this.state, meState: this.meState, alive: w.players.filter((p) => p.alive).length, follow: this._followId() });
   }
   /** 小地圖：依難度木色繪製的迷你木盤；牆體靜態層只畫一次，其餘每次重畫。 */
   _minimapStatic(c) {

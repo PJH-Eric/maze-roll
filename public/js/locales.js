@@ -104,7 +104,7 @@ window.MR_EN = {
  "房間代碼": "Room code",
  "房間已滿或已開始，你目前是觀戰者。": "The room is full or already started; you are spectating for now.",
  "房間已結束": "The room has ended",
- "所有人用同一座迷宮、從同一個起點出發，先滾進終點旗洞的人贏。第一名到達後，其他人還有 15 秒可以衝線；球和球不會互相碰撞，可以穿過去。": "Everyone races through the same maze from the same start; the first ball into the goal-flag hole wins. After the first finisher, others have 15 s to cross the line. Balls do not collide and can pass through each other.",
+ "所有人用同一座迷宮、從同一個起點出發，先滾進終點旗洞的人贏。多人局第一名到達後完整倒數 10 秒才結算，全員抵達也不提前結束；球和球不會互相碰撞，可以穿過去。": "Everyone races through the same maze from the same start; the first ball into the goal-flag hole wins. Multiplayer rounds end after a full 10-second countdown from the first finish, even if everyone has finished. Balls do not collide and can pass through each other.",
  "手指拖曳": "Finger drag",
  "抵達終點！": "Goal reached!",
  "抵達終點！第 {place} 名": "Goal reached! Place {place}",

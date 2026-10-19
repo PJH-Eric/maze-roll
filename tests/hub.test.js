@@ -77,10 +77,14 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   b.send({ t: 'pos', x: g.x, y: g.y, vx: 0, vy: 0 });
   await sleep(80);
   assert(a.all('ev').some((m) => m.ev.some((e) => e.e === 'finish' && e.id === b.mid))); ok('伺服器依回報位置判定抵達終點');
-  assert(a.last('grace')); ok('第一名後開始 15 秒寬限');
+  assert.strictEqual(a.last('grace').left, 10); ok('第一名後開始 10 秒倒數');
   a.send({ t: 'pos', x: g.x, y: g.y, vx: 0, vy: 0 });
   await sleep(80);
-  const end = a.last('end'); assert(end && end.results[0].id === b.mid && end.results[1].id === a.mid); assert(s1.last('end')); ok('全員到達即結算，名次正確，觀戰者同步收到');
+  assert(!a.last('end') && !s1.last('end')); assert.strictEqual(hub.rooms.get(room.code).state, 'playing');
+  const raceWorld = hub.rooms.get(room.code).world;
+  assert(a.last('snap').graceLeft > 0); ok('全員到達仍在倒數，玩家與觀戰者都不提前結算');
+  raceWorld.update(raceWorld.graceLeft - 0.02); await sleep(80);
+  const end = a.last('end'); assert(end && end.results[0].id === b.mid && end.results[1].id === a.mid); assert(s1.last('end')); ok('倒數結束才結算，名次正確，觀戰者同步收到');
   assert.strictEqual(hub.rooms.get(room.code).state, 'ended');
 
   // 再來一局：非房主只投票、房主開新局
@@ -119,6 +123,13 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
       e1.send({ t: 'pos', x: A.x + 0.1, y: A.y, vx: 0, vy: 0 }); await sleep(30); const sp = w.byId.get(e1.mid); assert(Math.hypot(sp.x - B.x, sp.y - B.y) < 0.01, '傳送後短暫忽略舊位置'); ok('逃出（線上）：伺服器判定傳送、廣播 warp，傳送後短暫忽略舊位置回報'); } }
     const gc = MR.cellCenter(w.maze, w.maze.goal); hub.members.get(e1.mid).has = false; hub.members.get(e1.mid).warpUntil = 0; e1.send({ t: 'pos', x: gc.x, y: gc.y, vx: 0, vy: 0 }); await sleep(60);
     const gr = e2.last('grace'); assert(gr && gr.left === 10); ok('逃出（線上）：第一人逃出後通知倒數 10 秒');
+    hub._resume(room, hub.members.get(e2.mid));
+    assert(e2.last('init').graceLeft > 0 && e2.last('init').graceLeft <= 10); ok('倒數期間重連會還原剩餘秒數');
+    hub.members.get(e2.mid).has = false;
+    hub.handle(e2b, { t: 'pos', x: gc.x, y: gc.y, vx: 0, vy: 0 }); await sleep(60);
+    assert(!e1.last('end') && !e2.last('end') && room.state === 'playing');
+    w.update(w.graceLeft - 0.02); await sleep(80);
+    assert(e1.last('end') && e2.last('end') && room.state === 'ended'); ok('逃出（線上）：全員逃出後仍須倒數結束才結算');
     e2b.lobby = false; hub.disconnect(e2b); e1.send({ t: 'leave' }); e2.send({ t: 'leave' });
   }
 
