@@ -177,9 +177,25 @@ export class Scene3D {
     for (const d of world.esc.doors) {
       const col = new THREE.Color(d.color), horiz = d.d === 1 || d.d === 4, th = T * 1.3;
       const mat = new THREE.MeshStandardMaterial({ color: col, roughness: 0.45, metalness: 0.15, emissive: col.clone().multiplyScalar(0.25) });
-      const door = new THREE.Mesh(new THREE.BoxGeometry(horiz ? 1 + T : th, WALL_H * 0.92, horiz ? th : 1 + T), mat); door.castShadow = true; door.position.set(d.cx, WALL_H * 0.46, d.cy);
-      const knob = new THREE.Mesh(new THREE.SphereGeometry(0.1, 14, 10), gold); knob.position.y = WALL_H * 0.05; door.add(knob);
-      const band = new THREE.Mesh(new THREE.BoxGeometry(horiz ? 1 + T + 0.02 : th + 0.02, 0.06, horiz ? th + 0.02 : 1 + T + 0.02), gold); band.position.y = WALL_H * 0.46; door.add(band);
+      const L = 1 + T, hh = WALL_H * 0.92; let door;
+      if (d.kind === 'key') { // 鑰匙門：實心厚門板＋金色鎖孔座，兩面都有
+        door = new THREE.Mesh(new THREE.BoxGeometry(horiz ? L : th, hh, horiz ? th : L), mat); door.castShadow = true;
+        const band = new THREE.Mesh(new THREE.BoxGeometry(horiz ? L + 0.02 : th + 0.02, 0.06, horiz ? th + 0.02 : L + 0.02), gold); band.position.y = WALL_H * 0.3; door.add(band);
+        const dark = new THREE.MeshStandardMaterial({ color: 0x1b1108, roughness: 0.9 });
+        for (const sd of [1, -1]) {
+          const lock = new THREE.Group(), plate = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.16, 0.03, 24), gold); plate.rotation.x = Math.PI / 2; lock.add(plate);
+          const hole = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.04, 16), dark); hole.rotation.x = Math.PI / 2; hole.position.y = 0.03; lock.add(hole);
+          const slot = new THREE.Mesh(new THREE.BoxGeometry(0.035, 0.12, 0.04), dark); slot.position.y = -0.05; lock.add(slot);
+          lock.position.y = WALL_H * 0.02; if (horiz) lock.position.z = sd * (th / 2 + 0.012); else { lock.position.x = sd * (th / 2 + 0.012); lock.rotation.y = Math.PI / 2; }
+          door.add(lock);
+        }
+      } else { // 踏板門：一排鐵柵欄（上下橫樑＋直條），一眼就和鑰匙門不同
+        door = new THREE.Group(); door.position.set(d.cx, WALL_H * 0.46, d.cy);
+        const rail = (y) => { const r = new THREE.Mesh(new THREE.BoxGeometry(horiz ? L : 0.12, 0.1, horiz ? 0.12 : L), mat); r.position.y = y; r.castShadow = true; door.add(r); };
+        rail(hh / 2 - 0.05); rail(-hh / 2 + 0.05);
+        const N = 6; for (let k = 0; k < N; k++) { const u = (k / (N - 1) - 0.5) * (L - 0.14), bar = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, hh, 10), mat); bar.position.set(horiz ? u : 0, 0, horiz ? 0 : u); bar.castShadow = true; door.add(bar); }
+      }
+      door.position.set(d.cx, WALL_H * 0.46, d.cy);
       root.add(door);
       const ic = { x: (d.item % world.maze.w) + 0.5, y: ((d.item / world.maze.w) | 0) + 0.5 };
       const o = { d, door, mat, a: 0, key: null, plate: null };
