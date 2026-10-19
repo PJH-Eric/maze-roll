@@ -277,9 +277,12 @@ h3 { font-size: 1rem; margin: 10px 0 6px; letter-spacing: .08em; }
 .countdown { position: absolute; inset: 0; z-index: 14; display: flex; align-items: center; justify-content: center; pointer-events: none; font-size: min(28vmin, 170px); font-weight: 900; color: var(--maple2); text-shadow: 0 6px 0 #1a0f08, 0 10px 24px rgba(0,0,0,.6); animation: bump .8s; }
 .countdown.go { color: #ffe27a; font-size: min(18vmin, 120px); letter-spacing: .1em; }
 @keyframes bump { 0% { transform: scale(1.6); opacity: 0; } 25% { transform: scale(1); opacity: 1; } 100% { transform: scale(.92); opacity: .9; } }
-.banner { position: absolute; z-index: 15; left: 50%; top: 24%; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 12px 20px; border-radius: 14px; background: rgba(42,26,16,.92); border: 3px solid var(--gold); text-align: center; box-shadow: 0 6px 0 rgba(0,0,0,.4); max-width: 86%; }
+.banner { position: absolute; z-index: 15; left: 50%; bottom: calc(10px + var(--sb)); transform: translateX(-50%); display: flex; align-items: center; gap: 8px; padding: 6px 10px; border-radius: 12px; background: rgba(42,26,16,.84); border: 2px solid var(--gold); text-align: center; box-shadow: 0 3px 0 rgba(0,0,0,.35); max-width: calc(100% - 20px); pointer-events: none; }
 .banner[hidden] { display: none; }
-.banner b { font-size: 1.15rem; }
+.banner b { font-size: .95rem; white-space: nowrap; }
+.banner .btn { min-height: 36px; padding: 5px 10px; font-size: .9rem; pointer-events: auto; }
+.gameScreen.playerOut .stickZone, .gameScreen.playerOut .respawnBtn { display: none; }
+@media (max-width: 360px) { .banner { flex-wrap: wrap; justify-content: center; gap: 4px 6px; padding: 5px 8px; } .banner b { font-size: .9rem; } .banner .btn { min-height: 32px; padding: 4px 8px; } }
 
 /* 窄版／直向：左側資訊欄改成可收合抽屜 */
 .gameScreen.narrow .panelSide { position: absolute; left: 0; top: 0; bottom: 0; width: min(84vw, 330px); display: flex; transform: translateX(-104%); transition: transform .22s ease; box-shadow: 8px 0 24px rgba(0,0,0,.5); }
