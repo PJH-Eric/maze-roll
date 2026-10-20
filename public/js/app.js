@@ -454,20 +454,17 @@ function gameScreen(p) {
   const canvas = h('canvas', { class: 'cv', role: 'img', 'aria-label': T('3D 迷宮遊戲畫面') });
   const hudMode = h('span', { class: 'hmode' }), hudTime = h('b', { class: 'htime', text: '0:00' }), hudExtra = h('span', { class: 'hextra' });
   const hudTop = h('div', { class: 'hudTop' }, hudMode, hudTime, hudExtra);
-  const latencyValue = h('b', { class: 'latencyValue', text: '--' });
+  const latencyValue = h('b', { class: 'latencyValue', text: '--ms' });
   const latencyBadge = h('div', { class: 'latencyBadge', hidden: !online, role: 'status', 'aria-live': 'off' },
-    h('span', { class: 'latencyLight', 'aria-hidden': 'true' }),
-    h('span', { class: 'latencyLabel', text: T('延遲') }), latencyValue,
-    h('span', { class: 'latencyUnit', text: 'ms' }));
+    h('span', { class: 'latencyLight', 'aria-hidden': 'true' }), latencyValue);
   const setLatency = (ms) => {
     const value = Number.isFinite(ms) ? Math.max(0, Math.round(ms)) : null;
-    latencyValue.textContent = value == null ? '--' : String(value);
+    latencyValue.textContent = value == null ? '--ms' : `${value}ms`;
     latencyBadge.classList.toggle('is-good', value != null && value <= 120);
     latencyBadge.classList.toggle('is-warn', value != null && value > 120 && value <= 250);
     latencyBadge.classList.toggle('is-bad', value != null && value > 250);
     const label = value == null ? T('連線延遲，等待回應') : T('連線延遲 {ms} 毫秒', { ms: value });
     latencyBadge.setAttribute('aria-label', label);
-    latencyBadge.title = label;
   };
   if (online) setLatency(net.state === 'online' ? net.rtt : null);
   const graceValue = h('b', { class: 'graceValue', text: '' });

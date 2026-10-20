@@ -102,7 +102,6 @@ window.MR_EN = {
  "已複製連結": "Link copied",
  "已通知房主，等房主開始": "Host notified; waiting for the host to start",
  "已連線": "Connected",
- "延遲": "Latency",
  "連線延遲，等待回應": "Connection latency, waiting for reply",
  "連線延遲 {ms} 毫秒": "Connection latency {ms} milliseconds",
  "建立": "Create",
