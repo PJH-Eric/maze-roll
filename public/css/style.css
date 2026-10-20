@@ -245,6 +245,15 @@ h3 { font-size: 1rem; margin: 10px 0 6px; letter-spacing: .08em; }
 .hmode { font-size: .85rem; opacity: .85; } .htime { font-size: 1.35rem; min-width: 2.6em; text-align: center; font-variant-numeric: tabular-nums; color: var(--maple2); }
 .htime.warn { color: #ff7a66; animation: blink .6s infinite alternate; } @keyframes blink { to { opacity: .55; } }
 .hextra { font-size: .85rem; color: var(--gold); }
+.latencyBadge { position: absolute; z-index: 11; top: calc(64px + var(--st)); right: calc(12px + var(--sr)); display: inline-flex; align-items: center; gap: 5px; min-height: 30px; padding: 4px 9px; border: 2px solid #1a0f08; border-radius: 999px; color: var(--cream); background: linear-gradient(#5a3722, #3b2417); box-shadow: inset 0 1px 0 rgba(255,255,255,.2), 0 3px 0 #1a0f08, 0 5px 9px rgba(0,0,0,.32); font-size: .76rem; font-weight: 900; font-variant-numeric: tabular-nums; white-space: nowrap; pointer-events: none; }
+.latencyBadge[hidden] { display: none; }
+.latencyLight { width: 7px; height: 7px; flex: none; border-radius: 50%; background: #a99d87; box-shadow: 0 0 0 2px rgba(255,255,255,.12); }
+.latencyBadge.is-good .latencyLight { background: #59c776; }
+.latencyBadge.is-warn .latencyLight { background: #f0ad45; }
+.latencyBadge.is-bad .latencyLight { background: #ef6253; }
+.latencyValue { color: var(--maple2); }
+.latencyUnit { margin-left: -3px; color: rgba(243,220,174,.72); font-size: .68rem; }
+.gameScreen.online .miniBtn { top: calc(106px + var(--st)); }
 .graceCountdown { position: absolute; top: clamp(132px, 25%, 236px); left: 50%; z-index: 15; display: grid; place-items: center; width: clamp(144px, 22vmin, 208px); aspect-ratio: 1; overflow: hidden; transform: translate(-50%, -50%); border-radius: 50%; color: var(--cream); background: conic-gradient(from -90deg, var(--red) 0deg 126deg, var(--cream) 126deg 130deg, var(--gold) 130deg 356deg, var(--cream) 356deg 360deg); box-shadow: 0 0 28px rgba(0,0,0,.52), 0 0 24px rgba(255,210,74,.16); animation: graceAura 1.6s ease-in-out infinite alternate, graceIn .32s cubic-bezier(.2,.9,.3,1.2) both; }
 .graceCountdown[hidden] { display: none; }
 .graceCountdown::before { content: ""; position: absolute; inset: 15px; pointer-events: none; border: 1px solid rgba(243,220,174,.3); border-radius: 50%; background: radial-gradient(circle at 35% 25%, var(--walnut2), var(--ink) 76%); box-shadow: inset 0 4px 12px rgba(0,0,0,.58), 0 2px 5px rgba(255,255,255,.12); }
