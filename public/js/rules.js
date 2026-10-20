@@ -54,11 +54,11 @@
   const MAX_PLAYERS = 8;
   const DARK_RADIUS = 2.5;
 
-  /** 崩塌地圖隨參賽人數擴大，讓多人有更多空間周旋。 */
+  /** 搶星星與崩塌地圖皆隨參賽人數擴大，讓多人有更多空間活動。 */
   function sizeFor(mode, diff, playerCount) {
     const level = clamp(diff | 0, 0, SIZE[mode].length - 1);
     const base = SIZE[mode][level];
-    if (mode !== 'collapse') return base;
+    if (mode !== 'collapse' && mode !== 'stars') return base;
     const players = clamp(playerCount | 0, 1, MAX_PLAYERS);
     return base + (players - 1) * 2;
   }
