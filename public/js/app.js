@@ -539,18 +539,17 @@ function gameScreen(p) {
       onClose: (w) => { pauseM = null; if (w !== 'restart' && w !== 'home' && activeGame === game) game.pause(false); },
     });
   }
-  // 小地圖放大：在畫面中央看整張迷宮（單機會先暫停，關閉後繼續）
+  // 小地圖放大：對局持續進行，所有玩家與場地動態由共用地圖繪製持續更新。
   let mapM = null;
   const openMap = () => {
     if (mapM || modalOpen() || game.state === 'ended') return;
     const big = h('canvas', { class: 'bigMap', width: 720, height: 720, role: 'img', 'aria-label': T('迷宮地圖') });
     const w = game.world, dots = w.players.map((p) => h('span', { class: 'lgItem' }, h('i', { class: 'lgDot' + (p.id === meId ? ' me' : ''), style: { background: BALL_COLORS[p.idx % 8] } }), h('span', { text: who(p.name, p.id === meId) })));
     const legend = h('div', { class: 'mapLegend' }, ...dots, w.run ? h('span', { class: 'lgItem' }, icon('flag'), h('span', { text: T('終點') })) : null, w.stars ? h('span', { class: 'lgItem' }, icon('star'), h('span', { text: T('星星') })) : null, w.esc ? h('span', { class: 'lgItem' }, icon('key'), h('span', { text: T('鑰匙・踏板・門（同色一組）') })) : null, w.esc && w.esc.portals.length ? h('span', { class: 'lgItem' }, h('i', { class: 'lgDot', style: { background: 'transparent', border: '3px solid ' + w.esc.portals[0].color } }), h('span', { text: T('傳送門（同色成對）') })) : null);
-    const wasPlaying = !online && game.state === 'play' && !game.paused; if (wasPlaying) game.pause(true);
     game.bigMapEl = big;
     mapM = Modal({ title: T('迷宮地圖'), class: 'mapModal', body: h('div', { class: 'mapBody' }, big, legend, h('p', { class: 'hint', text: T('點一下空白處或按 Esc 關閉') })),
       actions: [Button({ label: T('關閉'), variant: 'primary', onClick: () => mapM.close('ok') })],
-      onClose: () => { window.removeEventListener('resize', onRs); game.bigMapEl = null; mapM = null; window.dispatchEvent(new Event('mapclose')); try { document.querySelectorAll('.scrim').forEach((e) => e.dispatchEvent(new Event('mapclose'))); } catch (e) {} if (wasPlaying && activeGame === game && !pauseM) game.pause(false); } });
+      onClose: () => { window.removeEventListener('resize', onRs); game.bigMapEl = null; mapM = null; window.dispatchEvent(new Event('mapclose')); try { document.querySelectorAll('.scrim').forEach((e) => e.dispatchEvent(new Event('mapclose'))); } catch (e) {} } });
     game._drawMini(big);
     const fit = () => { // 依可用空間縮放地圖，確保不出現捲軸：先放到最大，有溢出就扣掉溢出量
       const body = big.parentElement, view = body && (body.closest('.sa-view') || body.parentElement); if (!view) return;
@@ -571,6 +570,7 @@ function gameScreen(p) {
   const backLocal = () => { if (!cfg) return go('home'); if (cfg.kind === 'daily') return go('daily', { mode: cfg.mode }); if (cfg.kind === 'level') go('levels', { diff: cfg.diff, mode: cfg.mode }); else go('setup', { kind: cfg.kind, mode: cfg.mode, diff: cfg.diff, ai: cfg.ais && cfg.ais.length ? cfg.ais : undefined }); };
 
   function showResults(info) {
+    if (mapM) mapM.close('end');
     const { world, results, mine } = info, solo = world.players.length === 1;
     let title, lines = [], extra = [], nextBtn = null, newBest = false, bestTxt = '', isLevel = false;
     const mineP = meId ? world.byId.get(meId) : null;
