@@ -52,7 +52,7 @@
   const STAR_TIME = 90, GRACE = 10, ESCAPE_GRACE = 10, RACE_CAP = 600, ESCAPE_CAP = 900;
   const COLLAPSE_FALL = 0.22, COLLAPSE_SUDDEN = 60, COLLAPSE_HEAD = 1.2;
   const MAX_PLAYERS = 8;
-  const DARK_RADIUS = 3;
+  const DARK_RADIUS = 2.5;
 
   /** 崩塌地圖隨參賽人數擴大，讓多人有更多空間周旋。 */
   function sizeFor(mode, diff, playerCount) {

@@ -122,7 +122,7 @@ function menuBtn(ic, title, sub, onClick, variant) {
 function nightOption(value, onChange, disabled = false) {
   return h('div', { class: 'nightOption' },
     Toggle({ label: T('關燈挑戰'), value, onChange, disabled }),
-    h('p', { class: 'note', text: T('球周圍 3 格有光；地圖完整顯示。電腦只靠附近探索與本局記憶。') }));
+    h('p', { class: 'note', text: T('球周圍 2.5 格有光；地圖完整顯示。電腦只靠附近探索與本局記憶。') }));
 }
 function homeScreen() {
   $screen.append(h('section', { class: 'screen home' },

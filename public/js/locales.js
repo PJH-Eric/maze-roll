@@ -32,7 +32,7 @@ window.MR_EN = {
  "迷宮地圖": "Maze map",
  "關燈挑戰": "Lights-out challenge",
  "關燈": "Lights out",
- "球周圍 3 格有光；地圖完整顯示。電腦只靠附近探索與本局記憶。": "Light reaches 3 cells around the ball. The map stays complete. Computer opponents explore nearby areas and remember what they discover this round.",
+ "球周圍 2.5 格有光；地圖完整顯示。電腦只靠附近探索與本局記憶。": "Light reaches 2.5 cells around the ball. The map stays complete. Computer opponents explore nearby areas and remember what they discover this round.",
  "關燈挑戰・成績分開記錄": "Lights-out challenge · separate records",
  "放大小地圖": "Enlarge minimap",
  "3D 木質迷宮・滾動小球體驗四種玩法": "3D wooden maze · four ways to roll",
