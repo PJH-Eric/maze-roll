@@ -12,7 +12,7 @@ const MR = window.MR;
 const $app = document.getElementById('app');
 const MODE_INFO = {
   race: { get name() { return T('同圖競速'); }, get sub() { return T('單人抵達即結束；多人第一人抵達後倒數 10 秒結算'); }, icon: 'flag' },
-  stars: { get name() { return T('搶星星'); }, get sub() { return T('多人地圖依人數加大，星星依面積增加；90 秒搶分，撿完提前結束'); }, icon: 'star' },
+  stars: { get name() { return T('搶星星'); }, get sub() { return T('限時依地圖級距與參賽人數增加；星星依面積增加，撿完提前結束'); }, icon: 'star' },
   collapse: { get name() { return T('地板崩塌'); }, get sub() { return T('地磚踩過後延遲碎裂；全員淘汰才結算，存活越久名次越前'); }, icon: 'crown' },
   escape: { get name() { return T('逃出模式'); }, get sub() { return T('拿鑰匙、踩踏板開門；單人逃出即結束，多人首位逃出後完整倒數 10 秒'); }, icon: 'key' },
 };
@@ -105,7 +105,7 @@ function openHow() {
     body: h('div', { class: 'how' },
       sec(T('基本操作'), h('p', {}, T('依設定用虛擬搖桿、手指拖曳、裝置傾斜或按 '), Key('W'), Key('A'), Key('S'), Key('D'), T(' 或方向鍵控制球。牆會擋住球；轉彎前放慢速度，更容易控制方向。'))),
       sec(T('同圖競速'), h('p', { text: T('同一局使用相同迷宮與起點，先滾進終點洞者排名較前。單人抵達即結束；多人（含電腦）首位抵達後完整倒數 10 秒，全員抵達也不提前結算，未抵達者為未完賽。球與球不會碰撞，可互相穿過。') })),
-      sec(T('搶星星'), h('p', { text: T('多人地圖會像地板崩塌模式一樣，每增加一位參賽者，地圖寬和高各增加 2 格（最多按 8 人計算）；星星數也會依地圖格數增加，每 12 格約 1 顆，至少 5 顆。碰到星星得 1 分，星星被撿走就不會再出現，全部被撿完時比賽提前結束。90 秒內分數最高的人贏；同分時，最後一次得分較早者排名較前。') })),
+      sec(T('搶星星'), h('p', { text: T('先依地圖大小和參賽人數合成限時級距，再依級距計時：第一級 30 秒，每升一級增加 30 秒；參賽者最多按 8 人計算。多人地圖每增加一位參賽者，寬和高各增加 2 格；星星數依地圖格數增加，每 12 格約 1 顆，至少 5 顆。碰到星星得 1 分，星星被撿走就不會再出現，全部被撿完時比賽提前結束。限時內分數最高的人贏；同分時，最後一次得分較早者排名較前。') })),
       sec(T('地板崩塌'), h('p', { text: T('踩過的地磚會先晃動，再依難度於約 1.2～3.2 秒後碎裂；停在破洞上會掉落淘汰。60 秒後場地開始隨機崩塌。多人地圖依參賽人數加大；即使只剩一人也繼續，直到全員淘汰才結算，存活越久名次越前。單人記錄存活時間。') })),
       sec(T('逃出模式'), h('p', { text: T('迷宮裡有幾道彩色的門擋住去路。同色的鑰匙要繞去支線撿起來，帶著鑰匙走到門前門就會打開；踩踏板的門只會開一小段時間，要在關上前衝過去（快關上時門會閃爍）。每個人的鑰匙與門各自獨立，不會被別人搶走。路旁小岔路上成對的發光光圈是傳送門，走進一邊會從另一邊出來，可以當作捷徑。單人抵達即結束；多人首位抵達後完整倒數 10 秒才結算，未抵達者為未完賽。') })),
       sec(T('闖關模式'), h('p', { text: T('競速與逃出各有五種難度，每種 100 關。五種難度都可選；各難度內的關卡依序解鎖。完成時間評 1～3 顆星。') })),
@@ -210,12 +210,19 @@ function dailyRecordKey(kind, mode, date, diff) {
 function setupScreen(p) {
   const vsai = p.kind === 'vsai', S = { mode: p.mode || 'race', diff: p.diff != null ? p.diff : 1, lightsOut: p.lightsOut === true, ai: p.ai || [1], count: p.ai ? p.ai.length : 1 };
   const best = h('p', { class: 'note best' }), compList = h('div', { class: 'comps' }), countLbl = h('b', { class: 'count' });
-  const modeDescription = () => vsai ? MODE_INFO[S.mode].sub : ({
-    race: T('單人滾進終點洞即結束，挑戰最快完成時間。'),
-    stars: T('90 秒內盡量撿星星，每顆 1 分；全部撿完即提前結束。'),
-    collapse: T('避開持續崩塌的地磚，掉落後結束，挑戰最長存活時間。'),
-    escape: T('繞路拿鑰匙、踩踏板開門，逃到終點即結束，挑戰最快完成時間。'),
-  }[S.mode]);
+  const playerCount = () => vsai ? S.count + 1 : 1;
+  const modeDescription = () => {
+    if (S.mode === 'stars') {
+      const size = MR.sizeFor('stars', S.diff, playerCount());
+      return T('本局級距 {tier}，限時 {seconds} 秒；星星撿完提前結束。', { tier: MR.starTimeTier(size, playerCount()), seconds: MR.starTimeFor(size, playerCount()) });
+    }
+    if (vsai) return MODE_INFO[S.mode].sub;
+    return ({
+      race: T('單人滾進終點洞即結束，挑戰最快完成時間。'),
+      collapse: T('避開持續崩塌的地磚，掉落後結束，挑戰最長存活時間。'),
+      escape: T('繞路拿鑰匙、踩踏板開門，逃到終點即結束，挑戰最快完成時間。'),
+    })[S.mode];
+  };
   const modeDesc = h('p', { class: 'note', text: modeDescription() });
   const showBest = () => {
     if (vsai) return;
@@ -231,22 +238,23 @@ function setupScreen(p) {
   };
   const diffChipsWrap = h('div');
   const drawDiffChips = () => {
-    const playerCount = vsai ? S.count + 1 : 1;
+    const count = playerCount();
     const options = MR.DIFFS.map((d, i) => {
-      const size = MR.sizeFor(S.mode, i, playerCount);
-      return { value: i, label: T(d), sub: `${size}×${size}` };
+      const size = MR.sizeFor(S.mode, i, count);
+      const sub = `${size}×${size}` + (S.mode === 'stars' ? ` · ${T('第 {tier} 級・{seconds} 秒', { tier: MR.starTimeTier(size, count), seconds: MR.starTimeFor(size, count) })}` : '');
+      return { value: i, label: T(d), sub };
     });
-    diffChipsWrap.replaceChildren(Chips({ label: T('迷宮難度'), value: S.diff, options, onChange: (v) => { S.diff = v; showBest(); } }));
+    diffChipsWrap.replaceChildren(Chips({ label: T('迷宮難度'), value: S.diff, options, onChange: (v) => { S.diff = v; modeDesc.textContent = modeDescription(); showBest(); } }));
   };
   const modeChips = Chips({ label: T('玩法'), value: S.mode, options: MR.MODES.map((m) => ({ value: m, label: MODE_INFO[m].name, icon: MODE_INFO[m].icon })), onChange: (v) => { S.mode = v; modeDesc.textContent = modeDescription(); drawDiffChips(); showBest(); } });
   drawDiffChips();
   const stepper = vsai ? h('div', { class: 'stepper' },
     IconButton({ icon: 'minus', ariaLabel: T('減少一位電腦'), onClick: () => {
-      if (S.count > 1) { S.count--; drawComps(); drawDiffChips(); }
+      if (S.count > 1) { S.count--; drawComps(); drawDiffChips(); modeDesc.textContent = modeDescription(); }
     } }),
     countLbl,
     IconButton({ icon: 'plus', ariaLabel: T('增加一位電腦'), onClick: () => {
-      if (S.count < 7) { S.count++; while (S.ai.length < S.count) S.ai.push(1); drawComps(); drawDiffChips(); }
+      if (S.count < 7) { S.count++; while (S.ai.length < S.count) S.ai.push(1); drawComps(); drawDiffChips(); modeDesc.textContent = modeDescription(); }
     } })) : null;
   const sections = [h('h3', { text: T('玩法') }), modeChips, modeDesc, nightOption(S.lightsOut, (value) => { S.lightsOut = value; ctx.lightsOut = value; showBest(); }), h('h3', { text: T('迷宮難度') }), diffChipsWrap, vsai ? h('h3', { text: T('電腦對手') }) : best, vsai ? stepper : null, vsai ? compList : null];
   $screen.append(h('section', { class: 'screen setup' }, topbar(vsai ? T('對電腦') : T('自由練習'), () => go('home')),
@@ -382,12 +390,16 @@ function roomScreen() {
     const isHost = r.host === session.you, me = r.members.find((m) => m.id === session.you), isPlayer = me && me.role === 'player';
     const players = r.members.filter((m) => m.role === 'player'), sp = r.members.filter((m) => m.role === 'spec');
     const activePlayerCount = players.filter((p) => p.online).length;
+    const mapSize = MR.sizeFor(r.mode, r.diff, activePlayerCount);
+    const mapNote = r.mode === 'stars'
+      ? T('目前 {n} 位玩家的地圖大小：{size}×{size}；搶星第 {tier} 級、限時 {seconds} 秒', { n: activePlayerCount, size: mapSize, tier: MR.starTimeTier(mapSize, activePlayerCount), seconds: MR.starTimeFor(mapSize, activePlayerCount) })
+      : T('目前 {n} 位玩家的地圖大小：{size}×{size}', { n: activePlayerCount, size: mapSize });
     rc(head, h('div', {}, h('small', { text: T('房間代碼') }), h('b', { class: 'code', text: r.code })), Button({ label: T('離開房間'), size: 'small', onClick: () => { net.send({ t: 'leave' }); go('online'); } }));
     rc(settings,
       h('h3', { text: T('玩法') }), Chips({ label: T('玩法'), value: r.mode, options: MR.MODES.map((m) => ({ value: m, label: MODE_INFO[m].name, disabled: !isHost })), onChange: (v) => net.send({ t: 'set', mode: v }) }),
       h('p', { class: 'note', text: MODE_INFO[r.mode].sub }),
       h('h3', { text: T('迷宮難度') }), Chips({ label: T('難度'), value: r.diff, options: MR.DIFFS.map((d, i) => ({ value: i, label: T(d), disabled: !isHost })), onChange: (v) => net.send({ t: 'set', diff: v }) }),
-      h('p', { class: 'note', text: T('目前 {n} 位玩家的地圖大小：{size}×{size}', { n: activePlayerCount, size: MR.sizeFor(r.mode, r.diff, activePlayerCount) }) }),
+      h('p', { class: 'note', text: mapNote }),
       nightOption(r.lightsOut, (value) => net.send({ t: 'set', lightsOut: value }), !isHost || r.state !== 'waiting'),
       isHost ? null : h('p', { class: 'note', text: T('只有房主能更改設定。') }));
     seats.replaceChildren();

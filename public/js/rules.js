@@ -50,7 +50,8 @@
   const PHYS = { R: 0.36, T: 0.12, ACC: 9.5, FRI: 2.6, REST: 0.25 };
   const STAR_R = 0.55, GOAL_R = 0.5;
   const STAR_CELLS_PER_STAR = 12, MIN_STARS = 5;
-  const STAR_TIME = 90, GRACE = 10, ESCAPE_GRACE = 10, RACE_CAP = 600, ESCAPE_CAP = 900;
+  const STAR_TIME_BASE = 30, STAR_TIME_PER_TIER = 30;
+  const GRACE = 10, ESCAPE_GRACE = 10, RACE_CAP = 600, ESCAPE_CAP = 900;
   const COLLAPSE_FALL = 0.22, COLLAPSE_SUDDEN = 60, COLLAPSE_HEAD = 1.2;
   const MAX_PLAYERS = 8;
   const DARK_RADIUS = 2.5;
@@ -62,6 +63,19 @@
     if (mode !== 'collapse' && mode !== 'stars') return base;
     const players = clamp(playerCount | 0, 1, MAX_PLAYERS);
     return base + (players - 1) * 2;
+  }
+
+  /** 搶星星級距從 1 起算：依實際地圖尺寸還原難度級距，再合併參賽人數級距。 */
+  function starTimeTier(size, playerCount) {
+    const playerTiers = clamp(playerCount | 0, 1, MAX_PLAYERS) - 1;
+    const baseMapSize = Math.max(SIZE.stars[0], (size | 0) - playerTiers * 2);
+    let mapTier = 0;
+    for (let i = 1; i < SIZE.stars.length; i++) if (baseMapSize >= SIZE.stars[i]) mapTier = i;
+    return mapTier + playerTiers + 1;
+  }
+  /** 第一級 30 秒，之後每升一級增加 30 秒。 */
+  function starTimeFor(size, playerCount) {
+    return STAR_TIME_BASE + (starTimeTier(size, playerCount) - 1) * STAR_TIME_PER_TIER;
   }
 
   // ---------- 亂數 ----------
@@ -365,6 +379,7 @@
         id: p.id, name: p.name, kind: p.kind || 'human', ai: p.ai, idx: i,
         x: 0.5, y: 0.5, vx: 0, vy: 0, alive: true, score: 0, fin: null, out: null, last: 0, over: 0, place: 0,
       }));
+      this.timeLimit = this.mode === 'stars' ? starTimeFor(this.size, this.players.length) : null;
       if (this.mode === 'escape') {
         this.esc = buildEscape(m, this.diff, this.seed);
         const G = this.esc.doors.length;
@@ -532,7 +547,7 @@
           }
         }
       }
-      if (this.t >= STAR_TIME || !this.stars.length) this._finish(); // 時間到或星星被搶光都結束
+      if (this.t >= this.timeLimit || !this.stars.length) this._finish(); // 時間到或星星被搶光都結束
     }
     _collapse(dt) {
       const m = this.maze;
@@ -619,7 +634,7 @@
 
   return {
     N, E, S, W, DX, DY, OPP, DIRS, MODES, MODE_NAMES, isRun, DOOR_COLORS, FOREVER, ESCAPE_GRACE, DIFFS, DIFF_THEME, braidFor, AI_NAMES, SIZE, BRAID, CRUMBLE, LEVELS_PER_DIFF, PHYS,
-    STAR_R, GOAL_R, STAR_TIME, GRACE, MAX_PLAYERS, COLLAPSE_SUDDEN, COLLAPSE_HEAD, DARK_RADIUS,
-    rng, hashSeed, dailySeed, PORTAL_COLORS, clamp, makeMaze, cellCenter, cellAt, stepBall, levelSize, levelSeed, levelPar, levelStars, sizeFor, World,
+    STAR_R, GOAL_R, GRACE, MAX_PLAYERS, COLLAPSE_SUDDEN, COLLAPSE_HEAD, DARK_RADIUS,
+    rng, hashSeed, dailySeed, PORTAL_COLORS, clamp, makeMaze, cellCenter, cellAt, stepBall, levelSize, levelSeed, levelPar, levelStars, sizeFor, starTimeTier, starTimeFor, World,
   };
 });

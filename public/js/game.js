@@ -207,7 +207,7 @@ export class Game {
   }
   _hud() {
     const w = this.world; if (!this.hooks.onHud) return;
-    const total = w.mode === 'stars' ? MR.STAR_TIME : null;
+    const total = w.mode === 'stars' ? w.timeLimit : null;
     this.hooks.onHud({ mode: w.mode, t: w.t, left: total != null ? Math.max(0, total - w.t) : null, grace: this.online ? this.graceLeft : w.graceLeft, rows: this.standings(), state: this.state, meState: this.meState, alive: w.players.filter((p) => p.alive).length, follow: this._followId() });
   }
   /** 小地圖：依難度木色繪製的迷你木盤；牆體靜態層只畫一次，其餘每次重畫。 */
