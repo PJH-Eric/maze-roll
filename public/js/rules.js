@@ -49,6 +49,7 @@
 
   const PHYS = { R: 0.36, T: 0.12, ACC: 9.5, FRI: 2.6, REST: 0.25 };
   const STAR_R = 0.55, GOAL_R = 0.5;
+  const STAR_CELLS_PER_STAR = 12, MIN_STARS = 5;
   const STAR_TIME = 90, GRACE = 10, ESCAPE_GRACE = 10, RACE_CAP = 600, ESCAPE_CAP = 900;
   const COLLAPSE_FALL = 0.22, COLLAPSE_SUDDEN = 60, COLLAPSE_HEAD = 1.2;
   const MAX_PLAYERS = 8;
@@ -379,7 +380,7 @@
         this.players.forEach((p, i) => { const c = cellCenter(m, spots[i]); p.x = c.x; p.y = c.y; p.spawn = spots[i]; });
         if (this.mode === 'stars') {
           this.stars = []; this.nextStar = 1;
-          const cnt = Math.max(5, Math.round(m.n / 12)); // 星星不再補生，數量要夠一局搶
+          const cnt = Math.max(MIN_STARS, Math.ceil(m.n / STAR_CELLS_PER_STAR)); // 依地圖面積維持星星密度，且至少有五顆
           const taken = new Set(spots);
           for (let k = 0; k < cnt; k++) this._spawnStar(taken, null, false);
         } else {
