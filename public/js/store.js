@@ -24,14 +24,15 @@ export const store = {
   on(f) { subs.add(f); return () => subs.delete(f); },
   // 闖關：每個難度一個陣列，值為 0（未過）或 1～3 星
   // 闖關進度的鍵：競速沿用原本的難度編號，逃出模式用 'e' + 難度編號（各自獨立）
-  levelKey: (diff, mode) => (mode === 'escape' ? 'e' + diff : diff),
-  levelStars(diff, mode) { const a = load().levels[this.levelKey(diff, mode)] || []; return a; },
-  unlockedLevel(diff, mode) { const a = load().levels[this.levelKey(diff, mode)] || []; let n = 0; while (n < a.length && a[n] > 0) n++; return Math.min(100, n + 1); },
-  totalStars(diff, mode) { return (load().levels[this.levelKey(diff, mode)] || []).reduce((a, b) => a + b, 0); },
+  recordKey: (key, lightsOut = false) => lightsOut ? 'dark:' + key : key,
+  levelKey(diff, mode, lightsOut = false) { return this.recordKey(mode === 'escape' ? 'e' + diff : diff, lightsOut); },
+  levelStars(diff, mode, lightsOut = false) { return load().levels[this.levelKey(diff, mode, lightsOut)] || []; },
+  unlockedLevel(diff, mode) { const day = this.levelStars(diff, mode), dark = this.levelStars(diff, mode, true); let n = 0; while (n < Math.max(day.length, dark.length) && Math.max(day[n] || 0, dark[n] || 0) > 0) n++; return Math.min(100, n + 1); },
+  totalStars(diff, mode, lightsOut = false) { return this.levelStars(diff, mode, lightsOut).reduce((a, b) => a + b, 0); },
   /** 五種難度一開始就全部開放（關卡仍依序解鎖）。 */
   diffUnlocked() { return true; },
-  setLevelStars(diff, n, stars, mode) {
-    const L = load().levels, k = this.levelKey(diff, mode); const a = (L[k] = (L[k] || []).slice());
+  setLevelStars(diff, n, stars, mode, lightsOut = false) {
+    const L = load().levels, k = this.levelKey(diff, mode, lightsOut); const a = (L[k] = (L[k] || []).slice());
     while (a.length < n) a.push(0);
     if ((a[n - 1] || 0) < stars) a[n - 1] = stars; save(); return a[n - 1];
   },
@@ -39,7 +40,7 @@ export const store = {
   /** 每日挑戰的連續天數：從今天（今天還沒玩就從昨天）往回數，任一玩法／難度完成就算那天有玩。 */
   dailyStreak(today) {
     const dates = Object.keys(load().best)
-      .map((key) => /^daily-(?:race-)?(\d{4}-\d{2}-\d{2})-\d+$/.exec(key))
+      .map((key) => /^(?:dark:)?daily-(?:race-)?(\d{4}-\d{2}-\d{2})-\d+$/.exec(key))
       .filter(Boolean)
       .map((match) => match[1]);
     const done = new Set(dates);
@@ -48,8 +49,9 @@ export const store = {
     return n;
   },
   // 最佳紀錄：race 越小越好（秒），stars 分數越大越好，collapse 存活秒數越大越好
-  getBest(key) { return load().best[key]; },
-  recordBest(key, v, lowerIsBetter) {
+  getBest(key, lightsOut = false) { return load().best[this.recordKey(key, lightsOut)]; },
+  recordBest(key, v, lowerIsBetter, lightsOut = false) {
+    key = this.recordKey(key, lightsOut);
     const cur = load().best[key];
     if (cur == null || (lowerIsBetter ? v < cur : v > cur)) { load().best[key] = v; save(); return true; }
     return false;

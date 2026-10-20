@@ -23,10 +23,11 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   const a = client(hub, '小明'), b = client(hub, '小華'), s1 = client(hub, '路人');
   assert(a.last('hi').mid && a.last('rooms'), 'hello 回應'); ok('hello 與大廳列表');
 
-  a.send({ t: 'create', name: '<b>小明</b>', mode: 'stars', diff: 1 });
+  a.send({ t: 'create', name: '<b>小明</b>', mode: 'stars', diff: 1, lightsOut: true });
   const joined = a.last('joined'); assert(joined && joined.role === 'player');
   const room = a.last('room').room; assert.strictEqual(room.members[0].name, 'b小明/b'.replace('/', '') === '' ? '' : room.members[0].name); assert(!/[<>]/.test(room.members[0].name)); ok('建房、暱稱消毒');
   assert.strictEqual(room.mode, 'stars'); assert(room.invite.tp && room.invite.ts);
+  assert.equal(room.lightsOut, true);
 
   // 邀請：player token → 玩家；spectator token → 觀戰；無效
   b.send({ t: 'peek', code: room.code, token: room.invite.tp }); assert(b.last('peek').ok && b.last('peek').role === 'player');
@@ -52,11 +53,17 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   a.send({ t: 'start' }); assert.strictEqual(a.last('err').code, 'notready'); ok('有人未準備不得開始');
   b.send({ t: 'ready', v: true });
   a.send({ t: 'set', mode: 'race', diff: 0 }); assert.strictEqual(a.last('room').room.mode, 'race'); assert(!a.last('room').room.members.find((m) => m.id === b.mid).ready); ok('房主改設定會重置準備');
-  b.send({ t: 'set', mode: 'stars' }); assert.strictEqual(a.last('room').room.mode, 'race'); ok('非房主不能改設定');
+  b.send({ t: 'set', mode: 'stars', lightsOut: false }); assert.strictEqual(a.last('room').room.mode, 'race'); assert.equal(a.last('room').room.lightsOut, true); ok('非房主不能改設定');
   b.send({ t: 'ready', v: true }); a.send({ t: 'start' });
   assert(a.last('init') && a.last('init').mode === 'race' && s1.last('init'), '全員含觀戰收到 init');
   const init = a.last('init'); assert.strictEqual(init.players.length, 2);
+  assert.equal(init.lightsOut, true); assert.equal(s1.last('init').lightsOut, true);
+  a.send({ t: 'set', lightsOut: false }); assert.equal(hub.rooms.get(room.code).lightsOut, true);
+  ok('關燈：玩家與觀戰者同步設定，開局後房主也不可切換');
   await sleep(120); assert(a.last('go')); ok('倒數後 go');
+  hub._resume(hub.rooms.get(room.code), hub.members.get(a.mid));
+  assert.equal(a.last('init').lightsOut, true); assert.equal(a.last('init').resume, true);
+  ok('關燈：重連與中途觀戰沿用本局設定');
 
   // 回到起點：伺服器重設位置、廣播事件、1 秒冷卻
   {

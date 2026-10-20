@@ -65,7 +65,7 @@ export const IconButton = (o) => Button(Object.assign({ class: 'iconbtn' }, o, {
 export function Toggle(o) {
   let val = !!o.value;
   const knob = h('span', { class: 'tknob' });
-  const b = h('button', { type: 'button', role: 'switch', class: 'toggle', 'aria-checked': String(val), 'aria-label': o.label }, knob);
+  const b = h('button', { type: 'button', role: 'switch', class: 'toggle', disabled: o.disabled || null, 'aria-checked': String(val), 'aria-label': o.label }, knob);
   const sync = () => { b.setAttribute('aria-checked', String(val)); b.classList.toggle('on', val); };
   b.addEventListener('click', () => { val = !val; sync(); o.onChange && o.onChange(val); });
   sync();

@@ -119,6 +119,11 @@ const LOGO = '<svg viewBox="0 0 200 120" aria-hidden="true"><rect x="8" y="8" wi
 function menuBtn(ic, title, sub, onClick, variant) {
   return h('button', { type: 'button', class: 'btn big ' + (variant || ''), on: { click: onClick } }, icon(ic), h('span', { class: 'tx' }, h('b', { text: title }), h('small', { text: sub })));
 }
+function nightOption(value, onChange, disabled = false) {
+  return h('div', { class: 'nightOption' },
+    Toggle({ label: T('關燈挑戰'), value, onChange, disabled }),
+    h('p', { class: 'note', text: T('球周圍 3 格有光；地圖完整顯示。電腦只靠附近探索與本局記憶。') }));
+}
 function homeScreen() {
   $screen.append(h('section', { class: 'screen home' },
     ScrollArea(h('div', { class: 'homeIn' },
@@ -136,13 +141,15 @@ function homeScreen() {
 
 // ---------- 畫面：闖關 ----------
 function levelsScreen(p) {
+  let lightsOut = p.lightsOut === true;
   const dOpen = () => true; // 五種難度皆可直接選擇，不需星星門檻
   let lmode = p.mode === 'escape' ? 'escape' : 'race';
   let diff = p.diff != null && dOpen(p.diff) ? p.diff : Math.max(0, MR.DIFFS.findIndex((_, i) => dOpen(i) && store.levelStars(i, lmode).filter((x) => x > 0).length < 100));
   const grid = h('div', { class: 'levelGrid' }), prog = h('p', { class: 'note' });
-  const sa = ScrollArea(h('div', { class: 'levelWrap' }, grid), { class: 'levelScroll', label: T('關卡列表') });
+  const levelControls = h('div', { class: 'levelControls' });
+  const sa = ScrollArea(h('div', {}, levelControls, h('div', { class: 'levelWrap' }, grid)), { class: 'levelScroll', label: T('關卡列表') });
   const draw = () => {
-    const stars = store.levelStars(diff, lmode), un = store.unlockedLevel(diff, lmode), done = stars.filter((x) => x > 0).length, tot = stars.reduce((a, b) => a + b, 0);
+    const stars = store.levelStars(diff, lmode, lightsOut), un = store.unlockedLevel(diff, lmode), done = stars.filter((x) => x > 0).length, tot = stars.reduce((a, b) => a + b, 0);
     grid.dataset.diff = String(diff); grid.style.setProperty('--dtheme', MR.DIFF_THEME[diff].accent);
     const nx = '';
     const progTxt = T('{wood}・已通過 {done}/100 關・共 {tot} 顆星{nx}・迷宮大小 {x5}×{x6} ～ {x7}×{x8}', { wood: T(MR.DIFF_THEME[diff].wood), done, tot, nx, x5: MR.levelSize(diff, 1, lmode), x6: MR.levelSize(diff, 1, lmode), x7: MR.levelSize(diff, 100, lmode), x8: MR.levelSize(diff, 100, lmode) });
@@ -150,22 +157,23 @@ function levelsScreen(p) {
     grid.replaceChildren();
     for (let n = 1; n <= 100; n++) {
       const locked = n > un, s = stars[n - 1] || 0;
-      const bt = !locked && store.getBest((lmode === 'escape' ? 'lve-' : 'lv-') + diff + '-' + n);
+      const bt = !locked && store.getBest((lmode === 'escape' ? 'lve-' : 'lv-') + diff + '-' + n, lightsOut);
       const b = h('button', { type: 'button', class: 'lv' + (locked ? ' locked' : '') + (s ? ' done' : '') + (n === un ? ' next' : ''), disabled: locked || null, 'aria-label': T('第 {n} 關{x2}', { n, x2: locked ? T('（未解鎖）') : s ? T('，{s} 顆星', { s }) : '' }) },
         h('b', { text: String(n) }), locked ? icon('lock') : h('span', { class: 'stars', text: '★'.repeat(s) + '☆'.repeat(3 - s) }), locked ? null : h('span', { class: 'lvTime', text: bt ? fmtShort(bt) : '--' }));
-      if (!locked) b.addEventListener('click', () => startLocal({ kind: 'level', mode: lmode, diff, level: n, ais: [] }));
+      if (!locked) b.addEventListener('click', () => startLocal({ kind: 'level', mode: lmode, diff, level: n, lightsOut, ais: [] }));
       grid.append(b);
-      if (n === un) setTimeout(() => b.scrollIntoView({ block: 'center' }), 30);
     }
   };
   const modeChips = Chips({ label: T('玩法'), value: lmode, options: ['race', 'escape'].map((m) => ({ value: m, label: MODE_INFO[m].name, icon: MODE_INFO[m].icon })), onChange: (v) => { lmode = v; draw(); sa.view.scrollTop = 0; } });
   const chips = Chips({ label: T('難度'), value: diff, options: MR.DIFFS.map((d, i) => ({ value: i, label: T(d), disabled: !dOpen(i), sub: T(MR.DIFF_THEME[i].wood) })), onChange: (v) => { diff = v; draw(); sa.view.scrollTop = 0; } });
-  $screen.append(h('section', { class: 'screen levels' }, topbar(T('闖關模式'), () => go('home')), h('div', { class: 'body' }, panel(modeChips, chips, prog, sa))));
+  levelControls.append(modeChips, nightOption(lightsOut, (value) => { lightsOut = value; ctx.lightsOut = value; draw(); }), chips, prog);
+  $screen.append(h('section', { class: 'screen levels' }, topbar(T('闖關模式'), () => go('home')), h('div', { class: 'body' }, panel(sa))));
   draw();
 }
 
 // ---------- 畫面：每日挑戰（同日、同玩法與難度共用同一張迷宮）----------
 function dailyScreen(p = {}) {
+  let lightsOut = p.lightsOut === true;
   const date = store.ymd(new Date()), streak = store.dailyStreak(date);
   let mode = p.mode === 'race' ? 'race' : 'escape';
   const mazeNote = h('p', { class: 'note' });
@@ -174,14 +182,15 @@ function dailyScreen(p = {}) {
     mazeNote.textContent = T('{date}・今天的{mode_}迷宮，同難度玩家共用相同地圖', { date, mode_: MODE_INFO[mode].name });
     rows.replaceChildren(...MR.DIFFS.map((d, i) => {
       const bestKey = dailyRecordKey('daily', mode, date, i), starsKey = dailyRecordKey('dailys', mode, date, i);
-      const b = store.getBest(bestKey), st = store.getBest(starsKey) || 0, sz = MR.SIZE[mode][i];
-      return menuBtn(MODE_INFO[mode].icon, T(d) + '・' + sz + '×' + sz, b != null ? '★'.repeat(st) + '☆'.repeat(3 - st) + '・' + fmtShort(b) : T('尚未挑戰'), () => startLocal({ kind: 'daily', mode, diff: i, date, ais: [] }), b != null ? '' : 'primary');
+      const b = store.getBest(bestKey, lightsOut), st = store.getBest(starsKey, lightsOut) || 0, sz = MR.SIZE[mode][i];
+      return menuBtn(MODE_INFO[mode].icon, T(d) + '・' + sz + '×' + sz, b != null ? '★'.repeat(st) + '☆'.repeat(3 - st) + '・' + fmtShort(b) : T('尚未挑戰'), () => startLocal({ kind: 'daily', mode, diff: i, date, lightsOut, ais: [] }), b != null ? '' : 'primary');
     }));
   };
   const modeChips = Chips({ label: T('每日模式'), value: mode, options: ['race', 'escape'].map((m) => ({ value: m, label: MODE_INFO[m].name, icon: MODE_INFO[m].icon })), onChange: (v) => { mode = v; ctx = Object.assign({}, ctx, { mode }); draw(); } });
   $screen.append(h('section', { class: 'screen setup' }, topbar(T('每日挑戰'), () => go('home')),
     h('div', { class: 'body' }, panel(ScrollArea(h('div', { class: 'setupBody' },
       modeChips,
+      nightOption(lightsOut, (value) => { lightsOut = value; ctx.lightsOut = value; draw(); }),
       mazeNote,
       h('p', { class: 'note', text: streak ? T('連續挑戰 {n} 天', { n: streak }) : T('今天完成任一每日挑戰，就開始累積連續天數') }),
       rows), { class: 'setupScroll' })))));
@@ -194,12 +203,12 @@ function dailyRecordKey(kind, mode, date, diff) {
 
 // ---------- 畫面：自由練習／對電腦 設定 ----------
 function setupScreen(p) {
-  const vsai = p.kind === 'vsai', S = { mode: p.mode || 'race', diff: p.diff != null ? p.diff : 1, ai: p.ai || [1], count: p.ai ? p.ai.length : 1 };
+  const vsai = p.kind === 'vsai', S = { mode: p.mode || 'race', diff: p.diff != null ? p.diff : 1, lightsOut: p.lightsOut === true, ai: p.ai || [1], count: p.ai ? p.ai.length : 1 };
   const best = h('p', { class: 'note best' }), compList = h('div', { class: 'comps' }), countLbl = h('b', { class: 'count' });
   const modeDesc = h('p', { class: 'note', text: MODE_INFO[S.mode].sub });
   const showBest = () => {
     if (vsai) return;
-    const v = store.getBest(S.mode + '-' + S.diff);
+    const v = store.getBest(S.mode + '-' + S.diff, S.lightsOut);
     best.textContent = v == null ? T('還沒有紀錄，來挑戰看看！') : MR.isRun(S.mode) ? T('本機最佳：{x1}', { x1: fmtShort(v) }) : S.mode === 'stars' ? T('本機最佳：{v} 顆星星', { v }) : T('本機最佳：存活 {x1} 秒', { x1: v.toFixed(2) });
   };
   const drawComps = () => {
@@ -228,10 +237,10 @@ function setupScreen(p) {
     IconButton({ icon: 'plus', ariaLabel: T('增加一位電腦'), onClick: () => {
       if (S.count < 7) { S.count++; while (S.ai.length < S.count) S.ai.push(1); drawComps(); drawDiffChips(); }
     } })) : null;
-  const sections = [h('h3', { text: T('玩法') }), modeChips, modeDesc, h('h3', { text: T('迷宮難度') }), diffChipsWrap, vsai ? h('h3', { text: T('電腦對手') }) : best, vsai ? stepper : null, vsai ? compList : null];
+  const sections = [h('h3', { text: T('玩法') }), modeChips, modeDesc, nightOption(S.lightsOut, (value) => { S.lightsOut = value; ctx.lightsOut = value; showBest(); }), h('h3', { text: T('迷宮難度') }), diffChipsWrap, vsai ? h('h3', { text: T('電腦對手') }) : best, vsai ? stepper : null, vsai ? compList : null];
   $screen.append(h('section', { class: 'screen setup' }, topbar(vsai ? T('對電腦') : T('自由練習'), () => go('home')),
     h('div', { class: 'body' }, panel(ScrollArea(h('div', { class: 'setupBody' }, ...sections), { class: 'setupScroll' }),
-      h('div', { class: 'panelActions' }, Button({ label: T('開始遊戲'), variant: 'primary', size: 'big', onClick: () => startLocal({ kind: p.kind, mode: S.mode, diff: S.diff, ais: vsai ? S.ai.slice(0, S.count) : [] }) }))))));
+      h('div', { class: 'panelActions' }, Button({ label: T('開始遊戲'), variant: 'primary', size: 'big', onClick: () => startLocal({ kind: p.kind, mode: S.mode, diff: S.diff, lightsOut: S.lightsOut, ais: vsai ? S.ai.slice(0, S.count) : [] }) }))))));
   showBest(); if (vsai) drawComps();
 }
 
@@ -241,7 +250,7 @@ function startLocal(cfg) {
   cfg.ais.forEach((lv, i) => players.push({ id: 'ai' + (i + 1), name: T('電腦{x1}・{AI_NAMES_lv_}', { x1: i + 1, AI_NAMES_lv_: T(MR.AI_NAMES[lv]) }), kind: 'ai', ai: lv }));
   let seed, size;
   if (cfg.kind === 'level') { seed = MR.levelSeed(cfg.diff, cfg.level, cfg.mode); size = MR.levelSize(cfg.diff, cfg.level, cfg.mode); } else if (cfg.kind === 'daily') { seed = MR.dailySeed(cfg.date, cfg.diff, cfg.mode); size = MR.SIZE[cfg.mode][cfg.diff]; } else seed = (Math.random() * 4294967296) >>> 0;
-  go('game', { local: true, cfg, players, mode: cfg.mode, diff: cfg.diff, seed, size, meId: 'me' });
+  go('game', { local: true, cfg, players, mode: cfg.mode, diff: cfg.diff, lightsOut: cfg.lightsOut === true, seed, size, meId: 'me' });
 }
 
 // ---------- 線上：共用 session（任何畫面都能收到房間／聊天更新）----------
@@ -333,10 +342,10 @@ function onlineScreen(p) {
   };
   net.on(sub); const off = () => net.handlers.delete(sub);
   const createRoom = () => {
-    let mode = 'race', diff = 2, mm;
+    let mode = 'race', diff = 2, lightsOut = false, mm;
     const body = h('div', {}, h('h3', { text: T('玩法') }), Chips({ label: T('玩法'), value: mode, options: MR.MODES.map((m) => ({ value: m, label: MODE_INFO[m].name })), onChange: (v) => { mode = v; } }),
-      h('h3', { text: T('迷宮難度') }), Chips({ label: T('難度'), value: diff, options: MR.DIFFS.map((d, i) => ({ value: i, label: T(d) })), onChange: (v) => { diff = v; } }), h('p', { class: 'note', text: T('進房後房主還可以再調整。') }));
-    mm = Modal({ title: T('建立房間'), body, actions: [Button({ label: T('取消'), onClick: () => mm.close() }), Button({ label: T('建立'), variant: 'primary', onClick: () => { net.send({ t: 'create', name: nm(), mode, diff }); mm.close(); } })] });
+      h('h3', { text: T('迷宮難度') }), Chips({ label: T('難度'), value: diff, options: MR.DIFFS.map((d, i) => ({ value: i, label: T(d) })), onChange: (v) => { diff = v; } }), nightOption(lightsOut, (value) => { lightsOut = value; }), h('p', { class: 'note', text: T('進房後房主還可以再調整。') }));
+    mm = Modal({ title: T('建立房間'), body, actions: [Button({ label: T('取消'), onClick: () => mm.close() }), Button({ label: T('建立'), variant: 'primary', onClick: () => { net.send({ t: 'create', name: nm(), mode, diff, lightsOut }); mm.close(); } })] });
   };
   $screen.append(h('section', { class: 'screen online' }, topbar(T('線上對戰'), () => go('home')),
     h('div', { class: 'body' }, panel(ScrollArea(h('div', { class: 'onlineBody' },
@@ -368,6 +377,7 @@ function roomScreen() {
       h('p', { class: 'note', text: MODE_INFO[r.mode].sub }),
       h('h3', { text: T('迷宮難度') }), Chips({ label: T('難度'), value: r.diff, options: MR.DIFFS.map((d, i) => ({ value: i, label: T(d), disabled: !isHost })), onChange: (v) => net.send({ t: 'set', diff: v }) }),
       h('p', { class: 'note', text: T('目前 {n} 位玩家的地圖大小：{size}×{size}', { n: activePlayerCount, size: MR.sizeFor(r.mode, r.diff, activePlayerCount) }) }),
+      nightOption(r.lightsOut, (value) => net.send({ t: 'set', lightsOut: value }), !isHost || r.state !== 'waiting'),
       isHost ? null : h('p', { class: 'note', text: T('只有房主能更改設定。') }));
     seats.replaceChildren();
     for (let i = 0; i < r.max; i++) {
@@ -405,13 +415,13 @@ function roomScreen() {
 let activeGame = null;
 function gameScreen(p) {
   const online = !!p.online;
-  let players, meId, mode, diff, seed, size, snapshot = null, cfg = p.cfg || null;
+  let players, meId, mode, diff, seed, size, lightsOut = false, snapshot = null, cfg = p.cfg || null;
   if (online) {
     const init = p.init; players = init.players.map((x) => ({ id: x.id, name: x.name, kind: 'remote' }));
     meId = session.role === 'player' && players.some((x) => x.id === session.you) ? session.you : null;
-    mode = init.mode; diff = init.diff; seed = init.seed; size = init.size;
+    mode = init.mode; diff = init.diff; seed = init.seed; size = init.size; lightsOut = init.lightsOut === true;
     if (init.resume) snapshot = { snap: init.snap, stars: init.stars, tiles: init.tiles, state: init.state, tt: init.tt, graceLeft: init.graceLeft };
-  } else { players = p.players; meId = p.meId; mode = p.mode; diff = p.diff; seed = p.seed; size = p.size; }
+  } else { players = p.players; meId = p.meId; mode = p.mode; diff = p.diff; seed = p.seed; size = p.size; lightsOut = p.lightsOut === true; }
   size = size || MR.sizeFor(mode, diff, players.length);
   const run = MR.isRun(mode);
   const hideRemainingHint = diff === MR.DIFFS.length - 1;
@@ -436,7 +446,7 @@ function gameScreen(p) {
   const arena = h('div', { class: 'arena' }, canvas, hudStack, graceCountdown, miniBtn, respawnBtn, stickZone, countEl, banner, sideTab);
   const sumList = h('div', { class: 'sumList' });
   const lvTxt = cfg && cfg.kind === 'level' ? T('第 {level} 關', { level: cfg.level }) : cfg && cfg.kind === 'daily' ? T('每日挑戰') : '';
-  const sumHead = h('div', { class: 'sumHead' }, h('b', { text: MODE_INFO[mode].name }), h('small', { text: `${T(MR.DIFFS[diff])}${lvTxt ? '・' + lvTxt : ''}・${size}×${size}` }));
+  const sumHead = h('div', { class: 'sumHead' }, h('b', { text: MODE_INFO[mode].name }), h('small', { text: `${T(MR.DIFFS[diff])}${lvTxt ? '・' + lvTxt : ''}・${size}×${size}${lightsOut ? '・' + T('關燈') : ''}` }));
   const chat = online ? ChatBox() : null;
   const side = h('aside', { class: 'panelSide gameSide' }, h('div', { class: 'sideTop' }, sumHead, ScrollArea(sumList, { class: 'sumScroll', label: T('排行') })), chat ? h('div', { class: 'sideChat' }, h('h3', { text: T('聊天室') }), chat) : null);
   const root = h('section', { class: 'screen gameScreen' + (online ? ' online' : '') + (online ? '' : ' local') }, side, arena);
@@ -517,7 +527,7 @@ function gameScreen(p) {
     },
     onEnd(info) { showResults(info); },
   };
-  game = new Game({ canvas, mode, diff, seed, size, players, meId, online: online ? { net } : null, input, minimapEl: mini, hooks, snapshot });
+  game = new Game({ canvas, mode, diff, seed, size, lightsOut, players, meId, online: online ? { net } : null, input, minimapEl: mini, hooks, snapshot });
   activeGame = game; window.__MRGAME = game;
   input.attach(arena, stick); miniOn(); layout();
   if (!meId) { stickZone.style.display = 'none'; input.enabled = false; }
@@ -567,7 +577,7 @@ function gameScreen(p) {
   const rsVis = () => { const me = game.me(); respawnBtn.style.display = meId && me && me.alive && !(game.world.run && me.fin != null) && game.state === 'play' ? '' : 'none'; };
   const rsT = setInterval(rsVis, 250); rsVis();
   const againLocal = () => { if (cfg) startLocal(cfg); };
-  const backLocal = () => { if (!cfg) return go('home'); if (cfg.kind === 'daily') return go('daily', { mode: cfg.mode }); if (cfg.kind === 'level') go('levels', { diff: cfg.diff, mode: cfg.mode }); else go('setup', { kind: cfg.kind, mode: cfg.mode, diff: cfg.diff, ai: cfg.ais && cfg.ais.length ? cfg.ais : undefined }); };
+  const backLocal = () => { if (!cfg) return go('home'); if (cfg.kind === 'daily') return go('daily', { mode: cfg.mode, lightsOut }); if (cfg.kind === 'level') go('levels', { diff: cfg.diff, mode: cfg.mode, lightsOut }); else go('setup', { kind: cfg.kind, mode: cfg.mode, diff: cfg.diff, lightsOut, ai: cfg.ais && cfg.ais.length ? cfg.ais : undefined }); };
 
   function showResults(info) {
     if (mapM) mapM.close('end');
@@ -582,26 +592,26 @@ function gameScreen(p) {
     // 紀錄與闖關進度（只有單機）
     if (!online && mineP) {
       if (cfg && cfg.kind === 'level' && run && mine && !mine.dnf) {
-        const st = MR.levelStars(mine.time, world.maze, world.esc), saved = store.setLevelStars(cfg.diff, cfg.level, st, mode);
-        const lk = (mode === 'escape' ? 'lve-' : 'lv-') + cfg.diff + '-' + cfg.level; newBest = store.recordBest(lk, mine.time, true); bestTxt = fmtShort(store.getBest(lk)); isLevel = true;
+        const st = MR.levelStars(mine.time, world.maze, world.esc), saved = store.setLevelStars(cfg.diff, cfg.level, st, mode, lightsOut);
+        const lk = (mode === 'escape' ? 'lve-' : 'lv-') + cfg.diff + '-' + cfg.level; newBest = store.recordBest(lk, mine.time, true, lightsOut); bestTxt = fmtShort(store.getBest(lk, lightsOut)); isLevel = true;
         lines.push(h('p', { class: 'resLevel', text: T(MR.DIFFS[cfg.diff]) + ' · ' + T('第 {x1} 關', { x1: cfg.level }) }),
           h('div', { class: 'resStars', role: 'img', 'aria-label': st + ' / 3 ' + T('星星') }, [0, 1, 2].map((i) => h('span', { class: 'rs' + (i < st ? ' on' : ''), style: { animationDelay: (0.15 + i * 0.18) + 's' } }, icon('star')))));
         if (cfg.level < 100) nextBtn = Button({ label: T('下一關（第 {x1} 關）', { x1: cfg.level + 1 }), variant: 'primary', onClick: () => { resultM.close(); startLocal(Object.assign({}, cfg, { level: cfg.level + 1 })); } });
         else lines.push(h('p', { class: 'note', text: T('這個難度的 100 關全部通過了！') }));
       } else if (cfg && cfg.kind === 'daily' && run && mine && !mine.dnf) {
         const st = MR.levelStars(mine.time, world.maze, world.esc), bestKey = dailyRecordKey('daily', cfg.mode, cfg.date, cfg.diff), starsKey = dailyRecordKey('dailys', cfg.mode, cfg.date, cfg.diff);
-        store.recordBest(starsKey, st, false); newBest = store.recordBest(bestKey, mine.time, true); bestTxt = fmtShort(store.getBest(bestKey)); isLevel = true;
+        store.recordBest(starsKey, st, false, lightsOut); newBest = store.recordBest(bestKey, mine.time, true, lightsOut); bestTxt = fmtShort(store.getBest(bestKey, lightsOut)); isLevel = true;
         const streak = store.dailyStreak(cfg.date);
         lines.push(h('p', { class: 'resLevel', text: T('每日挑戰') + ' · ' + MODE_INFO[cfg.mode].name + ' · ' + cfg.date + ' · ' + T(MR.DIFFS[cfg.diff]) }),
           h('div', { class: 'resStars', role: 'img', 'aria-label': st + ' / 3 ' + T('星星') }, [0, 1, 2].map((i) => h('span', { class: 'rs' + (i < st ? ' on' : ''), style: { animationDelay: (0.15 + i * 0.18) + 's' } }, icon('star')))),
           streak ? h('p', { class: 'note', text: T('連續挑戰 {n} 天', { n: streak }) }) : null);
       } else if (cfg && cfg.kind === 'practice' && mine) {
         const key = mode + '-' + diff; let nb = false, val = '';
-        if (run && !mine.dnf) { nb = store.recordBest(key, mine.time, true); val = fmtShort(mine.time); }
-        else if (mode === 'stars') { nb = store.recordBest(key, mine.score, false); val = T('{n} 顆星星', { n: mine.score }); }
-        else if (mode === 'collapse') { nb = store.recordBest(key, mine.time, false); val = T('存活 {t} 秒', { t: mine.time.toFixed(2) }); }
+        if (run && !mine.dnf) { nb = store.recordBest(key, mine.time, true, lightsOut); val = fmtShort(mine.time); }
+        else if (mode === 'stars') { nb = store.recordBest(key, mine.score, false, lightsOut); val = T('{n} 顆星星', { n: mine.score }); }
+        else if (mode === 'collapse') { nb = store.recordBest(key, mine.time, false, lightsOut); val = T('存活 {t} 秒', { t: mine.time.toFixed(2) }); }
         if (nb) newBest = true;
-        const bst = store.getBest(key);
+        const bst = store.getBest(key, lightsOut);
         if (bst != null) bestTxt = run ? fmtShort(bst) : mode === 'stars' ? T('{n} 顆星星', { n: bst }) : T('存活 {t} 秒', { t: (+bst).toFixed(2) });
       }
     }
@@ -630,6 +640,7 @@ function gameScreen(p) {
     }
     const tileEl = tiles.length ? h('dl', { class: 'resStats' }, tiles.map((t) => h('div', { class: 'resStat' + (t.span ? ' span' : '') }, h('dt', {}, h('span', { text: t.k }), t.badge ? h('b', { class: 'resBadgeTag', text: t.badge }) : null), h('dd', { text: t.v })))) : null;
     const won = !!meId && (run ? !!mine && !mine.dnf && (solo || mine.place === 1) : mode === 'stars' ? !!mine && (solo || mine.place === 1) : !!mine && (solo ? false : (mine.alive || mine.place === 1)));
+    if (lightsOut) lines.push(h('p', { class: 'note', text: online ? T('關燈挑戰') : T('關燈挑戰・成績分開記錄') }));
     const hero = h('div', { class: 'resHero' }, h('div', { class: 'resBadge', 'aria-hidden': 'true' }, icon(mode === 'escape' ? 'key' : run ? 'flag' : mode === 'stars' ? 'star' : 'crown')), lines.length ? h('div', { class: 'resLines' }, ...lines) : null);
     resultM = Modal({ title, class: 'resultModal m-' + mode + (won ? ' win' : ' lose'), dismissible: false, transparent: true, body: h('div', { class: 'result' }, hero, tileEl, table, nextBtn ? h('div', { class: 'nextRow' }, nextBtn) : null), actions: [again, back, home] });
   }

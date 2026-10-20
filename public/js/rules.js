@@ -52,6 +52,7 @@
   const STAR_TIME = 90, GRACE = 10, ESCAPE_GRACE = 10, RACE_CAP = 600, ESCAPE_CAP = 900;
   const COLLAPSE_FALL = 0.22, COLLAPSE_SUDDEN = 60, COLLAPSE_HEAD = 1.2;
   const MAX_PLAYERS = 8;
+  const DARK_RADIUS = 3;
 
   /** 崩塌地圖隨參賽人數擴大，讓多人有更多空間周旋。 */
   function sizeFor(mode, diff, playerCount) {
@@ -351,6 +352,7 @@
     /** o: {mode, diff, seed, size?, level?, grace?, players:[{id,name,kind,ai?}]} */
     constructor(o) {
       this.mode = o.mode; this.diff = o.diff | 0; this.seed = o.seed >>> 0;
+      this.lightsOut = o.lightsOut === true;
       this.size = o.size || sizeFor(this.mode, this.diff, o.players.length);
       this.maze = makeMaze(this.size, this.size, this.seed, o.braid != null ? o.braid : braidFor(this.mode, this.diff), JUNCTION_DENSITY[this.diff]);
       this.rand = rng(this.seed ^ 0x9e3779b9);
@@ -616,7 +618,7 @@
 
   return {
     N, E, S, W, DX, DY, OPP, DIRS, MODES, MODE_NAMES, isRun, DOOR_COLORS, FOREVER, ESCAPE_GRACE, DIFFS, DIFF_THEME, braidFor, AI_NAMES, SIZE, BRAID, CRUMBLE, LEVELS_PER_DIFF, PHYS,
-    STAR_R, GOAL_R, STAR_TIME, GRACE, MAX_PLAYERS, COLLAPSE_SUDDEN, COLLAPSE_HEAD,
+    STAR_R, GOAL_R, STAR_TIME, GRACE, MAX_PLAYERS, COLLAPSE_SUDDEN, COLLAPSE_HEAD, DARK_RADIUS,
     rng, hashSeed, dailySeed, PORTAL_COLORS, clamp, makeMaze, cellCenter, cellAt, stepBall, levelSize, levelSeed, levelPar, levelStars, sizeFor, World,
   };
 });

@@ -50,6 +50,64 @@
     return [ix, iy];
   }
 
+  /** 關燈 AI 的個別記憶：只在感知時讀取光圈內資料，規劃僅使用已知道路。 */
+  function makeMemory(world, player) {
+    const source = world.maze, radius = MR.DARK_RADIUS;
+    const seen = new Uint8Array(source.n), cells = new Uint8Array(source.n);
+    const tiles = new Uint8Array(source.n).fill(2), deadline = new Float64Array(source.n);
+    const stars = new Map(), doors = new Map(), items = new Map();
+    const visible = (x, y) => Math.hypot(x - player.x, y - player.y) <= radius;
+    const cellVisible = (c) => { const q = cellCenter(source, c); return visible(q.x, q.y); };
+    const memory = { seen, cells, tiles, deadline, stars, doors, items, goal: -1 };
+    const blocked = (a, b) => [...doors.values()].some((d) => player.open[d.j] <= 0 && ((d.near === a && d.far === b) || (d.far === a && d.near === b)));
+    const maze = memory.maze = {
+      w: source.w, h: source.h, n: source.n,
+      neighbors(c) {
+        if (!seen[c]) return [];
+        const x = c % source.w, y = (c / source.w) | 0, out = [];
+        for (const d of MR.DIRS) {
+          const nx = x + MR.DX[d], ny = y + MR.DY[d], i = ny * source.w + nx;
+          if (!(cells[c] & d) && nx >= 0 && ny >= 0 && nx < source.w && ny < source.h && seen[i] && !blocked(c, i)) out.push({ i, d });
+        }
+        return out;
+      },
+      bfs(start, avoid) {
+        const field = new Int16Array(source.n).fill(-1);
+        if (!seen[start]) return field;
+        const queue = [start]; field[start] = 0;
+        for (let qi = 0; qi < queue.length; qi++) for (const nb of maze.neighbors(queue[qi])) {
+          if (field[nb.i] >= 0 || (avoid && avoid(nb.i))) continue;
+          field[nb.i] = field[queue[qi]] + 1; queue.push(nb.i);
+        }
+        return field;
+      },
+    };
+    memory.frontier = (c) => MR.DIRS.some((d) => {
+      const x = c % source.w + MR.DX[d], y = ((c / source.w) | 0) + MR.DY[d];
+      return !(cells[c] & d) && x >= 0 && y >= 0 && x < source.w && y < source.h && !seen[y * source.w + x];
+    });
+    memory.observe = () => {
+      const x0 = Math.max(0, Math.floor(player.x - radius)), x1 = Math.min(source.w - 1, Math.floor(player.x + radius));
+      const y0 = Math.max(0, Math.floor(player.y - radius)), y1 = Math.min(source.h - 1, Math.floor(player.y + radius));
+      for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
+        const c = y * source.w + x; if (!cellVisible(c)) continue;
+        seen[c] = 1; cells[c] = source.cells[c];
+        if (world.tile) { tiles[c] = world.tile[c]; deadline[c] = world.t + world.timer[c]; }
+      }
+      if (cellVisible(source.goal)) memory.goal = source.goal;
+      if (world.stars) {
+        const present = new Set();
+        for (const star of world.stars) if (cellVisible(star.c)) { stars.set(star.id, { ...star }); present.add(star.id); }
+        for (const [id, star] of stars) if (cellVisible(star.c) && !present.has(id)) stars.delete(id);
+      }
+      if (world.esc) for (const d of world.esc.doors) {
+        if (visible(d.cx, d.cy)) doors.set(d.j, { j: d.j, kind: d.kind, near: d.near, far: d.far });
+        if (cellVisible(d.item)) items.set(d.j, { j: d.j, kind: d.kind, c: d.item });
+      }
+    };
+    return memory;
+  }
+
   function makeAI(world, player, level, seed) {
     level = clamp(level | 0, 0, LEVELS.length - 1);
     const r = rng(MR.hashSeed('ai', world.seed, player.id, seed || 0));
@@ -68,7 +126,10 @@
     const preference = Float32Array.from({ length: maze.n }, () => r());
     const wrongTurns = new Set();
     const usedPortals = new Set();
-    const portalCells = new Set(level === 4 && world.esc ? world.esc.portals.flatMap((p) => [p.a, p.b]) : []);
+    const portalCells = new Set(!world.lightsOut && level === 4 && world.esc ? world.esc.portals.flatMap((p) => [p.a, p.b]) : []);
+    const memory = world.lightsOut ? makeMemory(world, player) : null;
+    const visits = memory ? new Uint16Array(maze.n) : null;
+    let observeIn = 0, nightCell = -1, nightField = null;
     const starFields = new Map();
     const fieldOf = (c) => {
       let f = starFields.get(c);
@@ -203,8 +264,54 @@
       return steerTo(player, q.x, q.y, true, L.cap, L);
     }
 
+    function nightMove(dt, t) {
+      const c = cellAt(maze, player.x, player.y);
+      observeIn -= dt;
+      if (observeIn <= 0 || c !== nightCell) {
+        observeIn = 0.12;
+        memory.observe();
+        if (c !== nightCell) { visits[c]++; nightCell = c; }
+        const known = memory.maze;
+        const safe = (i) => memory.tiles[i] === 0 || (memory.tiles[i] === 1 && memory.deadline[i] - t > 0.55);
+        if (world.mode === 'collapse') {
+          let best = null, score = -Infinity;
+          for (const nb of known.neighbors(c).filter((n) => safe(n.i))) {
+            const area = known.bfs(nb.i, (i) => i === c || !safe(i));
+            const reach = Array.from(area).filter((d) => d >= 0).length;
+            const value = reach * (level + 1) - visits[nb.i] * 2 + preference[nb.i] * (5 - level);
+            if (value > score) { score = value; best = nb.i; }
+          }
+          nightField = best == null ? null : known.bfs(best, (i) => i !== c && !safe(i));
+        } else {
+          const distance = known.bfs(c);
+          const candidates = [];
+          if (memory.goal >= 0 && world.run) candidates.push({ c: memory.goal, priority: 0 });
+          for (const star of memory.stars.values()) candidates.push({ c: star.c, priority: 0 });
+          if (world.esc) {
+            for (const item of memory.items.values()) {
+              if (item.kind === 'key' && player.keyHas[item.j] === 0) candidates.push({ c: item.c, priority: -1 });
+              const door = memory.doors.get(item.j);
+              if (item.kind === 'plate' && door && player.open[item.j] <= 0 && distance[door.near] >= 0 && distance[door.far] < 0) candidates.push({ c: item.c, priority: -1 });
+            }
+            for (const door of memory.doors.values()) {
+              if (door.kind === 'key' && player.keyHas[door.j] === 1) candidates.push({ c: door.near, priority: -2 });
+              if (player.open[door.j] > 0 && c === door.near) candidates.push({ c: door.far, priority: -3 });
+            }
+          }
+          for (let i = 0; i < maze.n; i++) if (memory.seen[i] && memory.frontier(i)) candidates.push({ c: i, priority: 2 });
+          const reachable = candidates.filter((q) => distance[q.c] >= 0);
+          reachable.sort((a, b) => a.priority - b.priority || (distance[a.c] + visits[a.c] * 0.3 + preference[a.c] * (5 - level)) - (distance[b.c] + visits[b.c] * 0.3 + preference[b.c] * (5 - level)));
+          nightField = reachable.length ? known.bfs(reachable[0].c) : null;
+        }
+      }
+      if (!nightField || nightField[c] < 0) return [0, 0];
+      const run = straightRun(memory.maze, nightField, c, preference, L.smoothness, 0);
+      const q = cellCenter(maze, run.to);
+      return steerTo(player, q.x, q.y, true, L.cap, L);
+    }
+
     return {
-      level, st, profile,
+      level, st, profile, memory,
       /** 每個固定時間步呼叫一次，回傳 [ix, iy]。 */
       step(dt) {
         if (!player.alive || (world.run && player.fin != null)) return [0, 0];
@@ -214,7 +321,8 @@
           st.idleCd -= dt; if (st.idleCd <= 0) { st.idleCd = 4 + r() * 5; st.idle = L.idle; }
         }
         let inp;
-        if (world.mode === 'race') inp = moveAlong(raceField(), dt, t);
+        if (memory) inp = nightMove(dt, t);
+        else if (world.mode === 'race') inp = moveAlong(raceField(), dt, t);
         else if (world.mode === 'escape') {
           const tg = escapeTarget();
           if (tg !== st.escTarget) { st.escTarget = tg; st.cell = -1; st.commitLeft = 0; }
@@ -237,5 +345,5 @@
       },
     };
   }
-  return { makeAI, LEVELS };
+  return { makeAI, LEVELS, makeMemory };
 });

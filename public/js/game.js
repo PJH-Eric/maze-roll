@@ -13,7 +13,7 @@ export class Game {
    */
   constructor(o) {
     this.o = o; this.hooks = o.hooks || {}; this.input = o.input; this.meId = o.meId; this.online = !!o.online;
-    this.world = new MR.World({ mode: o.mode, diff: o.diff, seed: o.seed, size: o.size, players: o.players.map((p) => ({ id: p.id, name: p.name, kind: p.kind })) });
+    this.world = new MR.World({ mode: o.mode, diff: o.diff, seed: o.seed, size: o.size, lightsOut: o.lightsOut, players: o.players.map((p) => ({ id: p.id, name: p.name, kind: p.kind })) });
     this.ctrl = new Map();
     if (!this.online) o.players.forEach((p) => { if (p.kind === 'ai') this.ctrl.set(p.id, MRAI.makeAI(this.world, this.world.byId.get(p.id), p.ai)); });
     this.scene = new Scene3D(o.canvas, { reduce: store.get('reduce'), shapes: store.get('shapes'), ballType: store.get('ball'), trail: store.get('trail'), preserve: !!window.__MR_PRESERVE });

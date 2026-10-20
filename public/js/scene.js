@@ -100,8 +100,50 @@ export class Scene3D {
   setCam(i) { this.camMode = i; }
   resize(w, h) {
     this.renderer.setSize(w, h, false); this.camera.aspect = w / h; this.camera.updateProjectionMatrix(); this.aspect = w / h;
+    if (this.darkTarget) { const size = this.renderer.getDrawingBufferSize(new THREE.Vector2()); this.darkTarget.setSize(size.x, size.y); }
+  }
+  _clearDarkness() {
+    if (!this.darkTarget) return;
+    this.darkTarget.dispose(); this.darkQuad.geometry.dispose(); this.darkQuad.material.dispose();
+    this.darkTarget = null; this.darkScene = null; this.darkQuad = null;
+  }
+  _prepareDarkness() {
+    this._clearDarkness();
+    if (!this.world.lightsOut) return;
+    const size = this.renderer.getDrawingBufferSize(new THREE.Vector2());
+    this.darkTarget = new THREE.WebGLRenderTarget(Math.max(1, size.x), Math.max(1, size.y));
+    this.darkTarget.depthTexture = new THREE.DepthTexture(Math.max(1, size.x), Math.max(1, size.y));
+    this.darkUniforms = {
+      image: { value: this.darkTarget.texture }, depth: { value: this.darkTarget.depthTexture },
+      inverseProjection: { value: this.camera.projectionMatrixInverse }, cameraWorld: { value: this.camera.matrixWorld },
+      lightCenter: { value: new THREE.Vector2() }, radius: { value: window.MR.DARK_RADIUS },
+    };
+    const material = new THREE.ShaderMaterial({
+      uniforms: this.darkUniforms, depthTest: false, depthWrite: false,
+      vertexShader: 'varying vec2 screenUV; void main() { screenUV = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }',
+      fragmentShader: `
+        varying vec2 screenUV;
+        uniform sampler2D image;
+        uniform sampler2D depth;
+        uniform mat4 inverseProjection;
+        uniform mat4 cameraWorld;
+        uniform vec2 lightCenter;
+        uniform float radius;
+        void main() {
+          float z = texture2D(depth, screenUV).x;
+          vec4 view = inverseProjection * vec4(screenUV * 2.0 - 1.0, z * 2.0 - 1.0, 1.0);
+          vec3 world = (cameraWorld * vec4(view.xyz / view.w, 1.0)).xyz;
+          float light = 1.0 - smoothstep(radius * 0.7, radius, distance(world.xz, lightCenter));
+          if (z >= 0.999999) light = 0.0;
+          gl_FragColor = vec4(texture2D(image, screenUV).rgb * mix(0.001, 1.0, light), 1.0);
+          #include <colorspace_fragment>
+        }`,
+    });
+    this.darkQuad = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), material);
+    this.darkScene = new THREE.Scene(); this.darkScene.add(this.darkQuad); this.darkCamera = new THREE.Camera();
   }
   _clear() {
+    this._clearDarkness();
     if (!this.root) return;
     this.root.traverse((o) => { if (o.geometry) o.geometry.dispose(); if (o.material) { (Array.isArray(o.material) ? o.material : [o.material]).forEach((m) => { if (m.map) m.map.dispose(); m.dispose(); }); } });
     this.scene.remove(this.root); this.root = null; this.balls.clear(); this.stars.clear(); this.parts = []; this.ghosts = []; this.doors = []; this.portals = [];
@@ -111,6 +153,7 @@ export class Scene3D {
     this._clear();
     const m = world.maze, W = m.w, H = m.h, root = (this.root = new THREE.Group());
     this.scene.add(root); this.world = world; this.me = me; this.maze = m;
+    this._prepareDarkness();
     const collapse = world.mode === 'collapse';
     const th = THEMES[Math.max(0, Math.min(4, world.diff | 0))];
     const bg = collapse ? 0x1d130c : th.bg; this.scene.background = new THREE.Color(bg); this.scene.fog = new THREE.Fog(bg, 16, collapse ? 34 : 46);
@@ -392,7 +435,9 @@ export class Scene3D {
         if (b.sink >= 1) b.hidden = true;
       }
       if (b.pop < 1) { b.pop = Math.min(1, b.pop + dt * 1.5); const q = b.pop - 1; s *= Math.max(0.02, 1 + 2.7 * q * q * q + 1.7 * q * q); y += Math.sin(b.pop * Math.PI) * 0.35; }
-      g.visible = !b.hidden; g.position.set(x, y, z); b.mesh.scale.setScalar(s);
+      const viewing = this.world.byId.get(followId);
+      const inLight = !this.world.lightsOut || !viewing || Math.hypot(p.x - viewing.x, p.y - viewing.y) < window.MR.DARK_RADIUS;
+      g.visible = !b.hidden && inLight; g.position.set(x, y, z); b.mesh.scale.setScalar(s);
       if (this.trail && !this.reduce && p.alive && !b.hidden) {
         let trailChanged = false;
         if (Math.hypot(p.x - b.lastTx, p.y - b.lastTy) > 0.14) {
@@ -409,7 +454,7 @@ export class Scene3D {
       } else if (b.hist.length) { b.hist.length = 0; b.trailMeshes.forEach((m) => { m.visible = false; }); }
       const ls = (typeof innerWidth !== 'undefined' && innerWidth < 560) ? 0.76 : 1;
       b.label.scale.set(LABEL_HEIGHT * ls * b.labelAspect, LABEL_HEIGHT * ls, 1);
-      b.label.position.y = 1.05 + (p.idx % 3) * 0.2 + (R - y) * -0.2; b.label.visible = p.fin == null && (p.alive || b.fall < 1.5);
+      b.label.position.y = 1.05 + (p.idx % 3) * 0.2 + (R - y) * -0.2; b.label.visible = inLight && p.fin == null && (p.alive || b.fall < 1.5);
       if (b.ring) {
         b.ring.position.y = 0.02 - (y - R);
         if (p.fin == null) { b.ring.material.opacity = 0.55 + 0.3 * Math.sin(t * 5); b.ring.scale.setScalar(1 + 0.06 * Math.sin(t * 5)); }
@@ -489,7 +534,11 @@ export class Scene3D {
     this.camera.position.set(this.focus.x, 0.2 + D * Math.sin(pitch), this.focus.z + D * Math.cos(pitch));
     this.camera.lookAt(this.focus.x, 0.1, this.focus.z - 0.35);
     this.sun.position.set(this.focus.x + 4.5, 11, this.focus.z + 3); this.sun.target.position.set(this.focus.x, 0, this.focus.z);
-    this.renderer.render(this.scene, this.camera);
+    if (this.darkTarget && fb) {
+      this.darkUniforms.lightCenter.value.set(fb.p.x, fb.p.y);
+      this.renderer.setRenderTarget(this.darkTarget); this.renderer.render(this.scene, this.camera);
+      this.renderer.setRenderTarget(null); this.renderer.render(this.darkScene, this.darkCamera);
+    } else this.renderer.render(this.scene, this.camera);
   }
   dispose() { this._clear(); this.renderer.dispose(); }
 }

@@ -23,12 +23,14 @@ function client(port, name) {
   await new Promise((r) => server.listen(0, r)); const port = server.address().port;
   const [a, b, s] = await Promise.all([client(port, 'A'), client(port, 'B'), client(port, 'S')]);
   const get = await fetch('http://localhost:' + port + '/health').then((r) => r.json()); assert(get.ok); console.log('  ✓ /health');
-  a.send({ t: 'create', name: 'A', mode: 'race', diff: 0 }); await sleep(150);
+  a.send({ t: 'create', name: 'A', mode: 'race', diff: 0, lightsOut: true }); await sleep(150);
   const room = a.last('room').room; assert(room.code);
   b.send({ t: 'join', code: room.code, token: room.invite.tp, name: 'B' }); s.send({ t: 'join', code: room.code, token: room.invite.ts, name: 'S' }); await sleep(150);
   assert.strictEqual(b.last('joined').role, 'player'); assert.strictEqual(s.last('joined').role, 'spec'); console.log('  ✓ 邀請 token 決定玩家／觀戰');
   b.send({ t: 'ready', v: true }); await sleep(80); a.send({ t: 'start' }); await sleep(4500);
   const init = a.last('init'); assert(init && s.last('init') && a.last('go')); console.log('  ✓ 開局、倒數、go');
+  assert.equal(init.lightsOut, true); assert.equal(b.last('init').lightsOut, true); assert.equal(s.last('init').lightsOut, true);
+  console.log('  ✓ 關燈設定經真實 WebSocket 同步至玩家與觀戰者');
   const w = new MR.World({ mode: 'race', diff: init.diff, seed: init.seed, players: [] }); const g = MR.cellCenter(w.maze, w.maze.goal);
   a.send({ t: 'pos', x: g.x, y: g.y, vx: 0, vy: 0 }); b.send({ t: 'pos', x: g.x, y: g.y, vx: 0, vy: 0 }); await sleep(400);
   assert.strictEqual(s.last('grace').left, 10); console.log('  ✓ 抵達終點後開始 10 秒倒數');
