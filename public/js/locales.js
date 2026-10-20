@@ -1,5 +1,6 @@
 // 英文字典（以繁中原文為鍵）。新增介面文字時，請同步在這裡補英文；tests/i18n.test.js 會檢查缺漏。
 window.MR_EN = {
+ "遊戲結束": "Game Over",
  "傳送門（同色成對）": "Portals (same color = a pair)",
  "迷宮裡有幾道彩色的門擋住去路。同色的鑰匙要繞去支線撿起來，帶著鑰匙走到門前門就會打開；踩踏板的門只會開一小段時間，要在關上前衝過去（快關上時門會閃爍）。每個人的鑰匙與門各自獨立，不會被別人搶走。路旁小岔路上成對的發光光圈是傳送門，走進一邊會從另一邊出來，可以當作捷徑。單人抵達即結束；多人首位抵達後完整倒數 10 秒才結算，未抵達者為未完賽。": "Colored doors block the way. Detour into side branches to pick up the matching key, then approach the door to unlock it. Plate doors stay open briefly, so dash through before they close (they flash when about to shut). Each player has separate keys and doors. Paired glowing rings on side paths are portals: step into one and come out of the other as a shortcut. Solo rounds end when you escape; in multiplayer, the round ends 10 seconds after the first player escapes, and anyone still inside is marked unfinished.",
  "每日挑戰": "Daily challenge",

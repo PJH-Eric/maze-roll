@@ -5,11 +5,12 @@ import { store } from './store.js';
 const MR = window.MR, MRAI = window.MRAI;
 const STEP = 0.01;
 const FAST_FORWARD_STEPS = 1000;
+const END_REVEAL_MS = 1600;
 
 export class Game {
   /**
    * o: {canvas, mode, diff, seed, size?, players:[{id,name,kind,ai?}], meId, online?:{net}, input, minimapEl?, hooks}
-   * hooks: onHud(h), onCount(n|null), onEnd(info), onMe(state)
+   * hooks: onHud(h), onCount(n|null), onEnding(), onEnd(info), onMe(state)
    */
   constructor(o) {
     this.o = o; this.hooks = o.hooks || {}; this.input = o.input; this.meId = o.meId; this.online = !!o.online;
@@ -46,7 +47,7 @@ export class Game {
   }
   _count(n) { this.countN = n; audio.beep(n === 0); this.hooks.onCount && this.hooks.onCount(n); }
   _begin() { this.state = 'play'; this.world.start(); this.input && this.input.calibrate && this.input.calibrate(); setTimeout(() => { this.hooks.onCount && this.hooks.onCount(null); }, 600); }
-  pause(on) { if (this.online || this.state === 'ended') return; this.paused = !!on; if (!on) this.last = 0; }
+  pause(on) { if (this.online || this.state !== 'play') return; this.paused = !!on; if (!on) this.last = 0; }
   setFollow(id) { this.follow = id; }
   /** 自己的球回到起點（單機直接傳送；線上同時通知伺服器）。成功回傳 true。 */
   respawn() {
@@ -115,13 +116,15 @@ export class Game {
     } else if (e.e === 'end') this._ending();
   }
   _ending() {
-    if (this.state === 'ended' || this.endTimer) return;
+    if (this.state === 'ending' || this.state === 'ended' || this.endTimer) return;
+    this.state = 'ending'; this.paused = false;
+    this.hooks.onEnding && this.hooks.onEnding();
     this.endTimer = setTimeout(() => {
       this.state = 'ended'; this.ff = false;
       const w = this.world, r = w.results || [], mine = r.find((x) => x.id === this.meId);
       if (mine && mine.place === 1 && !(w.mode === 'race' && mine.dnf)) audio.win(); else if (this.meId) audio.lose();
       this.hooks.onEnd && this.hooks.onEnd({ world: w, results: r, mine, meId: this.meId });
-    }, this.ff ? 50 : 1100);
+    }, END_REVEAL_MS);
   }
 
   // ---------- 主迴圈 ----------

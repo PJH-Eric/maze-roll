@@ -279,6 +279,19 @@ h3 { font-size: 1rem; margin: 10px 0 6px; letter-spacing: .08em; }
 .knob { position: absolute; left: 50%; top: 50%; width: 46%; height: 46%; margin: -23% 0 0 -23%; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #f8e0ae, #c48a52); border: 3px solid #2a1a10; box-shadow: 0 5px 0 rgba(0,0,0,.4); pointer-events: none; }
 .countdown { position: absolute; inset: 0; z-index: 14; display: flex; align-items: center; justify-content: center; pointer-events: none; font-size: min(28vmin, 170px); font-weight: 900; color: var(--maple2); text-shadow: 0 6px 0 #1a0f08, 0 10px 24px rgba(0,0,0,.6); animation: bump .8s; }
 .countdown.go { color: #ffe27a; font-size: min(18vmin, 120px); letter-spacing: .1em; }
+.roundEnd { position: absolute; inset: 0; z-index: 30; display: grid; place-items: center; padding: max(16px, var(--st)) max(16px, var(--sr)) max(16px, var(--sb)) max(16px, var(--sl)); background: radial-gradient(ellipse, rgba(26,15,8,.15), rgba(26,15,8,.65)); }
+.roundEnd[hidden] { display: none; }
+.roundEndCard { position: relative; display: flex; flex-direction: column; align-items: center; gap: clamp(10px, 2vmin, 18px); width: min(100%, 480px); padding: clamp(22px, 4vmin, 40px) clamp(14px, 4vmin, 32px); border: 3px solid var(--maple); border-radius: 22px; color: var(--cream); background: repeating-linear-gradient(2deg, transparent 0 18px, rgba(0,0,0,.08) 19px 21px), linear-gradient(135deg, var(--walnut2), var(--walnut) 60%, var(--ink)); box-shadow: inset 0 0 0 4px #2a1a10, inset 0 0 0 5px rgba(243,220,174,.25), 0 8px 0 #1a0f08, 0 18px 46px rgba(0,0,0,.6); text-align: center; animation: roundEndIn .48s cubic-bezier(.16,.9,.3,1.15) both; }
+.roundEndSeal { display: grid; place-items: center; width: clamp(44px, 9vmin, 68px); aspect-ratio: 1; border: 2px solid var(--cream); border-radius: 50%; color: var(--ink); background: linear-gradient(135deg, var(--cream), var(--maple)); box-shadow: 0 0 0 4px var(--wood), 0 4px 10px rgba(0,0,0,.4); }
+.roundEndSeal .ico { width: 60%; height: 60%; }
+.roundEndTitle { max-width: 100%; font-size: clamp(1.8rem, 6.5vmin, 3.8rem); font-weight: 900; line-height: 1.2; letter-spacing: .08em; text-wrap: balance; overflow-wrap: anywhere; text-shadow: 0 3px 0 #1a0f08, 0 0 20px rgba(255,210,74,.18); }
+.roundEndTrim { display: flex; align-items: center; justify-content: center; gap: 12px; width: min(72%, 220px); color: var(--gold); }
+.roundEndTrim::before, .roundEndTrim::after { content: ""; flex: 1; height: 2px; background: linear-gradient(90deg, transparent, var(--maple)); }
+.roundEndTrim::after { transform: rotate(180deg); }
+.roundEndTrim .ico { width: 18px; height: 18px; }
+.roundEnd.still .roundEndCard { animation: none; }
+@keyframes roundEndIn { from { opacity: 0; transform: translateY(16px) scale(.86); } to { opacity: 1; transform: translateY(0) scale(1); } }
+@media (max-height: 420px) { .roundEndCard { gap: 8px; padding: 16px 22px; border-radius: 16px; } .roundEndSeal { width: 40px; } .roundEndTitle { font-size: clamp(1.8rem, 8vmin, 2.6rem); } }
 @keyframes bump { 0% { transform: scale(1.6); opacity: 0; } 25% { transform: scale(1); opacity: 1; } 100% { transform: scale(.92); opacity: .9; } }
 .banner { position: absolute; z-index: 15; left: 50%; bottom: calc(10px + var(--sb)); transform: translateX(-50%); display: flex; align-items: center; gap: 8px; padding: 6px 10px; border-radius: 12px; background: rgba(42,26,16,.84); border: 2px solid var(--gold); text-align: center; box-shadow: 0 3px 0 rgba(0,0,0,.35); max-width: calc(100% - 20px); pointer-events: none; }
 .banner[hidden] { display: none; }

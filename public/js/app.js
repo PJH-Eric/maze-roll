@@ -451,10 +451,15 @@ function gameScreen(p) {
   miniBtn.addEventListener('pointerdown', (e) => e.stopPropagation()); // 不要觸發搖桿
   const knob = h('div', { class: 'knob' }), stick = h('div', { class: 'stick', 'aria-label': T('虛擬搖桿') }, knob), stickZone = h('div', { class: 'stickZone' }, stick);
   const countEl = h('div', { class: 'countdown', 'aria-live': 'assertive' }), banner = h('div', { class: 'banner', hidden: true });
+  const roundEnd = h('div', { class: 'roundEnd', hidden: true, role: 'status', 'aria-live': 'assertive' },
+    h('div', { class: 'roundEndCard' },
+      h('span', { class: 'roundEndSeal', 'aria-hidden': 'true' }, icon('flag')),
+      h('b', { class: 'roundEndTitle', text: T('遊戲結束') }),
+      h('span', { class: 'roundEndTrim', 'aria-hidden': 'true' }, icon('star'))));
   const badge = h('span', { class: 'badge', hidden: true });
   const sideTab = h('button', { type: 'button', class: 'btn sideTab', 'aria-label': T('開關對局資訊'), 'aria-expanded': 'true' }, icon(online ? 'chat' : 'people'), badge);
   const respawnBtn = h('button', { type: 'button', class: 'btn respawnBtn', 'aria-label': T('回到起點（R）'), title: T('回到起點（R）') }, icon('undo'), h('span', { class: 'rl', text: T('回起點') }));
-  const arena = h('div', { class: 'arena' }, canvas, hudStack, graceCountdown, miniBtn, respawnBtn, stickZone, countEl, banner, sideTab);
+  const arena = h('div', { class: 'arena' }, canvas, hudStack, graceCountdown, miniBtn, respawnBtn, stickZone, countEl, banner, sideTab, roundEnd);
   const sumList = h('div', { class: 'sumList' });
   const lvTxt = cfg && cfg.kind === 'level' ? T('第 {level} 關', { level: cfg.level }) : cfg && cfg.kind === 'daily' ? T('每日挑戰') : '';
   const sumHead = h('div', { class: 'sumHead' }, h('b', { text: MODE_INFO[mode].name }), h('small', { text: `${T(MR.DIFFS[diff])}${lvTxt ? '・' + lvTxt : ''}・${size}×${size}${lightsOut ? '・' + T('關燈') : ''}` }));
@@ -536,7 +541,16 @@ function gameScreen(p) {
       else if (e.e === 'unlock') toast(T('門打開了！'), 1800);
       else toast(T('機關啟動！{x1} 秒內衝過那道門', { x1: Math.round(e.T) }), 2600);
     },
-    onEnd(info) { showResults(info); },
+    onEnding() {
+      if (mapM) mapM.close('end');
+      if (pauseM) pauseM.close('end');
+      input.enabled = false;
+      banner.hidden = true; graceCountdown.hidden = true; countEl.style.display = 'none';
+      respawnBtn.style.display = 'none'; stickZone.style.display = 'none';
+      roundEnd.classList.toggle('still', store.get('reduce'));
+      roundEnd.hidden = false;
+    },
+    onEnd(info) { roundEnd.hidden = true; showResults(info); },
   };
   game = new Game({ canvas, mode, diff, seed, size, lightsOut, players, meId, online: online ? { net } : null, input, minimapEl: mini, hooks, snapshot });
   activeGame = game; window.__MRGAME = game;
