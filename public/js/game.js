@@ -5,7 +5,7 @@ import { store } from './store.js';
 const MR = window.MR, MRAI = window.MRAI;
 const STEP = 0.01;
 const FAST_FORWARD_STEPS = 1000;
-const END_REVEAL_MS = 1600;
+const END_REVEAL_MS = 2500;
 
 export class Game {
   /**
