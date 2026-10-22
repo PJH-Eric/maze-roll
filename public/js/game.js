@@ -46,7 +46,12 @@ export class Game {
     this.cdT = setTimeout(tick, 1000);
   }
   _count(n) { this.countN = n; audio.beep(n === 0); this.hooks.onCount && this.hooks.onCount(n); }
-  _begin() { this.state = 'play'; this.world.start(); this.input && this.input.calibrate && this.input.calibrate(); setTimeout(() => { this.hooks.onCount && this.hooks.onCount(null); }, 600); }
+  _begin() {
+    this.state = 'play'; this.world.start();
+    this.hooks.onStart && this.hooks.onStart();
+    this.input && this.input.calibrate && this.input.calibrate();
+    setTimeout(() => { this.hooks.onCount && this.hooks.onCount(null); }, 600);
+  }
   pause(on) { if (this.online || this.state !== 'play') return; this.paused = !!on; if (!on) this.last = 0; }
   setFollow(id) { this.follow = id; }
   /** 自己的球回到起點（單機直接傳送；線上同時通知伺服器）。成功回傳 true。 */

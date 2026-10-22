@@ -5,9 +5,14 @@
   "private": true,
   "scripts": {
     "start": "node server.js",
-    "test": "node tests/rules.test.js && node tests/night.test.js && node tests/hub.test.js && node tests/game.test.js && node tests/store.test.js && node tests/i18n.test.js",
-    "verify": "node tests/rules.test.js && node tests/hub.test.js && node scripts/online-check.js"
+    "test": "node tests/analytics.js && node tests/rules.test.js && node tests/night.test.js && node tests/hub.test.js && node tests/game.test.js && node tests/store.test.js && node tests/i18n.test.js",
+    "verify": "node tests/rules.test.js && node tests/hub.test.js && node scripts/online-check.js",
+    "test:analytics": "node tests/analytics.js"
   },
-  "engines": { "node": ">=18" },
-  "dependencies": { "ws": "^8.18.0" }
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "ws": "^8.18.0"
+  }
 }

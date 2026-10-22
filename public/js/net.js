@@ -34,13 +34,19 @@ export class Net {
       let m; try { m = JSON.parse(ev.data); } catch (e) { return; }
       if (m.t === 'pong') { this.rtt = Math.round(performance.now() - m.ts); this.emit({ t: '_rtt', rtt: this.rtt }); return; }
       if (m.t === 'hi') { this.mid = m.mid; try { sessionStorage.setItem('mr.mid', m.mid); } catch (e) { /* 略 */ } this.setState('online'); const q = this.sendQ; this.sendQ = []; q.forEach((x) => this.send(x)); }
+      window.GameAnalytics?.roomResponse(m.t, m.code || !!m.room);
       this.emit(m);
     };
     ws.onclose = () => { clearTimeout(this.pingT); if (this.ws === ws) this.ws = null; if (!this.wantOpen) { this.setState('idle'); return; } this.setState('reconnecting'); this.retry++; clearTimeout(this.timer); this.timer = setTimeout(() => this.connect(), Math.min(8000, 600 * this.retry)); };
     ws.onerror = () => {};
   }
   _ping() { clearTimeout(this.pingT); if (this.ws && this.ws.readyState === 1) { this.ws.send(JSON.stringify({ t: 'ping', ts: performance.now() })); this.pingT = setTimeout(() => this._ping(), 4000); } }
-  send(o) { if (this.ws && this.ws.readyState === 1 && this.state === 'online') this.ws.send(JSON.stringify(o)); else if (o.t !== 'pos') this.sendQ.push(o); }
+  send(o) {
+    if (this.ws && this.ws.readyState === 1 && this.state === 'online') {
+      this.ws.send(JSON.stringify(o));
+      window.GameAnalytics?.roomRequest(o);
+    } else if (o.t !== 'pos') this.sendQ.push(o);
+  }
   close() { this.wantOpen = false; clearTimeout(this.timer); clearTimeout(this.pingT); if (this.ws) { try { this.ws.close(); } catch (e) { /* 略 */ } } this.ws = null; this.setState('idle'); }
 }
 export const net = new Net();

@@ -566,6 +566,13 @@ function gameScreen(p) {
       else if (e.e === 'unlock') toast(T('門打開了！'), 1800);
       else toast(T('機關啟動！{x1} 秒內衝過那道門', { x1: Math.round(e.T) }), 2600);
     },
+    onStart() {
+      if (meId) window.GameAnalytics.start({
+        mode: online ? 'online' : players.length > 1 ? 'ai' : 'solo',
+        variant: mode, difficulty: String(diff),
+        players: players.length
+      }, online ? session.room.code + '|' + seed : null);
+    },
     onEnding() {
       if (mapM) mapM.close('end');
       if (pauseM) pauseM.close('end');
@@ -632,6 +639,9 @@ function gameScreen(p) {
   function showResults(info) {
     if (mapM) mapM.close('end');
     const { world, results, mine } = info, solo = world.players.length === 1;
+    if (meId && mine) window.GameAnalytics.end({
+      result: mine.dnf ? 'dnf' : solo ? 'complete' : mine.place === 1 ? 'win' : 'lose'
+    });
     let title, lines = [], extra = [], nextBtn = null, newBest = false, bestTxt = '', isLevel = false;
     const mineP = meId ? world.byId.get(meId) : null;
     if (!meId) title = T('本局結束');
