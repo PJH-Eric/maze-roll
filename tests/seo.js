@@ -9,7 +9,12 @@ const { inject, validate } = require('../scripts/inject-seo');
 
 const root = path.join(__dirname, '..');
 const config = JSON.parse(fs.readFileSync(path.join(root, 'seo.config.json'), 'utf8'));
+const gameplay = JSON.parse(fs.readFileSync(path.join(root, 'seo.gameplay.json'), 'utf8'));
 const source = fs.readFileSync(path.join(root, 'public', 'index.html'), 'utf8');
+const withoutGameplay = html => html
+  .replace(/(?:\r?\n)?<!--SEO:GAMEPLAY-->[\s\S]*?<!--SEO:GAMEPLAY:END-->\s*/, '')
+  .replace(/\r\n/g, '\n')
+  .replace(/\n*<\/body>/i, '\n</body>');
 validate(config);
 assert.ok(source.includes('<!--SEO:HEAD-->'), 'HTML 要保留 SEO 產生標記');
 assert.ok(source.includes('data-i18n-title="' + config.titleKey + '"'), '頁面標題要連結到翻譯 key');
@@ -26,6 +31,7 @@ const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'maze-roll-seo-'));
 try {
   fs.mkdirSync(path.join(temp, 'public'));
   fs.writeFileSync(path.join(temp, 'seo.config.json'), JSON.stringify(config), 'utf8');
+  fs.writeFileSync(path.join(temp, 'seo.gameplay.json'), JSON.stringify(gameplay), 'utf8');
   fs.writeFileSync(path.join(temp, 'public', 'index.html'), source, 'utf8');
   inject(temp);
 
@@ -37,10 +43,16 @@ try {
   assert.ok(built.includes('name="robots" content="index, follow, max-image-preview:large"'));
   assert.ok(built.includes('property="og:image" content="' + config.ogImage + '"'));
   assert.ok(built.includes('name="twitter:card" content="summary_large_image"'));
+  assert.equal((built.match(/<!--SEO:GAMEPLAY-->/g) || []).length, 1);
+  for (const locale of ['zh-Hant', 'zh-Hans', 'en']) {
+    const entry = gameplay[locale];
+    assert.ok(built.includes('<section lang="' + locale + '">'));
+    for (const value of [entry.name, entry.summary, ...entry.modes, entry.controls]) assert.ok(built.includes(value));
+  }
   assert.equal(
-    built.slice(built.indexOf('</head>')),
-    source.slice(source.indexOf('</head>')),
-    'SEO 注入不得更動既有畫面內容'
+    withoutGameplay(built.slice(built.indexOf('</head>'))),
+    withoutGameplay(source.slice(source.indexOf('</head>'))),
+    'SEO 與玩法備援注入不得更動既有畫面 HTML'
   );
 
   const jsonLdText = built.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/)[1];
@@ -53,7 +65,9 @@ try {
   const sitemap = fs.readFileSync(path.join(temp, 'public', 'sitemap.xml'), 'utf8');
   assert.equal((sitemap.match(/<loc>/g) || []).length, 1, '不建立新的語系網址');
   assert.ok(sitemap.includes('<loc>' + config.siteUrl + '</loc>'));
-  assert.ok(!fs.existsSync(path.join(temp, 'public', 'robots.txt')), 'robots.txt 必須由主機根目錄管理');
+  const robots = fs.readFileSync(path.join(temp, 'public', 'robots.txt'), 'utf8');
+  assert.ok(robots.includes('Allow: /'));
+  assert.ok(robots.includes('Sitemap: ' + config.siteUrl + 'sitemap.xml'));
   inject(temp);
   assert.equal(fs.readFileSync(path.join(temp, 'public', 'index.html'), 'utf8'), built, '重複建置不得累積標籤');
   assert.throws(() => validate({ ...config, siteUrl: config.siteUrl.slice(0, -1) }), /siteUrl/);
@@ -62,4 +76,4 @@ try {
   fs.rmSync(temp, { recursive: true, force: true });
 }
 
-console.log('✓ Maze Roll SEO metadata、結構化資料、sitemap 與語系文案測試通過');
+console.log('✓ Maze Roll SEO metadata、三語玩法 HTML、robots、結構化資料與 sitemap 測試通過');

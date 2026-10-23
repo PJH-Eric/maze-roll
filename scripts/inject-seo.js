@@ -5,6 +5,13 @@ const path = require('path');
 
 const START = '<!--SEO:HEAD-->';
 const END = '<!--SEO:END-->';
+const GAMEPLAY_START = '<!--SEO:GAMEPLAY-->';
+const GAMEPLAY_END = '<!--SEO:GAMEPLAY:END-->';
+const GAMEPLAY_LOCALES = {
+  'zh-Hant': { modes: '玩法模式', controls: '操作方式', separator: '、' },
+  'zh-Hans': { modes: '玩法模式', controls: '操作方式', separator: '、' },
+  en: { modes: 'Game modes', controls: 'How to play', separator: ', ' }
+};
 
 function escapeHtml(value) {
   return String(value)
@@ -57,6 +64,36 @@ function validate(config) {
   }
 }
 
+function validateGameplay(gameplay) {
+  for (const locale of Object.keys(GAMEPLAY_LOCALES)) {
+    const entry = gameplay && gameplay[locale];
+    const hasTextFields = entry && ['name', 'summary', 'controls']
+      .every(key => typeof entry[key] === 'string' && entry[key].trim());
+    const hasValidModes = entry && Array.isArray(entry.modes) && entry.modes.length &&
+      entry.modes.every(mode => typeof mode === 'string' && mode.trim());
+    if (!hasTextFields || !hasValidModes) {
+      throw new Error('seo.gameplay.json 缺少完整語系或玩法欄位：' + locale);
+    }
+  }
+}
+
+function makeGameplay(gameplay) {
+  validateGameplay(gameplay);
+  const sections = Object.entries(GAMEPLAY_LOCALES).map(([locale, labels]) => {
+    const entry = gameplay[locale];
+    const punctuation = locale === 'en' ? ': ' : '：';
+    return [
+      '<section lang="' + locale + '">',
+      '<h2>' + escapeHtml(entry.name) + '</h2>',
+      '<p>' + escapeHtml(entry.summary) + '</p>',
+      '<p><strong>' + labels.modes + punctuation + '</strong>' + entry.modes.map(escapeHtml).join(labels.separator) + '</p>',
+      '<p><strong>' + labels.controls + punctuation + '</strong>' + escapeHtml(entry.controls) + '</p>',
+      '</section>'
+    ].join('\n');
+  });
+  return [GAMEPLAY_START, '<noscript><div class="seo-gameplay">' + sections.join('\n') + '</div></noscript>', GAMEPLAY_END].join('\n');
+}
+
 function makeHead(config) {
   const structuredData = {
     '@context': 'https://schema.org',
@@ -106,9 +143,12 @@ function makeHead(config) {
 
 function inject(root) {
   const configPath = path.join(root, 'seo.config.json');
+  const gameplayPath = path.join(root, 'seo.gameplay.json');
   const indexPath = path.join(root, 'public', 'index.html');
   const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+  const gameplay = JSON.parse(fs.readFileSync(gameplayPath, 'utf8'));
   validate(config);
+  validateGameplay(gameplay);
 
   let html = fs.readFileSync(indexPath, 'utf8');
   if (html.split(START).length !== 2 || html.split(END).length !== 2) {
@@ -118,6 +158,11 @@ function inject(root) {
     throw new Error('index.html 缺少多語系標題 key');
   }
   html = html.replace(/<!--SEO:HEAD-->[\s\S]*?<!--SEO:END-->/, makeHead(config));
+  html = html.replace(/\r?\n?<!--SEO:GAMEPLAY-->[\s\S]*?<!--SEO:GAMEPLAY:END-->\r?\n?/g, '\n');
+  if (!/<\/body>/i.test(html)) {
+    throw new Error('index.html 缺少 </body>');
+  }
+  html = html.replace(/(?:\r?\n)*<\/body>/i, '\n' + makeGameplay(gameplay) + '\n</body>');
 
   const sitemap = '<?xml version="1.0" encoding="UTF-8"?>\n' +
     '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n' +
@@ -125,10 +170,12 @@ function inject(root) {
     '</urlset>\n';
   fs.writeFileSync(indexPath, html, 'utf8');
   fs.writeFileSync(path.join(root, 'public', 'sitemap.xml'), sitemap, 'utf8');
+  fs.writeFileSync(path.join(root, 'public', 'robots.txt'),
+    'User-agent: *\nAllow: /\n\nSitemap: ' + escapeHtml(config.siteUrl) + 'sitemap.xml\n', 'utf8');
   return config;
 }
 
-module.exports = { inject, makeHead, validate };
+module.exports = { inject, makeGameplay, makeHead, validate, validateGameplay };
 
 if (require.main === module) {
   try {

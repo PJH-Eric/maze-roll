@@ -1,0 +1,47 @@
+{
+  "zh-Hant": {
+    "name": "迷宮滾球",
+    "summary": "推動小球穿越 3D 木質迷宮，可玩競速、收集星星、地板崩塌與逃出四種模式。競速與逃出各有五種難度、每種 100 關，也可自由練習、對戰電腦或線上同玩。",
+    "modes": [
+      "競速與逃出：五種難度各 100 關",
+      "搶星星",
+      "地板崩塌",
+      "自由練習",
+      "電腦對戰",
+      "線上房間",
+      "觀戰",
+      "邀請連結"
+    ],
+    "controls": "桌機用方向鍵或 WASD；手機、平板用觸控搖桿"
+  },
+  "zh-Hans": {
+    "name": "迷宫滚球",
+    "summary": "推动小球穿越 3D 木质迷宫，可玩竞速、收集星星、地板崩塌与逃出四种模式。竞速与逃出各有五种难度、每种 100 关，也可自由练习、对战电脑或线上同玩。",
+    "modes": [
+      "竞速与逃出：五种难度各 100 关",
+      "抢星星",
+      "地板崩塌",
+      "自由练习",
+      "电脑对战",
+      "线上房间",
+      "观战",
+      "邀请链接"
+    ],
+    "controls": "桌机用方向键或 WASD；手机、平板用触控摇杆"
+  },
+  "en": {
+    "name": "Maze Roll",
+    "summary": "Roll a ball through a 3D wooden maze in four modes: Race, Star Grab, Floor Collapse, and Escape. Race and Escape each have five difficulties with 100 stages per difficulty; you can also practice freely, play against the computer, or join friends online.",
+    "modes": [
+      "Race and Escape: 5 difficulties, 100 stages each",
+      "Star Grab",
+      "Floor Collapse",
+      "Free Practice",
+      "vs Computer",
+      "Online Room",
+      "Spectate",
+      "Invite Link"
+    ],
+    "controls": "Arrow keys or WASD on computers; touch joystick on phones and tablets"
+  }
+}
