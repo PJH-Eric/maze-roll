@@ -1,5 +1,7 @@
 // 英文字典（以繁中原文為鍵）。新增介面文字時，請同步在這裡補英文；tests/i18n.test.js 會檢查缺漏。
 window.MR_EN = {
+ "迷宮滾球｜免費線上 3D 迷宮闖關": "Maze Roll | Free Online 3D Maze Game",
+ "免費線上 3D 木質迷宮滾球遊戲，挑戰競速、搶星星、地板崩塌與逃出四種玩法。闖關有五種難度，也能對戰電腦或與最多 4 人線上同玩，支援手機、平板和桌機。": "Roll through a 3D wooden maze in four modes: race, collect stars, survive collapsing floors, or escape. Play solo, challenge bots, or race online with up to four players on mobile, tablet, or desktop.",
  "遊戲結束": "Game Over",
  "傳送門（同色成對）": "Portals (same color = a pair)",
  "迷宮裡有幾道彩色的門擋住去路。同色的鑰匙要繞去支線撿起來，帶著鑰匙走到門前門就會打開；踩踏板的門只會開一小段時間，要在關上前衝過去（快關上時門會閃爍）。每個人的鑰匙與門各自獨立，不會被別人搶走。路旁小岔路上成對的發光光圈是傳送門，走進一邊會從另一邊出來，可以當作捷徑。單人抵達即結束；多人首位抵達後完整倒數 10 秒才結算，未抵達者為未完賽。": "Colored doors block the way. Detour into side branches to pick up the matching key, then approach the door to unlock it. Plate doors stay open briefly, so dash through before they close (they flash when about to shut). Each player has separate keys and doors. Paired glowing rings on side paths are portals: step into one and come out of the other as a shortcut. Solo rounds end when you escape; in multiplayer, the round ends 10 seconds after the first player escapes, and anyone still inside is marked unfinished.",
@@ -328,6 +330,8 @@ window.MR_EN = {
 
 // 簡體中文文字對照表；玩家輸入內容保持原樣。
 window.MR_HANS = {
+  "迷宮滾球｜免費線上 3D 迷宮闖關": "迷宫滚球｜免费线上 3D 迷宫闯关",
+  "免費線上 3D 木質迷宮滾球遊戲，挑戰競速、搶星星、地板崩塌與逃出四種玩法。闖關有五種難度，也能對戰電腦或與最多 4 人線上同玩，支援手機、平板和桌機。": "免费线上 3D 木质迷宫滚球游戏，挑战竞速、抢星星、地板崩塌与逃出四种玩法。闯关有五种难度，也能对战电脑或与最多 4 人线上同玩，支持手机、平板和桌机。",
   "遊戲結束": "游戏结束",
   "傳送門（同色成對）": "传送门（同色成对）",
   "迷宮裡有幾道彩色的門擋住去路。同色的鑰匙要繞去支線撿起來，帶著鑰匙走到門前門就會打開；踩踏板的門只會開一小段時間，要在關上前衝過去（快關上時門會閃爍）。每個人的鑰匙與門各自獨立，不會被別人搶走。路旁小岔路上成對的發光光圈是傳送門，走進一邊會從另一邊出來，可以當作捷徑。單人抵達即結束；多人首位抵達後完整倒數 10 秒才結算，未抵達者為未完賽。": "迷宫里有几道彩色的门挡住去路。同色的钥匙要绕去支线捡起来，带着钥匙走到门前门就会打开；踩踏板的门只会开一小段时间，要在关上前冲过去（快关上时门会闪烁）。每个人的钥匙与门各自独立，不会被别人抢走。路旁小岔路上成对的发光光圈是传送门，走进一边会从另一边出来，可以当作捷径。单人抵达即结束；多人首位抵达后完整倒数 10 秒才结算，未抵达者为未完赛。",

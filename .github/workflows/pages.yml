@@ -17,6 +17,8 @@ jobs:
         run: sed -i "s#__GAME_SERVER_URL__#${GAME_SERVER_URL}#; s#__GA4_MEASUREMENT_ID__#${GA4_MEASUREMENT_ID}#" public/js/config.js
         env: { GAME_SERVER_URL: '${{ vars.GAME_SERVER_URL }}', GA4_MEASUREMENT_ID: '${{ vars.GA4_MEASUREMENT_ID }}' }
       - uses: actions/configure-pages@v5
+      - name: 產生搜尋引擎中繼資料與爬蟲檔案
+        run: node scripts/inject-seo.js
       - uses: actions/upload-pages-artifact@v3
         with: { path: public }
       - id: d

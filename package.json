@@ -5,7 +5,7 @@
   "private": true,
   "scripts": {
     "start": "node server.js",
-    "test": "node tests/analytics.js && node tests/rules.test.js && node tests/night.test.js && node tests/hub.test.js && node tests/game.test.js && node tests/store.test.js && node tests/i18n.test.js && node tests/i18n-hans.js",
+    "test": "node tests/analytics.js && node tests/rules.test.js && node tests/night.test.js && node tests/hub.test.js && node tests/game.test.js && node tests/store.test.js && node tests/i18n.test.js && node tests/i18n-hans.js && node tests/seo.js",
     "verify": "node tests/rules.test.js && node tests/hub.test.js && node scripts/online-check.js",
     "test:analytics": "node tests/analytics.js"
   },
