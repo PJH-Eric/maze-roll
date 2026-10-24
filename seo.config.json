@@ -9,6 +9,6 @@
   "genre": "益智",
   "players": "1-4",
   "iconUrl": "https://pjh-eric.github.io/maze-roll/favicon-96.png",
-  "ogImage": "https://pjh-eric.github.io/maze-roll/og-image.png",
-  "ogImageAlt": "迷宮滾球 3D 木質迷宮遊戲分享圖片"
+  "ogImage": "https://pjh-eric.github.io/maze-roll/assets/images/cover.webp",
+  "ogImageAlt": "迷宮滾球 遊戲封面"
 }

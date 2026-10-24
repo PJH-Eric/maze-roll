@@ -59,7 +59,9 @@ try {
   const jsonLd = JSON.parse(jsonLdText);
   assert.equal(jsonLd.url, config.siteUrl);
   assert.equal(jsonLd.applicationCategory, 'GameApplication');
-  assert.equal(jsonLd.thumbnailUrl, config.iconUrl);
+  assert.equal(jsonLd.thumbnailUrl, config.ogImage);
+  assert.ok(built.includes('property="og:image:type" content="image/webp"'));
+  assert.ok(built.includes('property="og:image:height" content="675"'));
   assert.equal(jsonLd.isPartOf.url, config.lobbyUrl);
 
   const sitemap = fs.readFileSync(path.join(temp, 'public', 'sitemap.xml'), 'utf8');
