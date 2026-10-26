@@ -43,6 +43,7 @@ function applyLang() {
 let cleanup = null, current = '', ctx = {};
 if (window.I18N) window.I18N.onChange(() => { applyLang(); if (current && current !== 'game') go(current, ctx); });
 function go(name, params) {
+  if (window.ServerOutage) window.ServerOutage.setScreen(name === 'online' ? 'lobby' : name);
   if (name === 'home' && session.room) net.send({ t: 'leave' }); // 回首頁一定離開房間，避免留下空殼房
   if (cleanup) { try { cleanup(); } catch (e) { console.error(e); } cleanup = null; }
   Array.from(chromeRight.children).forEach((c) => { if (c !== gearBtn && !c.classList.contains('language-controls')) c.remove(); });
