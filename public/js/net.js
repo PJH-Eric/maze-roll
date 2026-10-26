@@ -21,7 +21,10 @@ export class Net {
   constructor() { this.ws = null; this.handlers = new Set(); this.state = 'idle'; this.mid = null; this.name = ''; this.rtt = null; this.wantOpen = false; this.retry = 0; this.timer = null; this.sendQ = []; try { this.mid = sessionStorage.getItem('mr.mid'); } catch (e) { /* 略 */ } }
   on(fn) { this.handlers.add(fn); return () => this.handlers.delete(fn); }
   emit(m) { [...this.handlers].forEach((f) => { if (this.handlers.has(f)) f(m); }); }
-  setState(s) { if (this.state !== s) { this.state = s; this.emit({ t: '_state', state: s }); } }
+  setState(s) {
+    if (window.ServerOutage) window.ServerOutage.state(s);
+    if (this.state !== s) { this.state = s; this.emit({ t: '_state', state: s }); }
+  }
   connect(name) {
     this.name = name || this.name; this.wantOpen = true;
     if (this.ws && (this.ws.readyState === 0 || this.ws.readyState === 1)) return;

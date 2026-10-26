@@ -657,3 +657,12 @@ window.MR_HANS = {
   "避開持續崩塌的地磚，掉落後結束，挑戰最長存活時間。": "避开持续崩塌的地砖，掉落后结束，挑战最长存活时间。",
   "繞路拿鑰匙、踩踏板開門，逃到終點即結束，挑戰最快完成時間。": "绕路拿钥匙、踩踏板开门，逃到终点即结束，挑战最快完成时间。"
 };
+
+/* Server outage translations (shared by the custom notice component). */
+(function (root) {
+  root.ServerOutageMessages = {
+    'zh-Hant': ['線上暫時無法連線', '免費伺服器額度將於 {date} 月 1 日重置，期間可繼續遊玩單機版。', '知道了'],
+    'zh-Hans': ['线上暂时无法连线', '免费服务器额度将于 {date} 月 1 日重置，期间可继续游玩单机版。', '知道了'],
+    en: ['Online unavailable', 'Free server quota resets on {date}. You can keep playing offline.', 'Got it']
+  };
+})(typeof window !== 'undefined' ? window : globalThis);
