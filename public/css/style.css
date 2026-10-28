@@ -419,7 +419,7 @@ body::before { content: ""; position: fixed; inset: 0; pointer-events: none; z-i
 .linkRow { display: grid; grid-template-columns: 1fr auto; grid-template-areas: "lbl lbl" "url btn"; gap: 4px 8px; align-items: center; padding: 8px 10px; border-radius: 12px; background: rgba(47,143,131,.14); border: 2px solid rgba(47,143,131,.55); }
 .linkLbl { grid-area: lbl; display: flex; align-items: center; gap: 6px; font-size: .82rem; font-weight: 800; color: #1f6b61; }
 .linkLbl .ico svg { width: 1.1em; height: 1.1em; }
-.linkUrl { grid-area: url; min-width: 0; padding: 6px 9px; border-radius: 9px; background: #fff8e6; border: 2px solid #2a1a10; color: var(--ink); font: 700 .78rem/1.35 ui-monospace, "SF Mono", Menlo, Consolas, monospace; letter-spacing: 0; word-break: break-all; user-select: all; -webkit-user-select: all; max-height: 3.9em; overflow: hidden; }
+.linkUrl { grid-area: url; min-width: 0; padding: 6px 9px; border-radius: 9px; background: #fff8e6; border: 2px solid #2a1a10; color: var(--ink); font: 700 .78rem/1.35 ui-monospace, "SF Mono", Menlo, Consolas, monospace; letter-spacing: 0; word-break: break-all; user-select: all; -webkit-user-select: all; }
 .linkUrl:focus-visible { outline: 3px solid var(--gold); outline-offset: 1px; }
 .linkRow .btn { grid-area: btn; }
 .inviteEl, .roomMain > div:last-child { display: flex; flex-direction: column; gap: 8px; }
