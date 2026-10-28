@@ -22,6 +22,12 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
   const a = client(hub, '小明'), b = client(hub, '小華'), s1 = client(hub, '路人');
   assert(a.last('hi').mid && a.last('rooms'), 'hello 回應'); ok('hello 與大廳列表');
+  assert.strictEqual(a.last('rooms').online, 1, '初次列表應先回報當下在線人數');
+  await sleep(10);
+  assert.strictEqual(a.last('rooms').online, 3, '大廳列表應計入玩家及觀戰者');
+  a.send({ t: 'rooms' });
+  assert.strictEqual(a.last('rooms').online, 3, '手動重新整理也應回傳在線人數');
+  ok('大廳與手動重新整理皆帶在線人數');
 
   a.send({ t: 'create', name: '<b>小明</b>', mode: 'stars', diff: 1, lightsOut: true });
   const joined = a.last('joined'); assert(joined && joined.role === 'player');

@@ -318,7 +318,9 @@ function ChatBox() {
 const MODE_SHORT = { get race() { return T('競速'); }, get stars() { return T('搶星星'); }, get collapse() { return T('崩塌'); }, get escape() { return T('逃出'); } };
 function onlineScreen(p) {
   let rooms = [], invite = p.invite || null, peek = null, joining = false;
+  let onlineCount = null;
   const status = h('div', { class: 'status' });
+  const countEl = h('p', { class: 'online-count', role: 'status', 'aria-live': 'polite', hidden: true });
   const nameIn = TextInput({ placeholder: T('輸入暱稱（可留空）'), maxLength: 12, value: store.get('name'), label: T('暱稱'), onInput: (v) => store.set('name', v.trim()) });
   const listEl = h('div', { class: 'roomList' });
   const inviteBox = h('div', { class: 'inviteBox' });
@@ -327,6 +329,9 @@ function onlineScreen(p) {
   const drawStatus = () => {
     const st = net.state, map = { idle: T('尚未連線'), connecting: T('連線中…（伺服器第一次喚醒可能要等幾十秒）'), reconnecting: T('重新連線中…'), online: T('已連線'), offline: T('無法連線'), nourl: T('尚未設定線上伺服器') };
     status.className = 'status ' + st; status.textContent = map[st] || st;
+    if (st !== 'online') onlineCount = null;
+    countEl.hidden = !Number.isInteger(onlineCount);
+    countEl.textContent = Number.isInteger(onlineCount) ? T('目前在線：{n} 人', { n: onlineCount }) : '';
   };
   const drawRooms = () => {
     listEl.replaceChildren();
@@ -355,7 +360,7 @@ function onlineScreen(p) {
   const clearHash = () => { try { history.replaceState(null, '', location.pathname + location.search); } catch (e) { /* 略 */ } };
   const sub = (m) => {
     if (m.t === '_state') { drawStatus(); drawRooms(); if (m.state === 'online' && invite && !peek) net.send({ t: 'peek', code: invite.code, token: invite.token }); drawInvite(); }
-    else if (m.t === 'rooms') { rooms = m.rooms; drawRooms(); }
+    else if (m.t === 'rooms') { rooms = m.rooms; onlineCount = Number.isInteger(m.online) && m.online >= 0 ? m.online : null; drawStatus(); drawRooms(); }
     else if (m.t === 'peek') { peek = m; drawInvite(); }
     else if (m.t === 'joined') { clearHash(); }
     else if (m.t === 'err') { joining = false; toast(M(m.msg) || T('發生錯誤')); if (invite && ['invalid', 'revoked', 'closed'].includes(m.code)) { peek = { ok: false, reason: m.code }; drawInvite(); } drawRooms(); }
@@ -369,7 +374,7 @@ function onlineScreen(p) {
   };
   $screen.append(h('section', { class: 'screen online' }, topbar(T('線上對戰'), () => go('home')),
     h('div', { class: 'body' }, panel(ScrollArea(h('div', { class: 'onlineBody' },
-      notice, status, inviteBox,
+      notice, status, countEl, inviteBox,
       h('div', { class: 'nickRow' }, h('label', { class: 'rowLabel', text: T('暱稱') }), nameIn),
       h('div', { class: 'row2' },
         Button({ label: T('快速加入'), variant: 'primary', icon: 'flag', onClick: () => net.send({ t: 'quick', name: nm() }) }),
