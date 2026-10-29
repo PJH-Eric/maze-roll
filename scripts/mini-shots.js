@@ -9,8 +9,8 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   await page.goto('http://localhost:3194/'); await sleep(600);
   const cfgs = [['race', 0], ['race', 2], ['race', 4], ['stars', 3], ['collapse', 2]];
   for (const [mode, diff] of cfgs) {
-    await page.evaluate(([mode, diff]) => window.__MRAPP.startLocal({ kind: 'practice', mode, diff, ais: [] }), [mode, diff]); await sleep(3600);
-    await page.evaluate(() => window.__MRAPP.getGame().input.keys.add('d')); await sleep(1200);
+    await page.evaluate(([mode, diff]) => window.__MRAPP.startLocal({ kind: 'practice', mode, diff, ais: [] }), [mode, diff]); await page.waitForFunction(() => window.__MRAPP.getGame() && window.__MRAPP.getGame().scene, null, { timeout: 8000 }); await sleep(1200);
+    await page.evaluate(() => window.__MRAPP.getGame().input.keys.add('d')); await sleep(800);
     const box = await page.locator('canvas.mini').boundingBox();
     await page.screenshot({ path: `/tmp/shots/mini_${mode}_${diff}.png`, clip: { x: box.x - 12, y: box.y - 12, width: box.width + 24, height: box.height + 24 } });
     if (mode === 'race' && diff === 2) await page.screenshot({ path: '/tmp/shots/mini_full.png' });
