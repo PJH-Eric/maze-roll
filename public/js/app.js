@@ -709,6 +709,7 @@ function gameScreen(p) {
     if (lightsOut) lines.push(h('p', { class: 'note', text: online ? T('關燈挑戰') : T('關燈挑戰・成績分開記錄') }));
     const hero = h('div', { class: 'resHero' }, h('div', { class: 'resBadge', 'aria-hidden': 'true' }, icon(mode === 'escape' ? 'key' : run ? 'flag' : mode === 'stars' ? 'star' : 'crown')), lines.length ? h('div', { class: 'resLines' }, ...lines) : null);
     resultM = Modal({ title, class: 'resultModal m-' + mode + (won ? ' win' : ' lose'), dismissible: false, transparent: true, body: h('div', { class: 'result', 'data-result-share': '' }, hero, tileEl, table, nextBtn ? h('div', { class: 'nextRow' }, nextBtn) : null), actions: [again, back, home] });
+    resultM.el.setAttribute('data-result-image', '');
   }
 
   // 設定即時套用
