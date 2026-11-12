@@ -604,3 +604,13 @@ p, .rtable .nm { text-wrap-style: pretty; }
 .lv.done .lvTime { color: #5a3722; }
 .lv.next .lvTime { opacity: .6; }
 @media (max-width: 440px) { .lv .lvTime { font-size: .62rem; } .lv b { font-size: 1.1rem; } }
+
+/* ---------- 大廳聊天室：套用迷宮滾球木頭配色 ---------- */
+body .lc-root {
+  --lc-accent: var(--maple); --lc-accent-ink: var(--ink);
+  --lc-panel-bg: var(--cream); --lc-panel-solid: var(--cream);
+  --lc-ink: var(--ink); --lc-muted: var(--wood); --lc-line: var(--maple2);
+  --lc-field-bg: #fff; --lc-sys-bg: var(--maple2); --lc-name: var(--red2);
+  --lc-font: var(--font); --lc-radius: 12px; --lc-z: 90;
+}
+body .lc-bubble, body .lc-panel { border: 3px solid var(--walnut); box-shadow: 0 4px 0 var(--walnut); }

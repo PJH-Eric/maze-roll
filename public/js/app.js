@@ -55,6 +55,7 @@ function go(name, params) {
   const fn = SCREENS[name]; const r = fn(ctx);
   if (typeof r === 'function') cleanup = r;
   audio.bgm(store.get('bgm') && audio.ready());
+  if (lobbyChat) lobbyChat.refresh();
 }
 function topbar(title, onBack) {
   return h('header', { class: 'topbar' }, Button({ icon: 'back', label: T('返回'), size: 'small', onClick: onBack }), h('h1', { class: 'title', text: title }), h('span', { class: 'spacer' }));
@@ -66,6 +67,30 @@ const panel = (...k) => h('div', { class: 'panel' }, ...k);
 const unlock = () => { audio.unlock(); audio.bgm(store.get('bgm')); removeEventListener('pointerdown', unlock, true); removeEventListener('keydown', unlock, true); };
 addEventListener('pointerdown', unlock, true); addEventListener('keydown', unlock, true);
 addEventListener('click', (e) => { if (e.target.closest && e.target.closest('.btn,.chip,.opt')) audio.click(); }, true);
+
+// ---------- 線上大廳聊天室（左下氣泡，跟房間聊天分開）----------
+const lobbyChat = window.LobbyChat ? window.LobbyChat.create({
+  game: 'maze-roll',
+  active: () => current === 'online',
+  getName: () => (store.get('name') || '').trim(),
+  setName: (n) => { store.set('name', n.slice(0, 12)); net.send({ t: 'name', name: n.slice(0, 12) }); const inp = $screen.querySelector('.screen input[type="text"]'); if (inp) inp.value = n.slice(0, 12); },
+  join: (name) => net.send({ t: 'lobbychat', op: 'join', name }),
+  leave: () => net.send({ t: 'lobbychat', op: 'leave' }),
+  send: (text, name) => net.send({ t: 'lobbychat', op: 'send', text, name }),
+  joinRoom: (code) => net.send({ t: 'join', code, name: (store.get('name') || '').trim(), role: 'player' }),
+}) : null;
+if (lobbyChat) {
+  lobbyChat.setConnected(net.state === 'online');
+  net.on((m) => {
+    if (m.t === '_state') lobbyChat.setConnected(m.state === 'online');
+    else if (m.t === 'lobbychat') {
+      if (m.op === 'history') lobbyChat.history(m.history, m.online);
+      else if (m.op === 'msg') lobbyChat.add(m.msg);
+      else if (m.op === 'online') lobbyChat.online(m.online);
+      else if (m.op === 'error') lobbyChat.error(m.code);
+    }
+  });
+}
 
 // ---------- 設定彈窗 ----------
 function openSettings() {
@@ -84,17 +109,18 @@ function openSettings() {
     trail: Toggle({ label: T('滾動軌跡'), value: S.get('trail'), onChange: (v) => S.set('trail', v) }),
     shapes: Toggle({ label: T('色彩輔助（用形狀區分玩家）'), value: S.get('shapes'), onChange: (v) => S.set('shapes', v) }),
     reduce: Toggle({ label: T('減少動態（關閉粒子、晃動與浮動）'), value: S.get('reduce'), onChange: (v) => S.set('reduce', v) }),
+    lobbyChat: lobbyChat ? Toggle({ label: lobbyChat.text('set'), value: lobbyChat.isEnabled(), onChange: (v) => lobbyChat.setEnabled(v) }) : null,
   };
   const sect = (t, ...k) => h('section', { class: 'sect' }, h('h3', { text: t }), ...k);
   const body = h('div', { class: 'settings' },
     sect(T('聲音'), rows.bgm, rows.bgmVol, rows.sfx, rows.sfxVol),
     sect(T('操作'), h('div', { class: 'rowStack' }, h('span', { class: 'rowLabel', text: T('操作方式') }), rows.ctrl), rows.vib, h('p', { class: 'hint' }, T('鍵盤：'), Key('W'), Key('A'), Key('S'), Key('D'), T(' 或方向鍵都能操作。'))),
-    sect(T('畫面與輔助'), h('div', { class: 'rowStack' }, h('span', { class: 'rowLabel', text: T('鏡頭距離') }), rows.cam), h('div', { class: 'rowStack' }, h('span', { class: 'rowLabel', text: T('球種（自己的球）') }), rows.ball), rows.trail, rows.minimap, rows.shapes, rows.reduce));
+    sect(T('畫面與輔助'), h('div', { class: 'rowStack' }, h('span', { class: 'rowLabel', text: T('鏡頭距離') }), rows.cam), h('div', { class: 'rowStack' }, h('span', { class: 'rowLabel', text: T('球種（自己的球）') }), rows.ball), rows.trail, rows.minimap, rows.shapes, rows.reduce, rows.lobbyChat));
   const g = activeGame && !activeGame.online && activeGame.state === 'play' && !activeGame.paused ? activeGame : null;
   if (g) g.pause(true);
   m = Modal({
     title: T('設定'), body, class: 'settingsModal', onClose: () => { if (g && activeGame === g) g.pause(false); },
-    actions: [Button({ label: T('恢復預設'), onClick: () => { S.reset(); m.close('reset'); toast(T('已恢復預設設定')); audio.bgm(S.get('bgm')); } }), Button({ label: T('完成'), variant: 'primary', onClick: () => m.close('ok') })],
+    actions: [Button({ label: T('恢復預設'), onClick: () => { S.reset(); if (lobbyChat) lobbyChat.setEnabled(true); m.close('reset'); toast(T('已恢復預設設定')); audio.bgm(S.get('bgm')); } }), Button({ label: T('完成'), variant: 'primary', onClick: () => m.close('ok') })],
   });
   return m;
 }
