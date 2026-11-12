@@ -2,13 +2,13 @@
   "id": "maze-roll",
   "siteUrl": "https://pjh-eric.github.io/maze-roll/",
   "lobbyUrl": "https://pjh-eric.github.io/game-lobby/",
-  "title": "迷宮滾球｜免費線上 3D 迷宮闖關",
-  "titleKey": "迷宮滾球｜免費線上 3D 迷宮闖關",
-  "description": "免費線上 3D 木質迷宮滾球遊戲，挑戰競速、搶星星、地板崩塌與逃出四種玩法。闖關有五種難度，也能對戰電腦或與最多 4 人線上同玩，支援手機、平板和桌機。",
-  "descriptionKey": "免費線上 3D 木質迷宮滾球遊戲，挑戰競速、搶星星、地板崩塌與逃出四種玩法。闖關有五種難度，也能對戰電腦或與最多 4 人線上同玩，支援手機、平板和桌機。",
+  "title": "迷宮滾球｜免費 3D 迷宮遊戲・單人闖關與多人競速",
+  "titleKey": "迷宮滾球｜免費 3D 迷宮遊戲・單人闖關與多人競速",
+  "description": "滾動小球，闖進溫暖的 3D 木質迷宮！免費免下載，暢玩同圖競速、搶星星、地板崩塌與逃出四種玩法。競速與逃出各有五種難度、每種 100 關，還能挑戰電腦、每日迷宮，或邀朋友最多 4 人線上同玩。手機、平板、電腦打開即玩。",
+  "descriptionKey": "滾動小球，闖進溫暖的 3D 木質迷宮！免費免下載，暢玩同圖競速、搶星星、地板崩塌與逃出四種玩法。競速與逃出各有五種難度、每種 100 關，還能挑戰電腦、每日迷宮，或邀朋友最多 4 人線上同玩。手機、平板、電腦打開即玩。",
   "genre": "益智",
   "players": "1-4",
   "iconUrl": "https://pjh-eric.github.io/maze-roll/favicon-96.png",
-  "ogImage": "https://pjh-eric.github.io/maze-roll/assets/images/cover.webp",
-  "ogImageAlt": "迷宮滾球 遊戲封面"
+  "ogImage": "https://pjh-eric.github.io/maze-roll/og-image.png",
+  "ogImageAlt": "迷宮滾球｜木質迷宮中的青綠小球、金色星星與終點旗，搭配遊戲標題"
 }

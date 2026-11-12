@@ -59,9 +59,15 @@ try {
   const jsonLd = JSON.parse(jsonLdText);
   assert.equal(jsonLd.url, config.siteUrl);
   assert.equal(jsonLd.applicationCategory, 'GameApplication');
-  assert.equal(jsonLd.thumbnailUrl, config.ogImage);
-  assert.ok(built.includes('property="og:image:type" content="image/webp"'));
-  assert.ok(built.includes('property="og:image:height" content="675"'));
+  assert.equal(jsonLd.image, config.ogImage);
+  assert.equal(jsonLd.thumbnailUrl, config.siteUrl + 'assets/images/cover.webp');
+  assert.notEqual(jsonLd.thumbnailUrl, jsonLd.image, '分享圖與無文字封面須分開');
+  assert.ok(built.includes('property="og:image:type" content="image/png"'));
+  const png = fs.readFileSync(path.join(root, 'public', 'og-image.png'));
+  assert.equal(png.subarray(1, 4).toString(), 'PNG');
+  assert.equal(png.readUInt32BE(16), 1200);
+  assert.equal(png.readUInt32BE(20), 630);
+  assert.ok(built.includes('property="og:image:height" content="630"'));
   assert.equal(jsonLd.isPartOf.url, config.lobbyUrl);
 
   const sitemap = fs.readFileSync(path.join(temp, 'public', 'sitemap.xml'), 'utf8');

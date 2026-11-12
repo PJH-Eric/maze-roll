@@ -1,5 +1,7 @@
 // 英文字典（以繁中原文為鍵）。新增介面文字時，請同步在這裡補英文；tests/i18n.test.js 會檢查缺漏。
 window.MR_EN = {
+ "迷宮滾球｜免費 3D 迷宮遊戲・單人闖關與多人競速": "Maze Roll | Free 3D Maze Game, Solo & Multiplayer",
+ "滾動小球，闖進溫暖的 3D 木質迷宮！免費免下載，暢玩同圖競速、搶星星、地板崩塌與逃出四種玩法。競速與逃出各有五種難度、每種 100 關，還能挑戰電腦、每日迷宮，或邀朋友最多 4 人線上同玩。手機、平板、電腦打開即玩。": "Roll into a warm 3D wooden maze! Play free, with no download: Race, Star Grab, Floor Collapse and Escape. Race and Escape each offer five difficulties with 100 stages per difficulty. Challenge bots, try daily mazes or invite up to four players online. Play on phones, tablets and computers.",
  "迷宮滾球｜免費線上 3D 迷宮闖關": "Maze Roll | Free Online 3D Maze Game",
  "免費線上 3D 木質迷宮滾球遊戲，挑戰競速、搶星星、地板崩塌與逃出四種玩法。闖關有五種難度，也能對戰電腦或與最多 4 人線上同玩，支援手機、平板和桌機。": "Roll through a 3D wooden maze in four modes: race, collect stars, survive collapsing floors, or escape. Play solo, challenge bots, or race online with up to four players on mobile, tablet, or desktop.",
  "遊戲結束": "Game Over",
@@ -331,6 +333,8 @@ window.MR_EN = {
 
 // 簡體中文文字對照表；玩家輸入內容保持原樣。
 window.MR_HANS = {
+ "迷宮滾球｜免費 3D 迷宮遊戲・單人闖關與多人競速": "迷宫滚球｜免费 3D 迷宫游戏・单人闯关与多人竞速",
+ "滾動小球，闖進溫暖的 3D 木質迷宮！免費免下載，暢玩同圖競速、搶星星、地板崩塌與逃出四種玩法。競速與逃出各有五種難度、每種 100 關，還能挑戰電腦、每日迷宮，或邀朋友最多 4 人線上同玩。手機、平板、電腦打開即玩。": "滚动小球，闯进温暖的 3D 木质迷宫！免费免下载，畅玩同图竞速、抢星星、地板崩塌与逃出四种玩法。竞速与逃出各有五种难度、每种 100 关，还能挑战电脑、每日迷宫，或邀朋友最多 4 人线上同玩。手机、平板、电脑打开即玩。",
   "迷宮滾球｜免費線上 3D 迷宮闖關": "迷宫滚球｜免费线上 3D 迷宫闯关",
   "免費線上 3D 木質迷宮滾球遊戲，挑戰競速、搶星星、地板崩塌與逃出四種玩法。闖關有五種難度，也能對戰電腦或與最多 4 人線上同玩，支援手機、平板和桌機。": "免费线上 3D 木质迷宫滚球游戏，挑战竞速、抢星星、地板崩塌与逃出四种玩法。闯关有五种难度，也能对战电脑或与最多 4 人线上同玩，支持手机、平板和桌机。",
   "遊戲結束": "游戏结束",

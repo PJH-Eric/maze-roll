@@ -9,6 +9,10 @@ import { T, M } from './t.js';
 import { BALL_COLORS, SHAPES, BALL_TYPES } from './scene.js';
 
 const MR = window.MR;
+if (window.I18N) {
+  window.I18N.register('en', window.MR_EN);
+  window.I18N.register('zh-Hans', window.MR_HANS);
+}
 const $app = document.getElementById('app');
 const MODE_INFO = {
   race: { get name() { return T('同圖競速'); }, get sub() { return T('單人抵達即結束；多人第一人抵達後倒數 10 秒結算'); }, icon: 'flag' },
@@ -32,10 +36,20 @@ $app.append($screen, chrome);
 
 // ---------- 多語系（核心沿用箭頭解密的 i18n.js：繁體中文／English）----------
 const langToggle = window.I18N ? window.I18N.mountToggle({ after: gearBtn }) : null;
-const META = { title: '迷宮滾球｜免費線上 3D 滾球迷宮・多人競速', desc: '免費免下載的 3D 木質迷宮滾球遊戲，含同圖競速、搶星星、地板崩塌、逃出四種玩法；同圖競速與逃出各有五種難度、每種 100 關，可單人闖關、自由練習或對電腦，也能線上最多 4 人同玩。另有可選的關燈挑戰、每日挑戰、觀戰與邀請連結，支援手機、平板和桌機。' };
+const META = {
+  title: document.documentElement.getAttribute('data-i18n-title'),
+  desc: document.querySelector('meta[name="description"]').getAttribute('data-i18n-content'),
+};
 function applyLang() {
   document.title = T(META.title);
-  const d = document.querySelector('meta[name="description"]'); if (d) d.setAttribute('content', T(META.desc));
+  for (const selector of ['meta[name="description"]', 'meta[property="og:description"]', 'meta[name="twitter:description"]']) {
+    document.querySelector(selector).setAttribute('content', T(META.desc));
+  }
+  for (const selector of ['meta[property="og:title"]', 'meta[name="twitter:title"]']) {
+    document.querySelector(selector).setAttribute('content', T(META.title));
+  }
+  const locale = { 'zh-Hant': 'zh_TW', 'zh-Hans': 'zh_CN', en: 'en_US' };
+  document.querySelector('meta[property="og:locale"]').setAttribute('content', locale[window.I18N ? window.I18N.lang : 'zh-Hant']);
   gearBtn.setAttribute('aria-label', T('設定')); gearBtn.setAttribute('title', T('設定'));
   lobbyLink.setAttribute('aria-label', T('回遊戲大廳')); lobbyLink.lastElementChild.textContent = T('遊戲小小島');
 }

@@ -62,7 +62,7 @@ function validate(config) {
       throw new Error(key + ' 必須是遊戲自己的 HTTPS 網址');
     }
   }
-  if (config.ogImage && !/\/assets\/images\/cover\.webp$/.test(config.ogImage)) throw new Error('ogImage 必須指向 WebP 遊戲封面');
+  if (config.ogImage !== config.siteUrl + 'og-image.png') throw new Error('ogImage 必須指向遊戲專用的 PNG 分享圖');
 }
 
 function validateGameplay(gameplay) {
@@ -108,7 +108,7 @@ function makeHead(config) {
     genre: config.genre,
     offers: { '@type': 'Offer', price: '0', priceCurrency: 'TWD' },
     image: config.ogImage || undefined,
-    thumbnailUrl: config.ogImage || undefined,
+    thumbnailUrl: config.siteUrl + 'assets/images/cover.webp',
     isPartOf: { '@type': 'WebSite', url: config.lobbyUrl }
   };
   const title = escapeHtml(config.title);
@@ -128,9 +128,9 @@ function makeHead(config) {
     '<meta property="og:description" content="' + description + '">',
     '<meta property="og:url" content="' + escapeHtml(config.siteUrl) + '">',
     '<meta property="og:image" content="' + image + '">',
-    '<meta property="og:image:type" content="image/webp">',
+    '<meta property="og:image:type" content="image/png">',
     '<meta property="og:image:width" content="1200">',
-    '<meta property="og:image:height" content="675">',
+    '<meta property="og:image:height" content="630">',
     '<meta property="og:image:alt" content="' + escapeHtml(config.ogImageAlt || config.title) + '">',
     '<meta name="twitter:card" content="summary_large_image">',
     '<meta name="twitter:title" content="' + title + '">',
