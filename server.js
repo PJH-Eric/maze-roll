@@ -27,7 +27,7 @@ const server = http.createServer((req, res) => {
 
 const hub = new Hub();
 
-/* 大廳聊天室（與房間聊天分開；最近 50 則只存在記憶體） */
+/* 大廳聊天室（與房間聊天分開；即時傳送訊息，不載入歷史訊息） */
 const chatSends = new Map();   // 連線代號 → send
 const lobbyChat = require('./lib/lobby-chat.js').createHub({ send: (id, msg) => { const f = chatSends.get(id); if (f) f(msg); }, key: 't' });
 let chatSeq = 0;
