@@ -328,7 +328,12 @@ net.on((m) => {
   }
   if (m.t === 'init' && (current === 'room')) go('game', { online: true, init: m });
 });
-const inviteLink = (kind) => { const r = session.room; if (!r || !r.invite) return ''; return location.origin + location.pathname + '#/join/' + r.code + '/' + (kind === 'spec' ? r.invite.ts : r.invite.tp); };
+const inviteLink = (kind) => {
+  const r = session.room;
+  if (!r || !r.invite) return '';
+  const address = location.origin + location.pathname + '#/join/' + r.code + '/' + (kind === 'spec' ? r.invite.ts : r.invite.tp);
+  return window.GameBackend?.pinInvite(address) ?? address;
+};
 function copyText(text) {
   const done = () => toast(T('已複製連結'));
   const fallback = () => { const m = Modal({ title: T('複製連結'), body: h('div', {}, h('p', { class: 'note', text: T('請長按選取下面的連結後複製：') }), h('div', { class: 'linkBox', text })), actions: [Button({ label: T('完成'), variant: 'primary', onClick: () => m.close() })] }); };

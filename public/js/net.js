@@ -30,7 +30,7 @@ export class Net {
     if (this.ws && (this.ws.readyState === 0 || this.ws.readyState === 1)) return;
     const url = wsUrl(); if (!url) { this.setState('nourl'); return; }
     this.setState(this.retry ? 'reconnecting' : 'connecting');
-    let ws; try { ws = new WebSocket(url); } catch (e) { this.setState('offline'); return; }
+    let ws; try { ws = window.GameBackend?.createSocket(url) ?? new WebSocket(url); } catch (e) { this.setState('offline'); return; }
     this.ws = ws;
     ws.onopen = () => { this.retry = 0; ws.send(JSON.stringify({ t: 'hello', name: this.name, mid: this.mid })); this._ping(); };
     ws.onmessage = (ev) => {
