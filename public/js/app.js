@@ -380,7 +380,7 @@ function onlineScreen(p) {
   };
   const drawRooms = () => {
     listEl.replaceChildren();
-    if (net.state === 'nourl') { listEl.append(h('p', { class: 'empty', text: T('這個版本還沒有設定線上伺服器（GAME_SERVER_URL），目前只能玩單機模式。') })); return; }
+    if (net.state === 'nourl') { listEl.append(h('p', { class: 'empty', text: T('目前連不上線上伺服器，只能玩單機模式。') })); return; }
     if (!rooms.length) { listEl.append(h('p', { class: 'empty', text: net.state === 'online' ? T('目前沒有房間。按「快速加入」會自動幫你開一間！') : T('連線後會顯示房間列表。') })); return; }
     for (const r of rooms) {
       const full = r.players >= r.max || r.state !== 'waiting';
