@@ -28,7 +28,12 @@ const myName = () => (store.get('name') || '').trim() || T('你');
 // ---------- 全域外框：設定入口（右上角）、回大廳（只在首頁）----------
 const chrome = h('div', { class: 'chrome' });
 const gearBtn = IconButton({ icon: 'gear', ariaLabel: T('設定'), class: 'gear', onClick: () => openSettings() });
-const chromeRight = h('div', { class: 'chromeRight' }, gearBtn);
+const support = h('a', { class: 'btn primary home-support', href: 'https://portaly.cc/pjh-eric/support', target: '_blank', rel: 'noopener noreferrer' },
+  h('span', { 'aria-hidden': 'true', text: '♥' }),
+  h('span', { class: 'support-label', lang: 'zh-Hant', text: '贊助' }),
+  h('span', { class: 'support-label', lang: 'zh-Hans', text: '赞助' }),
+  h('span', { class: 'support-label', lang: 'en', text: 'Sponsor' }));
+const chromeRight = h('div', { class: 'chromeRight' }, support, gearBtn);
 const lobbyLink = h('a', { class: 'btn lobbyLink', href: (window.MR_CONFIG && window.MR_CONFIG.lobbyUrl) || '#', 'aria-label': T('回遊戲大廳') }, icon('home'), h('span', { text: T('遊戲小小島') }));
 chrome.append(lobbyLink, chromeRight);
 const $screen = h('div', { class: 'screenHost' });
@@ -60,7 +65,7 @@ function go(name, params) {
   if (window.ServerOutage) window.ServerOutage.setScreen(name === 'online' ? 'lobby' : name);
   if (name === 'home' && session.room) net.send({ t: 'leave' }); // 回首頁一定離開房間，避免留下空殼房
   if (cleanup) { try { cleanup(); } catch (e) { console.error(e); } cleanup = null; }
-  Array.from(chromeRight.children).forEach((c) => { if (c !== gearBtn && !c.classList.contains('language-controls')) c.remove(); });
+  Array.from(chromeRight.children).forEach((c) => { if (c !== gearBtn && c !== support && !c.classList.contains('language-controls')) c.remove(); });
   if (langToggle) langToggle.style.display = name === 'game' ? 'none' : '';
   $screen.replaceChildren(); current = name; ctx = params || {};
   lobbyLink.style.display = name === 'home' ? '' : 'none';

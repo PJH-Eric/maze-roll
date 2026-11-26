@@ -614,3 +614,44 @@ body .lc-root {
   --lc-font: var(--font); --lc-radius: 12px; --lc-z: 90;
 }
 body .lc-bubble, body .lc-panel { border: 3px solid var(--walnut); box-shadow: 0 4px 0 var(--walnut); }
+
+.home-support {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  gap: 5px;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0 10px;
+  font-size: .875rem;
+  font-weight: 800;
+  line-height: 1;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.home-support:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
+
+#app:not([data-screen="home"]) .home-support { display: none; }
+
+.home-support .support-label:not([lang="zh-Hant"]),
+:is(html:lang(zh-Hans), html:lang(zh-CN)) .home-support .support-label[lang="zh-Hant"],
+html:lang(en) .home-support .support-label[lang="zh-Hant"] { display: none; }
+:is(html:lang(zh-Hans), html:lang(zh-CN)) .home-support .support-label[lang="zh-Hans"],
+html:lang(en) .home-support .support-label[lang="en"] { display: inline; }
+
+@media (max-width: 480px) {
+  .home-support {
+    flex-direction: column;
+    gap: 2px;
+    width: 50px;
+    padding-inline: 3px;
+    font-size: 11px;
+    letter-spacing: 0;
+  }
+  .home-support > [aria-hidden="true"] { font-size: 1rem; }
+}
+
+@media (max-width: 380px) {
+  .lobbyLink { padding-inline: 8px; font-size: .8rem; }
+}
